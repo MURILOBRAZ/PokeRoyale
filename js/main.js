@@ -459,6 +459,35 @@ window.addEventListener('pointerup', (e) => {
   else if (e.pointerType !== 'mouse') ui.hover = null;
 });
 
+// ---------- Zoom no celular ----------
+// O Safari do iPhone ignora "user-scalable=no": dois toques rápidos davam zoom e o jogador ficava preso
+// vendo só um pedaço da tela. Arrastar e escolher cartas usam pointer events e não são afetados.
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  const quick = now - lastTouchEnd < 350;
+  lastTouchEnd = now;
+  if (quick && !e.target.closest('button, input, select, textarea, label, a')) e.preventDefault();
+}, { passive: false });
+document.addEventListener('dblclick', (e) => e.preventDefault());
+// Pinça para zoom só é bloqueada durante a partida
+document.addEventListener('gesturestart', (e) => {
+  if (game) e.preventDefault();
+});
+
+// Se a página ainda assim ficar com zoom durante a partida, volta à escala normal
+const viewportMeta = document.querySelector('meta[name=viewport]');
+const viewportContent = viewportMeta.content;
+function resetZoom() {
+  if (!game || !window.visualViewport || window.visualViewport.scale <= 1.01) return;
+  // Trocar o conteúdo da meta tag faz o navegador recalcular a escala
+  viewportMeta.content = `${viewportContent}, minimum-scale=1`;
+  setTimeout(() => (viewportMeta.content = viewportContent), 60);
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => setTimeout(resetZoom, 250));
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
   if (['1', '2', '3', '4'].includes(e.key)) selectCard(Number(e.key) - 1);

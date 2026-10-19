@@ -1,4 +1,5 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* manipulation: rolar e pinçar continuam, mas o toque duplo não vira zoom (arena e cartas usam none) */
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 html, body {
   height: 100%;
@@ -6,7 +7,7 @@ html, body {
   color: #fff;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   overflow: hidden;
-  touch-action: none;
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
