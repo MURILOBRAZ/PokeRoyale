@@ -38,7 +38,11 @@ class Renderer {
     const arena = ARENAS[id] || ARENAS[0];
     this.ground = arena.ground;
     this.mapUrl = arena.map ? arenaMapUrl(arena) : null;
+    // Mapa completo (com as bordas decorativas) para preencher a tela além da arena
+    this.mapArt = arena.map && typeof ARENA_ART !== 'undefined' ? ARENA_ART[arena.map] : null;
+    this.mapFullUrl = this.mapArt ? `assets/arenas/${arena.map}-full.webp` : null;
     if (this.mapUrl) getImage(this.mapUrl); // começa a carregar já
+    if (this.mapFullUrl) getImage(this.mapFullUrl);
   }
 
   // Retângulo do mundo -> tela (cuida da arena invertida do jogador de cima)
@@ -58,9 +62,18 @@ class Renderer {
     this.canvas.style.width = w + 'px';
     this.canvas.style.height = h + 'px';
     this.dpr = dpr;
-    this.scale = Math.min(w / ARENA.W, h / ARENA.H);
-    this.ox = (w - this.scale * ARENA.W) / 2;
-    this.oy = (h - this.scale * ARENA.H) / 2;
+    // O campo ocupa a tela inteira (sem bordas): escala horizontal e vertical independentes,
+    // com no máximo 15% de diferença entre elas para não deformar. Sprites usam a menor (this.scale).
+    const MAX_STRETCH = 1.15;
+    let sx = w / ARENA.W;
+    let sy = h / ARENA.H;
+    if (sx > sy * MAX_STRETCH) sx = sy * MAX_STRETCH;
+    if (sy > sx * MAX_STRETCH) sy = sx * MAX_STRETCH;
+    this.sx = sx;
+    this.sy = sy;
+    this.scale = Math.min(sx, sy);
+    this.ox = (w - sx * ARENA.W) / 2;
+    this.oy = (h - sy * ARENA.H) / 2;
   }
 
   w2s(x, y) {
@@ -68,13 +81,13 @@ class Renderer {
       x = ARENA.W - x;
       y = ARENA.H - y;
     }
-    return [this.ox + x * this.scale, this.oy + y * this.scale];
+    return [this.ox + x * this.sx, this.oy + y * this.sy];
   }
 
   // Coordenadas CSS relativas ao canvas -> mundo
   s2w(px, py) {
-    let x = (px - this.ox) / this.scale;
-    let y = (py - this.oy) / this.scale;
+    let x = (px - this.ox) / this.sx;
+    let y = (py - this.oy) / this.sy;
     if (this.viewSide === 1) {
       x = ARENA.W - x;
       y = ARENA.H - y;
@@ -111,14 +124,36 @@ class Renderer {
     const ctx = this.ctx;
     const s = this.scale;
     const map = this.mapUrl && getImage(this.mapUrl);
-    if (map) {
-      // O mapa já tem rio, pontes e pistas alinhados à grade (tools/build-arenas.py)
-      const w = ARENA.W * s;
-      const h = ARENA.H * s;
+    const full = this.mapFullUrl && getImage(this.mapFullUrl);
+    if (map || full) {
+      // O mapa já tem rio, pontes e pistas alinhados à grade (tools/build-arenas.py).
+      // O completo preenche também as laterais da tela com a decoração do desenho, sem bordas vazias.
+      const w = ARENA.W * this.sx;
+      const h = ARENA.H * this.sy;
+      const cw = this.canvas.width / this.dpr;
+      const ch = this.canvas.height / this.dpr;
+      ctx.fillStyle = '#0d1324';
+      ctx.fillRect(0, 0, cw, ch);
+      // Telas mais largas que o desenho (PC, tablet): o próprio mapa, ampliado e desfocado, cobre o que sobrar
+      const bg = full || map;
+      if (bg) {
+        const k = Math.max(cw / bg.width, ch / bg.height) * 1.08;
+        ctx.save();
+        ctx.filter = 'blur(10px) brightness(0.55) saturate(1.1)';
+        ctx.drawImage(bg, (cw - bg.width * k) / 2, (ch - bg.height * k) / 2, bg.width * k, bg.height * k);
+        ctx.restore();
+      }
       ctx.save();
       ctx.translate(this.ox + w / 2, this.oy + h / 2);
       if (this.viewSide === 1) ctx.rotate(Math.PI);
-      ctx.drawImage(map, -w / 2, -h / 2, w, h);
+      if (full) {
+        const [x0, y0, x1, y1] = this.mapArt;
+        const fw = w / (x1 - x0);
+        const fh = h / (y1 - y0);
+        ctx.drawImage(full, -w / 2 - x0 * fw, -h / 2 - y0 * fh, fw, fh);
+      } else {
+        ctx.drawImage(map, -w / 2, -h / 2, w, h);
+      }
       ctx.restore();
       return;
     }
@@ -126,7 +161,7 @@ class Renderer {
       for (let tx = 0; tx < ARENA.W; tx++) {
         const [x, y] = this.w2s(tx + (this.viewSide ? 1 : 0), ty + (this.viewSide ? 1 : 0));
         ctx.fillStyle = this.ground[(tx + ty) % 2];
-        ctx.fillRect(x, y, s + 0.5, s + 0.5);
+        ctx.fillRect(x, y, this.sx + 0.5, this.sy + 0.5);
       }
     }
     // Reserva enquanto o mapa carrega: pistas e plataformas no mesmo molde dos mapas
@@ -144,19 +179,19 @@ class Renderer {
     ctx.stroke();
     // Rio
     const [rx, ry] = this.w2s(this.viewSide ? ARENA.W : 0, this.viewSide ? ARENA.RIVER_BOTTOM : ARENA.RIVER_TOP);
-    const rh = (ARENA.RIVER_BOTTOM - ARENA.RIVER_TOP) * s;
+    const rh = (ARENA.RIVER_BOTTOM - ARENA.RIVER_TOP) * this.sy;
     const grad = ctx.createLinearGradient(0, ry, 0, ry + rh);
     grad.addColorStop(0, '#3d8fd1');
     grad.addColorStop(0.5, '#5cb3ee');
     grad.addColorStop(1, '#3d8fd1');
     ctx.fillStyle = grad;
-    ctx.fillRect(rx, ry, ARENA.W * s, rh);
+    ctx.fillRect(rx, ry, ARENA.W * this.sx, rh);
     // Ondinhas
     ctx.strokeStyle = 'rgba(255,255,255,0.35)';
     ctx.lineWidth = Math.max(1, s * 0.06);
     const t = performance.now() / 1000;
     for (let i = 0; i < 9; i++) {
-      const wx = rx + ((i * 2.1 + t * 0.6) % ARENA.W) * s;
+      const wx = rx + ((i * 2.1 + t * 0.6) % ARENA.W) * this.sx;
       const wy = ry + rh * (i % 2 ? 0.35 : 0.68);
       ctx.beginPath();
       ctx.arc(wx, wy, s * 0.3, Math.PI * 1.1, Math.PI * 1.9);
@@ -165,8 +200,8 @@ class Renderer {
     // Pontes
     for (const b of ARENA.BRIDGES) {
       const [bx, by] = this.w2s(this.viewSide ? b + ARENA.BRIDGE_HALF : b - ARENA.BRIDGE_HALF, this.viewSide ? ARENA.RIVER_BOTTOM + 0.4 : ARENA.RIVER_TOP - 0.4);
-      const bw = ARENA.BRIDGE_HALF * 2 * s;
-      const bh = rh + 0.8 * s;
+      const bw = ARENA.BRIDGE_HALF * 2 * this.sx;
+      const bh = rh + 0.8 * this.sy;
       ctx.fillStyle = '#9a6a3a';
       ctx.fillRect(bx, by, bw, bh);
       ctx.strokeStyle = '#6e4622';
@@ -183,7 +218,7 @@ class Renderer {
     const [ax, ay] = this.w2s(this.viewSide ? ARENA.W : 0, this.viewSide ? ARENA.H : 0);
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth = 2;
-    ctx.strokeRect(ax, ay, ARENA.W * s, ARENA.H * s);
+    ctx.strokeRect(ax, ay, ARENA.W * this.sx, ARENA.H * this.sy);
   }
 
   _drawDeployZone(game, ui) {
@@ -196,7 +231,7 @@ class Renderer {
       for (let tx = 0; tx < ARENA.W; tx++) {
         if (game.isValidPosition(ui.side, ui.selected, tx + 0.5, ty + 0.5)) continue;
         const [x, y] = this.w2s(tx + (this.viewSide ? 1 : 0), ty + (this.viewSide ? 1 : 0));
-        ctx.fillRect(x, y, s + 0.5, s + 0.5);
+        ctx.fillRect(x, y, this.sx + 0.5, this.sy + 0.5);
       }
     }
   }
@@ -589,10 +624,29 @@ class Renderer {
   _drawGhost(game, ui) {
     const ctx = this.ctx;
     const card = CARDS[ui.selected];
-    const [hx, hy] = ui.hover;
+    // A prévia aparece onde o Pokémon vai nascer (o ponto permitido mais próximo do dedo)
+    // Guarda o último cálculo: só recalcula quando o dedo muda de quadradinho (0,25 tile) ou a carta muda
+    const key = `${ui.selected}|${ui.side}|${Math.round(ui.hover[0] * 4)}|${Math.round(ui.hover[1] * 4)}|${game.towers.filter((t) => t.dead).length}`;
+    if (!this._snap || this._snap.key !== key) {
+      this._snap = { key, pos: game.snapPosition(ui.side, ui.selected, ui.hover[0], ui.hover[1]) || ui.hover };
+    }
+    const snapped = this._snap.pos;
+    const [hx, hy] = snapped;
     const [x, y] = this.w2s(hx, hy);
-    const valid = game.isValidPosition(ui.side, ui.selected, hx, hy);
+    const valid = true;
     const s = this.scale;
+    const [fx, fy] = this.w2s(ui.hover[0], ui.hover[1]);
+    if (Math.hypot(fx - x, fy - y) > s * 0.4) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.save();
     if (card.kind === 'spell') {
       ctx.fillStyle = valid ? 'rgba(255,255,255,0.2)' : 'rgba(255,0,0,0.25)';

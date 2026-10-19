@@ -95,17 +95,40 @@ class Game {
     return side === 0 ? y >= 11 : y <= ARENA.H - 11;
   }
 
+  // Ponto permitido mais próximo de (x, y): soltar a carta num lugar proibido (lado do oponente,
+  // rio, em cima de um ginásio) faz o Pokémon nascer ali do lado, em vez de não acontecer nada.
+  snapPosition(side, cardId, x, y) {
+    const card = CARDS[cardId];
+    if (!card) return null;
+    x = clamp(x, 0.5, ARENA.W - 0.5);
+    y = clamp(y, 0.5, ARENA.H - 0.5);
+    if (card.kind === 'spell' || this.isValidPosition(side, cardId, x, y)) return [x, y];
+    let best = null;
+    let bestD = Infinity;
+    for (let gy = 0.5; gy <= ARENA.H - 0.5; gy += 0.25) {
+      for (let gx = 0.5; gx <= ARENA.W - 0.5; gx += 0.25) {
+        const d = (gx - x) ** 2 + (gy - y) ** 2;
+        if (d < bestD && this.isValidPosition(side, cardId, gx, gy)) {
+          bestD = d;
+          best = [gx, gy];
+        }
+      }
+    }
+    return best;
+  }
+
   canDeploy(side, handIndex, x, y) {
     if (this.over) return false;
     const p = this.players[side];
     const cardId = p.hand[handIndex];
     if (!cardId) return false;
     if (p.energy < CARDS[cardId].cost) return false;
-    return this.isValidPosition(side, cardId, x, y);
+    return !!this.snapPosition(side, cardId, x, y);
   }
 
   deploy(side, handIndex, x, y) {
     if (!this.canDeploy(side, handIndex, x, y)) return false;
+    [x, y] = this.snapPosition(side, this.players[side].hand[handIndex], x, y);
     const p = this.players[side];
     const cardId = p.hand[handIndex];
     const card = CARDS[cardId];

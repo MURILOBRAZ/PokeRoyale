@@ -221,6 +221,7 @@ function beginMatch(newMode, side, decks, opts = {}) {
   battleLook.bubbles = [];
   battleLook.crowns = [0, 0];
   game = new Game({ decks, levels: opts.levels, trainers: opts.trainers, skins });
+  document.body.classList.add('in-battle');
   buildEmoteMenu();
   $('#emote-menu').classList.add('hidden');
   ranked = opts.ranked || null;
@@ -648,6 +649,7 @@ function simulate() {
 setInterval(simulate, 1000 / 60);
 
 function frame() {
+  if (!game && document.body.classList.contains('in-battle')) document.body.classList.remove('in-battle');
   if (game) {
     if (ui.selectedIndex !== null) ui.selected = game.players[mySide].hand[ui.selectedIndex];
     updateHud();

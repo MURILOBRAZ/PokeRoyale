@@ -63,6 +63,7 @@ Energia enche ──► Escolhe carta da mão (4 de 8) ──► Posiciona na ar
   - 1 **Ginásio Líder** no centro, que fica *dormindo* até levar dano ou até um ginásio lateral cair
 - **Área de invocação:** a sua metade da arena. Quando você derruba um ginásio lateral inimigo, a área se expande para a metade inimiga daquela pista ("bolsão").
 - **Golpes** (feitiços) podem ser usados em qualquer lugar.
+- **Soltou num lugar proibido** (lado do oponente, rio, em cima de um ginásio): o Pokémon nasce no **ponto permitido mais próximo**. Ao arrastar, a prévia já mostra onde ele vai nascer, com uma linha tracejada do dedo até lá.
 
 ## 6. Energia
 
@@ -242,6 +243,7 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - **Reserva:** enquanto a folha animada carrega, o jogo usa o sprite estático da PokéAPI; sem nenhum dos dois, um círculo da cor do tipo com a inicial.
 - **Mapas das arenas** (arte do autor): um para cada uma das 10 arenas — Rota 1, os 8 ginásios de Kanto e a Liga Pokémon. Na partida que vale troféus aparece o mapa da sua arena; no Treino o mapa é sorteado. As miniaturas aparecem no início e no caminho dos troféus.
 - **Ginásios** (arte do autor): lateral e Líder, em azul (você) e vermelho (oponente). Enquanto a imagem carrega, o jogo desenha uma Pokébola na cor do time.
+- **Tela inteira, sem borda:** o campo ocupa toda a área da batalha. A escala horizontal e a vertical são independentes (o campo estica até 15% para encaixar; os sprites mantêm a forma). No PC, durante a partida, a coluna do jogo fica com proporção de celular. Se ainda sobrar espaço, aparece a decoração do mapa completo (`<mapa>-full.webp`, posição em `js/arena-art.js`) e, depois dela, o mapa desfocado.
 - **Conversão:** `python tools/build-arenas.py` recorta os originais (`assets/originais/`, fora do git) para a grade 18×32, alinhando pontes e rio às regras do jogo, e gera WebP (~130 KB por mapa) + miniaturas; também separa os 4 ginásios da folha. `--debug pasta` salva os mapas com as linhas do jogo por cima para conferir.
 - **Som (futuro):** efeitos de ataque, grito do Pokémon ao entrar em campo e trilha de batalha 8-bit.
 

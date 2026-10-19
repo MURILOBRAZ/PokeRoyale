@@ -410,3 +410,6 @@ img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; }
 button.danger { background: linear-gradient(180deg, #e2453c, #b62c25); box-shadow: 0 4px 0 #7a1712; color: #fff; }
 #leave .panel { max-width: 380px; }
 #leave .sub { margin: 10px 0 16px; }
+
+/* Na partida, no PC: coluna com proporção de celular para o campo encher a tela sem bordas */
+body.in-battle #app { max-width: min(540px, calc((100dvh - 200px) * 0.62)); }
