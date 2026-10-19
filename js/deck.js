@@ -69,6 +69,11 @@ class DeckEditor {
     this.el('#deck-info').addEventListener('click', (e) => {
       const btn = e.target.closest('button');
       if (!btn) return;
+      if (btn.id === 'deck-info-close') {
+        this.focused = null;
+        this.renderInfo();
+        this.renderGrid();
+      }
       if (btn.id === 'deck-toggle') this.toggle(this.focused);
       if (btn.id === 'deck-upgrade') this.upgrade(this.focused);
       if (btn.dataset.item) this.useItem(btn.dataset.item, this.focused);
@@ -146,7 +151,8 @@ class DeckEditor {
   _pick(e) {
     const el = e.target.closest('[data-card]');
     if (!el) return;
-    this.focused = el.dataset.card;
+    // Tocar de novo na carta aberta fecha os detalhes
+    this.focused = this.focused === el.dataset.card ? null : el.dataset.card;
     this.renderInfo();
     this.renderGrid();
   }
@@ -288,6 +294,7 @@ class DeckEditor {
     }
 
     box.innerHTML = `
+      <button id="deck-info-close" class="icon info-close" title="Fechar detalhes" aria-label="Fechar detalhes">✕</button>
       ${cardImgTag(c)}
       <div class="info-body">
         <h3>${c.name} ${c.dex ? `<small>#${c.dex}</small>` : ''} ${types}</h3>

@@ -224,3 +224,19 @@ button.link:active { transform: none; }
    As cartas da mão na partida continuam com touch-action: none para poder arrastar. */
 #deck-grid, #deck-slots, #reward-cards, .deck-strip, .mini-deck { grid-auto-rows: max-content; }
 #deck-grid .card, #deck-slots .card, #reward-cards .card, .deck-strip .card { touch-action: pan-y; }
+
+/* ✕ para fechar os detalhes da carta na coleção */
+#deck-info { position: relative; }
+#deck-info .info-close { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; padding: 0; font-size: 14px; z-index: 1; }
+#deck-info .info-body { padding-right: 26px; }
+
+/* Celular: detalhes da carta compactos, sem esmagar a lista nem passar por cima dos botões */
+@media (max-width: 760px) {
+  #deck-info { flex-wrap: wrap; align-items: flex-start; max-height: 40vh; overflow-y: auto; gap: 8px 10px; padding: 10px; }
+  #deck-info > img { width: 56px; height: 56px; }
+  #deck-info .info-body { flex: 1 1 calc(100% - 70px); min-width: 0; }
+  #deck-info h3 { font-size: 15px; }
+  #deck-info .info-actions { flex-direction: row; width: 100%; }
+  #deck-info .info-actions button { flex: 1; }
+  #deck-grid { min-height: 150px; }
+}
