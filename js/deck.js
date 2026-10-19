@@ -170,7 +170,10 @@ class DeckEditor {
   toggle(id) {
     if (!id || !this.canUse(id)) return;
     const i = this.draft.indexOf(id);
-    if (i >= 0) this.draft.splice(i, 1);
+    if (i >= 0) {
+      this.draft.splice(i, 1);
+      this.focused = null; // removeu: fecha os detalhes da carta
+    }
     else if (this.draft.length < DECK_SIZE) this.draft.push(id);
     this.renderAll();
   }

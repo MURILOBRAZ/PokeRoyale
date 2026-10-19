@@ -7,6 +7,7 @@ html, body {
   color: #fff;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   overflow: hidden;
+  overscroll-behavior: none;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
@@ -350,3 +351,7 @@ button.icon { flex: 0 0 auto; padding: 6px 10px; }
 #deck-info .desc { opacity: 0.8; }
 #deck-info button { flex: 0 0 auto; padding: 10px 12px; }
 .type-chip { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
+
+/* A página em si nunca rola (só os painéis por dentro). Sem isso, no celular o navegador escondia a barra
+   de endereço ao rolar algo e "puxava" a tela para cima, sem ter como voltar. */
+body { position: fixed; inset: 0; width: 100%; }

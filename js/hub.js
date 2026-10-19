@@ -138,6 +138,9 @@ const cssUrl = (path) => `url("${new URL(path, document.baseURI).href}")`;
 
 function setNav(name) {
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === name));
+  // Trocar de aba sempre começa com a tela no lugar (nada da página rolado)
+  window.scrollTo(0, 0);
+  for (const el of [document.documentElement, document.body, $('#app'), $('#hub'), $('#hub-content')]) el.scrollTop = 0;
 }
 
 function renderHub() {
@@ -373,7 +376,8 @@ function showRoad() {
   $('#road-summary').textContent = `Você: 🏆 ${fmtNum(u.trophies)} · recorde ${fmtNum(u.bestTrophies)}`;
   showScreen('#road');
   const cur = $('#road-list .current');
-  if (cur) cur.scrollIntoView({ block: 'center' });
+  const list = $('#road-list');
+  if (cur) list.scrollTop = cur.offsetTop - list.offsetTop - list.clientHeight / 2 + cur.offsetHeight / 2;
 }
 
 $('#road-close').addEventListener('click', () => showHome());
