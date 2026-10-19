@@ -219,10 +219,64 @@ async function main() {
   assert.equal((await c('ball-unlock', { id: someBall })).status, 404);
   ok('login/logout, senha errada e uma conta não mexe nas balls da outra');
 
+  // Ranking global
+  await pg.query("UPDATE users SET trophies = 900, best_trophies = 900 WHERE email = 'gary@teste.local'");
+  r = await a('ranking', {});
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.top[0].name, 'Gary');
+  assert.equal(r.data.top[0].rank, 1);
+  assert.equal(r.data.top[1].name, 'Ash');
+  assert.equal(r.data.top[1].me, true);
+  assert.equal(r.data.top[0].me, false);
+  assert.equal(r.data.me.rank, 2);
+  assert.equal(r.data.total, 2);
+  assert.ok(!JSON.stringify(r.data).includes('@'), 'o ranking não pode mostrar e-mails');
+  assert.equal((await client()('ranking', {})).status, 401);
+  ok('ranking global: ordem por troféus, sua posição e sem e-mails');
+
+  // Configurações da conta
+  assert.equal((await a('settings-name', { name: '<x>' })).status, 400);
+  r = await a('settings-name', { name: 'Ash Ketchum' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.user.name, 'Ash Ketchum');
+  const outro = client();
+  await outro('login', { email: 'ash@teste.local', password: 'pikachu1' });
+  assert.equal((await a('settings-password', { current: 'errada', password: 'novasenha' })).status, 401);
+  assert.equal((await a('settings-password', { current: 'pikachu1', password: '123' })).status, 400);
+  assert.equal((await a('settings-password', { current: 'pikachu1', password: 'novasenha' })).status, 200);
+  assert.equal((await a('me')).data.user.name, 'Ash Ketchum'); // esta sessão continua
+  assert.equal((await outro('me')).data.user, null); // a do outro aparelho caiu
+  assert.equal((await client()('login', { email: 'ash@teste.local', password: 'pikachu1' })).status, 401);
+  assert.equal((await client()('login', { email: 'ash@teste.local', password: 'novasenha' })).status, 200);
+  ok('troca nome e senha (pede a atual e desconecta os outros aparelhos)');
+
+  // Nome de treinador único (sem diferenciar maiúsculas)
+  r = await client()('signup', { email: 'outro@teste.local', password: 'senha123', name: 'GARY' });
+  assert.equal(r.status, 409);
+  assert.match(r.data.error, /nome de treinador já está em uso/);
+  assert.equal((await a('settings-name', { name: 'gary' })).status, 409);
+  assert.equal((await a('settings-name', { name: 'ash ketchum' })).status, 200); // o próprio nome com outra caixa pode
+  await assert.rejects(pg.query("INSERT INTO users (email, name, pass_hash) VALUES ('x@teste.local', 'gArY', 'x')"));
+  ok('nome de treinador único: cadastro, troca de nome e o próprio banco bloqueiam repetidos');
+
   // Limite de partidas por hora
   await pg.query(`INSERT INTO matches (id, user_id, mode) SELECT 'x' || g, u.id, 'bot' FROM users u, generate_series(1, 40) g WHERE u.email = 'gary@teste.local'`);
   assert.equal((await c('match-start', { mode: 'bot' })).status, 429);
   ok('limite de 40 partidas por hora');
+
+  // Banco antigo com nomes repetidos: o mais antigo fica com o nome, os outros ganham sufixo
+  const pg2 = new PGlite();
+  const db = require('../api/_lib/db');
+  const q2 = (text, params = []) => pg2.query(text, params).then((x) => x.rows);
+  db.setDb(q2);
+  await db.q('SELECT 1');
+  await pg2.query('DROP INDEX users_name_unique');
+  await pg2.query("INSERT INTO users (email, name, pass_hash) VALUES ('1@t.l', 'Red', 'x'), ('2@t.l', 'red', 'x'), ('3@t.l', 'RED', 'x'), ('4@t.l', 'Blue', 'x')");
+  db.setDb(q2); // nova "instância" do servidor: roda o esquema de novo
+  const names = (await db.q('SELECT name FROM users ORDER BY id')).map((x) => x.name);
+  assert.deepEqual(names, ['Red', 'red_2', 'RED_3', 'Blue']);
+  await assert.rejects(pg2.query("INSERT INTO users (email, name, pass_hash) VALUES ('5@t.l', 'red', 'x')"));
+  ok('contas antigas com nome repetido são renomeadas e o índice único é criado');
 
   console.log(`\n${passed} testes passaram.`);
 }

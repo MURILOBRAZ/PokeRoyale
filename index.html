@@ -110,7 +110,7 @@
     <section id="hub" class="hub hidden">
       <header class="hub-bar">
         <div class="brand"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="">Poké<span>Royale</span></div>
-        <div class="trainer-chip">
+        <div id="hub-trainer" class="trainer-chip clickable" role="button" tabindex="0" title="Minha conta">
           <img id="hub-avatar" alt="">
           <div class="trainer-info">
             <b id="hub-name"></b>
@@ -121,7 +121,7 @@
           </div>
         </div>
         <div class="stats">
-          <div class="stat-chip" title="Troféus">🏆 <b id="hub-trophies">0</b></div>
+          <div id="hub-trophies-chip" class="stat-chip clickable" role="button" tabindex="0" title="Ranking global">🏆 <b id="hub-trophies">0</b></div>
           <div class="stat-chip" title="Pokédólares">💰 <b id="hub-gold">0</b></div>
           <button id="hub-logout" class="icon-btn" title="Sair da conta" aria-label="Sair da conta">🚪</button>
         </div>
@@ -200,6 +200,48 @@
           <input id="hub-join-code" placeholder="Código da sala (ex.: PIKA-42)" maxlength="12" autocomplete="off" spellcheck="false">
           <button id="hub-join">Entrar</button>
         </div>
+      </div>
+    </section>
+
+    <section id="ranking" class="overlay dropdown dropdown-right hidden">
+      <div class="panel dropdown-panel">
+        <div class="deck-head">
+          <h2>🏆 Ranking global</h2>
+          <button class="icon dropdown-close" title="Fechar" aria-label="Fechar">✕</button>
+        </div>
+        <p id="ranking-summary" class="sub small"></p>
+        <div id="ranking-list" class="ranking-list"></div>
+      </div>
+    </section>
+
+    <section id="settings" class="overlay dropdown dropdown-left hidden">
+      <div class="panel dropdown-panel">
+        <div class="deck-head">
+          <h2>Minha conta</h2>
+          <button class="icon dropdown-close" title="Fechar" aria-label="Fechar">✕</button>
+        </div>
+        <div class="profile-card">
+          <img id="set-avatar" alt="">
+          <div>
+            <b id="set-name"></b>
+            <small id="set-email"></small>
+            <small id="set-stats"></small>
+          </div>
+        </div>
+        <form id="form-name" class="auth-form settings-form">
+          <h3>Nome de treinador</h3>
+          <input id="set-name-input" maxlength="16" autocomplete="nickname" spellcheck="false">
+          <button type="submit" class="primary">Salvar nome</button>
+          <p id="msg-name" class="form-msg"></p>
+        </form>
+        <form id="form-pass" class="auth-form settings-form">
+          <h3>Trocar senha</h3>
+          <input id="set-pass-current" type="password" placeholder="Senha atual" autocomplete="current-password" maxlength="72">
+          <input id="set-pass-new" type="password" placeholder="Nova senha (mínimo 6)" autocomplete="new-password" maxlength="72">
+          <button type="submit" class="primary">Trocar senha</button>
+          <p id="msg-pass" class="form-msg"></p>
+        </form>
+        <button id="set-logout" class="wide">🚪 Sair da conta</button>
       </div>
     </section>
 

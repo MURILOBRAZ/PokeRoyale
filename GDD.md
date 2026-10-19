@@ -221,6 +221,9 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - **Centro:** a arena atual com o mapa como prévia, líder, tipos e o Pokémon símbolo do líder; setas para espiar as outras arenas (bloqueadas mostram os troféus necessários); botão **BATALHAR** como ação principal.
 - **Jornada em Kanto** (PC), **Premier Balls**, **deck ativo** com níveis e os modos **Treino** e **Amigos**.
 - O fundo é o mapa da arena atual, desfocado. Coleção, Arenas, Amigos e Treino são **abas**: trocam o conteúdo dentro do início, com a barra e o menu sempre visíveis (volta-se pelo menu). Só a recompensa abre por cima.
+- **Ranking global** (clique nos troféus): os 100 treinadores com mais troféus (desempate pelo recorde), com a sua posição mesmo fora do top 100. Não mostra e-mails.
+- **Minha conta** (clique no nome): perfil, trocar nome de treinador, trocar senha (pede a atual e desconecta os outros aparelhos) e sair. Ranking e Minha conta abrem como menus suspensos com ✕.
+- **Nome de treinador único**, sem diferenciar maiúsculas (índice único no banco). Contas antigas com nome repetido: a mais antiga fica com o nome, as outras ganham `_<número>`.
 - **Abrir ball:** animação de ~2,5 s (a ball cai, balança 3 vezes, o botão brilha, a tampa abre num clarão da cor do tipo) antes das cartas; tocar pula.
 - Fonte *Pixelify Sans* (Google Fonts) nos títulos e botões. Ficou de fora do mockup o que o jogo ainda não tem (gemas, loja, ranking, mensagens).
 

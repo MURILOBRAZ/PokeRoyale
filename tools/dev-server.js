@@ -44,6 +44,23 @@ async function main() {
       await pg.query(`INSERT INTO balls (user_id, tier, arena, unlock_at) VALUES ($1, $2, $3, now() - interval '1 second')`, [userId, tier, u.arena]);
       return res.end(JSON.stringify({ ok: true, tier }));
     }
+    // Só no desenvolvimento: cria treinadores de mentira para testar o ranking (/__dev/treinadores?n=15)
+    if (url.pathname === '/__dev/treinadores') {
+      const n = Math.min(200, Number(url.searchParams.get('n')) || 15);
+      const names = ['Gary', 'Misty', 'Brock', 'Red', 'Blue', 'Leaf', 'Ethan', 'Lyra', 'Dawn', 'Lucas', 'Serena', 'Calem', 'Hilda', 'Nate', 'Rosa', 'Elio', 'Gloria', 'Hop'];
+      const starters = ['bulbasaur', 'charmander', 'squirtle'];
+      for (let i = 0; i < n; i++) {
+        const trophies = Math.floor(Math.random() * 3200);
+        await pg.query(
+          `INSERT INTO users (email, name, pass_hash, starter, trophies, best_trophies, arena, xp)
+           VALUES ($1, $2, 'x', $3, $4, $4, $5, $6) ON CONFLICT DO NOTHING`,
+          [`bot${Date.now()}${i}@teste.local`, `${names[i % names.length]}${i >= names.length ? i : ''}`, starters[i % 3], trophies,
+            [0, 300, 600, 1000, 1400, 1800, 2300, 2800, 3300, 4000].filter((t) => trophies >= t).length - 1, Math.floor(Math.random() * 3000)],
+        );
+      }
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.end(JSON.stringify({ ok: true, criados: n }));
+    }
     const api = url.pathname.match(/^\/api\/([\w-]+)$/);
     if (api) {
       req.query = { action: api[1] };

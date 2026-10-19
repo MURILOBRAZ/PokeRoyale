@@ -353,6 +353,124 @@ $('#hub-logout').addEventListener('click', async () => {
   showHome();
 });
 
+// ---------- Menus suspensos: ranking (troféus) e minha conta (nome) ----------
+// Abrem por cima do início, sem trocar de aba; fecham no ✕, clicando fora ou com Esc.
+
+const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+let dropdownReturn = null; // aba que estava aberta antes do menu
+
+function openDropdown(id) {
+  const visible = TAB_SCREENS.find((s) => !$(s).classList.contains('hidden'));
+  dropdownReturn = visible || null;
+  showScreen(id);
+}
+
+function closeDropdown() {
+  if (dropdownReturn) showScreen(dropdownReturn);
+  else showScreen('#hub');
+  dropdownReturn = null;
+}
+
+document.querySelectorAll('.dropdown').forEach((dd) => {
+  dd.addEventListener('click', (e) => {
+    // Clique fora do painel (no fundo) ou no ✕ fecha
+    if (e.target === dd || e.target.closest('.dropdown-close')) closeDropdown();
+  });
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.querySelector('.dropdown:not(.hidden)')) closeDropdown();
+});
+
+function onActivate(el, fn) {
+  el.addEventListener('click', fn);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fn();
+    }
+  });
+}
+
+async function showRanking() {
+  openDropdown('#ranking');
+  const list = $('#ranking-list');
+  $('#ranking-summary').textContent = '';
+  list.innerHTML = '<p class="sub small waiting">Carregando</p>';
+  try {
+    const r = await Account.api('ranking');
+    const medal = ['🥇', '🥈', '🥉'];
+    const row = (p) => `<div class="rank-row ${p.me ? 'me' : ''}">
+        <span class="rank-pos">${medal[p.rank - 1] || `#${p.rank}`}</span>
+        <img src="${cardImage(CARDS[p.starter] || CARDS.pikachu)}" alt="">
+        <span class="rank-name">${escapeHtml(p.name)}${p.me ? ' <em>(você)</em>' : ''}<small>Nv. ${p.level} · ${ARENAS[p.arena].short}</small></span>
+        <span class="rank-trophies">🏆 ${fmtNum(p.trophies)}</span>
+      </div>`;
+    let html = r.top.map(row).join('');
+    if (!r.top.some((p) => p.me)) {
+      const u = Account.user;
+      html += `<div class="rank-gap">⋯</div>${row({ rank: r.me.rank, name: u.name, starter: u.starter, level: u.level, arena: u.arena, trophies: r.me.trophies, me: true })}`;
+    }
+    list.innerHTML = html || '<p class="sub small">Ninguém no ranking ainda.</p>';
+    $('#ranking-summary').textContent = `Você está em ${fmtNum(r.me.rank)}º de ${fmtNum(r.total)} treinadores.`;
+    const me = list.querySelector('.rank-row.me');
+    if (me) list.scrollTop = me.offsetTop - list.offsetTop - list.clientHeight / 2;
+  } catch (err) {
+    list.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function showSettings() {
+  const u = Account.user;
+  $('#set-avatar').src = cardImage(CARDS[u.starter]);
+  $('#set-name').textContent = u.name;
+  $('#set-email').textContent = u.email;
+  $('#set-stats').textContent = `Nv. ${u.level} · 🏆 ${fmtNum(u.trophies)} (recorde ${fmtNum(u.bestTrophies)}) · ${ARENAS[u.arena].name}`;
+  $('#set-name-input').value = u.name;
+  $('#set-pass-current').value = '';
+  $('#set-pass-new').value = '';
+  $('#msg-name').textContent = '';
+  $('#msg-pass').textContent = '';
+  openDropdown('#settings');
+}
+
+function formMsg(el, text, good) {
+  el.textContent = text;
+  el.className = `form-msg ${good ? 'good' : 'bad'}`;
+}
+
+onActivate($('#hub-trophies-chip'), showRanking);
+onActivate($('#hub-trainer'), showSettings);
+
+$('#form-name').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await Account.api('settings-name', { name: $('#set-name-input').value });
+    $('#set-name').textContent = Account.user.name;
+    renderHub();
+    formMsg($('#msg-name'), 'Nome atualizado!', true);
+  } catch (err) {
+    formMsg($('#msg-name'), err.message, false);
+  }
+});
+
+$('#form-pass').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await Account.api('settings-password', { current: $('#set-pass-current').value, password: $('#set-pass-new').value });
+    $('#set-pass-current').value = '';
+    $('#set-pass-new').value = '';
+    formMsg($('#msg-pass'), 'Senha trocada! Os outros aparelhos foram desconectados.', true);
+  } catch (err) {
+    formMsg($('#msg-pass'), err.message, false);
+  }
+});
+
+$('#set-logout').addEventListener('click', async () => {
+  await Account.logout().catch(() => {});
+  showHome();
+});
+
 // ---------- Caminho dos troféus ----------
 
 function showRoad() {

@@ -20,6 +20,12 @@ const fail = (status, message, extra) => {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NAME_TAKEN = 'Esse nome de treinador já está em uso. Escolha outro.';
+const isUniqueViolation = (err) => err && err.code === '23505';
+
+async function nameTaken(name, exceptUserId = 0) {
+  return !!(await one('SELECT 1 FROM users WHERE lower(name) = lower($1) AND id <> $2', [name, exceptUserId]));
+}
 
 // ---------- Estado do jogador ----------
 
@@ -114,10 +120,18 @@ const ACTIONS = {
     if (!EMAIL_RE.test(email) || email.length > 120) fail(400, 'E-mail inválido.');
     if (password.length < 6 || password.length > 72) fail(400, 'A senha precisa ter de 6 a 72 caracteres.');
     if (!R.TRAINER_NAME_RE.test(name)) fail(400, 'O nome de treinador precisa ter de 3 a 16 letras ou números.');
-    const row = await one(
-      'INSERT INTO users (email, name, pass_hash) VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING RETURNING id',
-      [email, name, auth.hashPassword(password)],
-    );
+    if (await one('SELECT 1 FROM users WHERE email = $1', [email])) fail(409, 'Já existe uma conta com esse e-mail.');
+    if (await nameTaken(name)) fail(409, NAME_TAKEN);
+    let row;
+    try {
+      row = await one(
+        'INSERT INTO users (email, name, pass_hash) VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING RETURNING id',
+        [email, name, auth.hashPassword(password)],
+      );
+    } catch (err) {
+      if (isUniqueViolation(err)) fail(409, NAME_TAKEN); // alguém pegou o nome no mesmo instante
+      throw err;
+    }
     if (!row) fail(409, 'Já existe uma conta com esse e-mail.');
     await auth.createSession(res, row.id);
     return loadState(row.id);
@@ -296,6 +310,58 @@ const ACTIONS = {
     );
     if (!row) fail(409, 'Pokédólares insuficientes.');
     return { level: row.level, state: await loadState(userId) };
+  },
+
+  // Ranking global: os 100 com mais troféus (desempate: recorde, depois quem chegou antes) e a sua posição
+  async ranking({ req }) {
+    const userId = await requireUser(req);
+    const rows = await q(
+      `SELECT id, name, trophies, best_trophies, xp, arena, starter FROM users
+       WHERE starter IS NOT NULL
+       ORDER BY trophies DESC, best_trophies DESC, id ASC
+       LIMIT 100`,
+    );
+    const u = await one('SELECT trophies, best_trophies FROM users WHERE id = $1', [userId]);
+    const pos = await one(
+      `SELECT count(*)::int + 1 AS rank FROM users
+       WHERE starter IS NOT NULL
+         AND (trophies > $2 OR (trophies = $2 AND (best_trophies > $3 OR (best_trophies = $3 AND id < $1))))`,
+      [userId, u.trophies, u.best_trophies],
+    );
+    const total = await one('SELECT count(*)::int AS n FROM users WHERE starter IS NOT NULL');
+    return {
+      top: rows.map((r, i) => ({
+        rank: i + 1, name: r.name, trophies: r.trophies, level: R.trainerLevel(r.xp),
+        arena: r.arena, starter: r.starter, me: r.id === userId,
+      })),
+      me: { rank: pos.rank, trophies: u.trophies },
+      total: total.n,
+    };
+  },
+
+  async 'settings-name'({ req, body }) {
+    const userId = await requireUser(req);
+    const name = String(body.name || '').trim();
+    if (!R.TRAINER_NAME_RE.test(name)) fail(400, 'O nome de treinador precisa ter de 3 a 16 letras ou números.');
+    if (await nameTaken(name, userId)) fail(409, NAME_TAKEN);
+    try {
+      await q('UPDATE users SET name = $2 WHERE id = $1', [userId, name]);
+    } catch (err) {
+      if (isUniqueViolation(err)) fail(409, NAME_TAKEN);
+      throw err;
+    }
+    return loadState(userId);
+  },
+
+  async 'settings-password'({ req, body }) {
+    const userId = await requireUser(req);
+    const password = String(body.password || '');
+    const row = await one('SELECT pass_hash FROM users WHERE id = $1', [userId]);
+    if (!auth.verifyPassword(String(body.current || ''), row.pass_hash)) fail(401, 'A senha atual está incorreta.');
+    if (password.length < 6 || password.length > 72) fail(400, 'A nova senha precisa ter de 6 a 72 caracteres.');
+    await q('UPDATE users SET pass_hash = $2 WHERE id = $1', [userId, auth.hashPassword(password)]);
+    await auth.destroyOtherSessions(req, userId);
+    return { ok: true };
   },
 
   async 'use-item'({ req, body }) {

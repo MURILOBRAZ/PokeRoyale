@@ -372,3 +372,67 @@ button.link { font-family: inherit; }
 }
 .overlay.docked #deck-slots { width: 100%; max-width: 600px; margin: 0 auto; }
 #friends.docked .panel, #menu.docked .panel, #lobby.docked .panel { max-width: 560px; }
+
+/* ---------- Menus suspensos (ranking e minha conta) ---------- */
+.trainer-chip.clickable, .stat-chip.clickable { cursor: pointer; transition: border-color 0.15s, transform 0.1s; }
+.trainer-chip.clickable:hover, .stat-chip.clickable:hover { border-color: #7fb0ff; }
+.trainer-chip.clickable:active, .stat-chip.clickable:active { transform: translateY(1px); }
+
+.overlay.dropdown {
+  align-items: flex-start;
+  padding: 66px 14px 14px;
+  background: rgba(6, 10, 24, 0.5);
+  backdrop-filter: none;
+}
+.dropdown-right { justify-content: flex-end; }
+.dropdown-left { justify-content: flex-start; }
+.dropdown-panel {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100% - 4px);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  animation: drop-down 0.18s ease-out;
+}
+.dropdown-left .dropdown-panel { margin-left: 90px; }
+@keyframes drop-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+.dropdown-panel .deck-head h2 { text-align: left; }
+
+/* Ranking */
+.ranking-list { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 6px; margin-top: 10px; align-content: start; padding-right: 2px; }
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  background: var(--panel-2, #1a2649);
+  border: 2px solid transparent;
+}
+.rank-row.me { background: linear-gradient(90deg, #f8c630, #e2a600); color: #2a1d00; border-color: #fff3b0; }
+.rank-pos { width: 40px; text-align: center; font-family: var(--pixel, sans-serif); font-size: 16px; font-weight: 700; flex-shrink: 0; }
+.rank-row img { width: 36px; height: 36px; border-radius: 50%; image-rendering: pixelated; background: #24335f; flex-shrink: 0; }
+.rank-name { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-name em { font-style: normal; font-weight: 400; opacity: 0.8; }
+.rank-name small { display: block; font-weight: 400; font-size: 11px; opacity: 0.75; }
+.rank-trophies { font-family: var(--pixel, sans-serif); font-size: 16px; white-space: nowrap; }
+.rank-gap { text-align: center; opacity: 0.5; letter-spacing: 4px; }
+
+/* Minha conta */
+.profile-card { display: flex; align-items: center; gap: 12px; padding: 10px; margin-top: 10px; border-radius: 12px; background: var(--panel-2, #1a2649); }
+.profile-card img { width: 56px; height: 56px; border-radius: 10px; image-rendering: pixelated; background: #24335f; }
+.profile-card b { display: block; font-size: 18px; }
+.profile-card small { display: block; font-size: 12px; opacity: 0.8; }
+.settings-form { margin-top: 14px; gap: 8px; }
+.settings-form h3 { font-size: 15px; }
+.form-msg { min-height: 1.1em; font-size: 13px; font-weight: 700; }
+.form-msg.good { color: #7dff8a; }
+.form-msg.bad { color: #ff8a8a; }
+#set-logout { margin-top: 16px; }
+
+@media (max-width: 760px) {
+  .overlay.dropdown { padding: 56px 8px 8px; }
+  .dropdown-left .dropdown-panel { margin-left: 0; }
+  .dropdown-panel { max-width: none; }
+}

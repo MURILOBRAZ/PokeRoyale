@@ -52,6 +52,12 @@ async function destroySession(req, res) {
   setSessionCookie(res, '', 0);
 }
 
+// Ao trocar a senha: encerra as sessões dos outros aparelhos, mantém a atual
+async function destroyOtherSessions(req, userId) {
+  const token = readCookie(req, COOKIE);
+  await q('DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2', [userId, token ? sha256(token) : '']);
+}
+
 async function currentUserId(req) {
   const token = readCookie(req, COOKIE);
   if (!token) return null;
@@ -59,4 +65,4 @@ async function currentUserId(req) {
   return row ? row.user_id : null;
 }
 
-module.exports = { hashPassword, verifyPassword, createSession, destroySession, currentUserId };
+module.exports = { hashPassword, verifyPassword, createSession, destroySession, destroyOtherSessions, currentUserId };

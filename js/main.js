@@ -37,8 +37,8 @@ function showScreen(id) {
   // só a recompensa abre por cima, como um destaque
   const tab = Account.loggedIn && TAB_SCREENS.includes(id);
   dockTabs(Account.loggedIn);
-  const keepHub = tab || (Account.loggedIn && id === '#reward');
-  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends']) {
+  const keepHub = tab || (Account.loggedIn && ['#reward', '#ranking', '#settings'].includes(id));
+  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends', '#ranking', '#settings']) {
     $(s).classList.toggle('hidden', s !== id && !(keepHub && s === '#hub'));
   }
   $('.hub-main').classList.toggle('hidden', tab);
