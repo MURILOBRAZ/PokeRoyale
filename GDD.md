@@ -169,6 +169,31 @@ Três dificuldades: **Fácil**, **Normal** e **Difícil**. Elas mudam o tempo de
 - **Ginásios:** desenhados como Pokébolas gigantes (azuis ou vermelhas); o Líder tem coroa.
 - **Som (futuro):** efeitos de ataque, grito do Pokémon ao entrar em campo e trilha de batalha 8-bit.
 
+### 14.1 Backlog visual (para a v0.4)
+
+Decidido em 19/10/2026: primeiro funcionalidade (v0.3), depois um passe de visual cobrindo **todo** o elenco de uma vez. Assim nenhum efeito precisa ser refeito quando entrarem Pokémon novos.
+
+**Como está hoje (v0.2)**
+- Ataques à distância: uma bolinha da cor do tipo voa até o alvo (igual para todos).
+- Ataques corpo a corpo (Squirtle, Onix, Zubat): sem efeito; o atacante dá um pulinho e o alvo pisca branco.
+- Golpes: Choque do Trovão (raio em zigue-zague simples + clarão amarelo) e Explosão de Fogo (bola caindo + círculo laranja).
+- Sprites estáticos: os Pokémon deslizam pela arena, sem animação de andar.
+
+**A fazer**
+- [ ] **Efeito de golpe por Pokémon** (campo `attackFx` em `data.js`, desenhado em `render.js`):
+  - Pikachu: raio em zigue-zague até o alvo
+  - Charmander/Charmeleon: rajada de chamas com partículas
+  - Squirtle/Wartortle: jato d'água com bolhas
+  - Bulbasaur/Ivysaur: chicote de vinha se esticando até o alvo
+  - Onix: pancada com poeira e leve tremida de tela
+  - Zubat/Golbat: mordida/asa roxa
+  - Pokémon novos da v0.3: definir o efeito junto com a carta
+- [ ] **Efeitos de impacto**: partículas no acerto, tremida de tela em golpes fortes, faíscas em "Super efetivo!"
+- [ ] **Sprites animados**: testar os GIFs animados de *Black/White* da PokéAPI (desenhar GIF no canvas exige extrair os quadros)
+- [ ] **Animação de evolução** mais caprichada (brilho branco piscando, como nos jogos)
+- [ ] **Som**: efeito por tipo de ataque, grito ao entrar em campo, trilha de batalha
+- [ ] **Multiplayer**: os efeitos devem ser gerados no convidado a partir dos eventos de ataque do snapshot (hoje só projéteis e efeitos genéricos são enviados)
+
 ## 15. Arquitetura técnica
 
 Sem build: HTML, CSS e JavaScript puro. A única dependência é o PeerJS, carregado por CDN para o multiplayer.
@@ -195,8 +220,8 @@ PokeRoyale/
 | **v0.1** | Arena, 8 cartas, energia, tipos, evolução, ginásios, bot com 3 dificuldades | ✅ Feito |
 | **v0.2** | Multiplayer online por código de sala (PeerJS) | ✅ Feito |
 | v0.2.1 | Publicado no GitHub Pages: https://murilobraz.github.io/PokeRoyale/ | ✅ Feito |
-| v0.3 | Editor de deck + mais Pokémon (Geodude, Gastly, Snorlax, Machop, Eevee...) | 💡 Ideia |
-| v0.4 | Sons, animações de ataque, emotes (Pikachu feliz/bravo) | 💡 Ideia |
+| v0.3 | Editor de deck + mais Pokémon (Geodude, Gastly, Snorlax, Machop, Eevee...) | ⏳ Próximo |
+| v0.4 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v04)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
 | v0.5 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) e pedras evolutivas | 💡 Ideia |
 
 ## 17. Questões em aberto
