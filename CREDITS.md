@@ -11,7 +11,7 @@ sob a licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). 
 |---|---|---|---|
 | 1 | Bulbasaur | CHUNSOFT | CHUNSOFT |
 | 2 | Ivysaur | CHUNSOFT | CHUNSOFT, Emmuffin |
-| 3 | Venusaur | CHUNSOFT | CHUNSOFT, , G〜 |
+| 3 | Venusaur | CHUNSOFT | CHUNSOFT, <@!276175146304405514>, G〜 |
 | 4 | Charmander | CHUNSOFT | CHUNSOFT, baronessfaron |
 | 5 | Charmeleon | CHUNSOFT, bwappi, Grimlin | CHUNSOFT, 0palite |
 | 6 | Charizard | CHUNSOFT, Emboarger | CHUNSOFT, 0palite |
@@ -77,7 +77,7 @@ sob a licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). 
 | 66 | Machop | CHUNSOFT, Emboarger | CHUNSOFT, Felis-Licht, Morei |
 | 67 | Machoke | CHUNSOFT | CHUNSOFT, JFain |
 | 68 | Machamp | CHUNSOFT | CHUNSOFT |
-| 69 | Bellsprout | CHUNSOFT | CHUNSOFT, , baronessfaron |
+| 69 | Bellsprout | CHUNSOFT | CHUNSOFT, <@!436940337865293834>, baronessfaron |
 | 70 | Weepinbell | CHUNSOFT | CHUNSOFT, G〜 |
 | 71 | Victreebel | CHUNSOFT | CHUNSOFT |
 | 72 | Tentacool | CHUNSOFT | CHUNSOFT, Caitemis, brookriver |
@@ -87,7 +87,7 @@ sob a licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). 
 | 76 | Golem | CHUNSOFT, Emmuffin | CHUNSOFT, baronessfaron |
 | 77 | Ponyta | CHUNSOFT, JFain | CHUNSOFT, baronessfaron |
 | 78 | Rapidash | CHUNSOFT | CHUNSOFT, deltaflare, baronessfaron |
-| 79 | Slowpoke | CHUNSOFT | CHUNSOFT, , Morei |
+| 79 | Slowpoke | CHUNSOFT | CHUNSOFT, <@!136619914512433152>, Morei |
 | 80 | Slowbro | CHUNSOFT | CHUNSOFT, Caitemis |
 | 81 | Magnemite | CHUNSOFT | CHUNSOFT, Fearless-Quit, Emboarger |
 | 82 | Magneton | CHUNSOFT | CHUNSOFT, SirViolet |
@@ -106,7 +106,7 @@ sob a licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). 
 | 95 | Onix | CHUNSOFT | CHUNSOFT, baronessfaron |
 | 96 | Drowzee | CHUNSOFT | CHUNSOFT, drawsstuff, G〜 |
 | 97 | Hypno | CHUNSOFT | CHUNSOFT, Caitemis |
-| 98 | Krabby | CHUNSOFT | CHUNSOFT,  |
+| 98 | Krabby | CHUNSOFT | CHUNSOFT, <@!967585139485999154> |
 | 99 | Kingler | CHUNSOFT | CHUNSOFT, baronessfaron |
 | 100 | Voltorb | CHUNSOFT, Emboarger | CHUNSOFT, JFain |
 | 101 | Electrode | CHUNSOFT | CHUNSOFT, PhillipsYoung, G〜 |
@@ -140,7 +140,7 @@ sob a licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). 
 | 129 | Magikarp | CHUNSOFT | CHUNSOFT, JemDragons |
 | 130 | Gyarados | CHUNSOFT | CHUNSOFT, baronessfaron |
 | 131 | Lapras | CHUNSOFT | CHUNSOFT, C_Pariah, silverfox88 |
-| 132 | Ditto | CHUNSOFT | CHUNSOFT,  |
+| 132 | Ditto | CHUNSOFT | CHUNSOFT, <@!787048769883602956> |
 | 133 | Eevee | CHUNSOFT | CHUNSOFT |
 | 134 | Vaporeon | CHUNSOFT | CHUNSOFT, baronessfaron |
 | 135 | Jolteon | CHUNSOFT, dmDash | CHUNSOFT, baronessfaron, ShyStarryRain |
