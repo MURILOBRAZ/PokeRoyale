@@ -4,7 +4,7 @@ Fangame de estratégia em tempo real no estilo *Clash Royale*, com Pokémon. Fei
 
 ![status](https://img.shields.io/badge/vers%C3%A3o-0.3-blue)
 
-### 🎮 Jogar agora: https://murilobraz.github.io/PokeRoyale/
+### 🎮 Jogar agora: https://pokeroyale.vercel.app
 
 ## Como rodar
 

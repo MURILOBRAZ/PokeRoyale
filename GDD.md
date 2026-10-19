@@ -14,7 +14,7 @@ O que o diferencia de um clone direto é a **tabela de tipos**: cada Pokémon te
 | Item | Definição |
 |---|---|
 | Gênero | Estratégia em tempo real / tower defense competitivo (1v1) |
-| Plataforma | Navegador (PC e celular), sem instalação |
+| Plataforma | Navegador (PC e celular), sem instalação · https://pokeroyale.vercel.app |
 | Público | O grupo de amigos do autor |
 | Duração da partida | 3 minutos + até 1 minuto de prorrogação |
 | Modos | Contra o bot · Online 1v1 por código de sala |
@@ -211,7 +211,7 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 **Limitações conhecidas**
 - Algumas redes (4G de certas operadoras, redes corporativas) bloqueiam conexão P2P direta. Nesses casos seria preciso um servidor TURN. Fica para depois, se der problema.
 - O convidado tem um pequeno atraso (latência da rede + até 50 ms) entre jogar a carta e vê-la aparecer.
-- Os dois precisam abrir o jogo pelo mesmo endereço publicado (ex.: GitHub Pages); `localhost` só funciona no próprio PC.
+- Os dois precisam abrir o jogo pelo mesmo endereço publicado (https://pokeroyale.vercel.app); `localhost` só funciona no próprio PC.
 
 ## 13. Controles e interface
 
@@ -279,13 +279,15 @@ PokeRoyale/
 - **Balanceamento centralizado:** todos os números do jogo ficam em `data.js`.
 - **Dados gerados:** `node tools/build-pokedex.mjs` e `node tools/build-sprites.mjs` recriam `pokedex.js`, `sprites.js` e `CREDITS.md`. O jogo só acessa a internet para carregar imagens.
 
+- **Publicação:** Vercel (projeto `pokeroyale`), ligado ao repositório do GitHub: cada `git push` na `main` publica sozinho em https://pokeroyale.vercel.app.
+
 ## 16. Roadmap
 
 | Fase | Conteúdo | Status |
 |---|---|---|
 | **v0.1** | Arena, 8 cartas, energia, tipos, evolução, ginásios, bot com 3 dificuldades | ✅ Feito |
 | **v0.2** | Multiplayer online por código de sala (PeerJS) | ✅ Feito |
-| v0.2.1 | Publicado no GitHub Pages: https://murilobraz.github.io/PokeRoyale/ | ✅ Feito |
+| v0.2.1 | Publicado online (GitHub Pages, depois Vercel na v0.3) | ✅ Feito |
 | **v0.3** | Os 151 Pokémon, editor de deck, sprites animados (SpriteCollab), testes automáticos | ✅ Feito |
 | v0.4 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v04)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
 | v0.5 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) e pedras evolutivas | 💡 Ideia |
