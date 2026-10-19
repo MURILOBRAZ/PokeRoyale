@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>PokéRoyale</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="crowns enemy" id="crowns-enemy"></div>
+      <div id="timer-box">
+        <div id="timer">3:00</div>
+        <div id="timer-label">Tempo</div>
+      </div>
+      <div class="crowns me" id="crowns-me"></div>
+    </header>
+
+    <main id="arena-wrap">
+      <canvas id="arena"></canvas>
+      <div id="banner"></div>
+    </main>
+
+    <footer id="bottombar">
+      <div id="cards-row">
+        <div id="next-wrap">
+          <div id="next" class="card mini"></div>
+          <span>Próxima</span>
+        </div>
+        <div id="hand"></div>
+      </div>
+      <div id="energy">
+        <div id="energy-fill"></div>
+        <div id="energy-ticks"></div>
+        <span id="energy-num">5</span>
+      </div>
+    </footer>
+
+    <section id="menu" class="overlay">
+      <div class="panel">
+        <h1>Poké<span>Royale</span></h1>
+        <p class="sub">Monte a estratégia, invoque seus Pokémon e derrube os ginásios rivais!</p>
+        <h2>Jogar contra o bot</h2>
+        <div class="btn-row">
+          <button data-level="easy">Fácil</button>
+          <button data-level="normal" class="primary">Normal</button>
+          <button data-level="hard">Difícil</button>
+        </div>
+        <h2>Jogar com amigos</h2>
+        <button id="btn-host" class="wide primary">🌐 Criar sala</button>
+        <div class="join-row">
+          <input id="join-code" placeholder="Código da sala (ex.: PIKA-42)" maxlength="12" autocomplete="off" spellcheck="false">
+          <button id="btn-join">Entrar</button>
+        </div>
+        <p id="menu-error" class="error"></p>
+        <details>
+          <summary>Como jogar</summary>
+          <ul>
+            <li>Arraste uma carta até a arena, ou toque na carta e depois no local. No PC, as teclas <b>1–4</b> também selecionam.</li>
+            <li>Cartas gastam <b>energia</b>, que recarrega sozinha. No último minuto ela recarrega em dobro.</li>
+            <li>Use os <b>tipos</b> a seu favor: água vence fogo, fogo vence planta, elétrico vence água e voador...</li>
+            <li>Charmander, Squirtle, Bulbasaur e Zubat <b>evoluem</b> depois de derrotar inimigos.</li>
+            <li>Derrube os ginásios laterais (1 coroa cada) ou o Líder 👑 (vitória na hora).</li>
+          </ul>
+        </details>
+      </div>
+    </section>
+
+    <section id="lobby" class="overlay hidden">
+      <div class="panel">
+        <h2 id="lobby-title">Sala criada</h2>
+        <div id="lobby-code">······</div>
+        <p id="lobby-status" class="sub">Conectando ao servidor…</p>
+        <div class="btn-row">
+          <button id="btn-copy" class="primary">Copiar convite</button>
+          <button id="btn-cancel">Cancelar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="end" class="overlay hidden">
+      <div class="panel">
+        <h1 id="end-title">Vitória!</h1>
+        <div id="end-crowns"></div>
+        <div class="btn-row">
+          <button id="btn-again" class="primary">Jogar de novo</button>
+          <button id="btn-menu">Menu</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
