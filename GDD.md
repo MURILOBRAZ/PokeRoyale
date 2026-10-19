@@ -228,9 +228,9 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - **Ginásios:** desenhados como Pokébolas gigantes (azuis ou vermelhas); o Líder tem coroa.
 - **Som (futuro):** efeitos de ataque, grito do Pokémon ao entrar em campo e trilha de batalha 8-bit.
 
-### 14.1 Backlog visual (para a v0.4)
+### 14.1 Backlog visual (para a v0.5)
 
-Decidido em 19/10/2026: primeiro funcionalidade (v0.3), depois um passe de visual cobrindo **todo** o elenco de uma vez. Assim nenhum efeito precisa ser refeito quando entrarem Pokémon novos.
+Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe de visual cobrindo **todo** o elenco de uma vez. Assim nenhum efeito precisa ser refeito quando entrarem Pokémon novos.
 
 **Como está hoje (v0.2)**
 - Ataques à distância: uma bolinha da cor do tipo voa até o alvo (igual para todos).
@@ -289,10 +289,125 @@ PokeRoyale/
 | **v0.2** | Multiplayer online por código de sala (PeerJS) | ✅ Feito |
 | v0.2.1 | Publicado online (GitHub Pages, depois Vercel na v0.3) | ✅ Feito |
 | **v0.3** | Os 151 Pokémon, editor de deck, sprites animados (SpriteCollab), testes automáticos | ✅ Feito |
-| v0.4 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v04)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
-| v0.5 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) e pedras evolutivas | 💡 Ideia |
+| v0.4 | Contas, decks iniciais, troféus, arenas (ginásios), Premier Balls, níveis (ver [17](#17-contas-e-progressão-v04--proposta-para-revisão)) | ⏳ Próximo |
+| v0.5 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
+| v0.6 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
 
-## 17. Questões em aberto
+## 17. Contas e progressão (v0.4 — proposta para revisão)
+
+Inspirado no Clash Royale: o jogador cria uma conta, escolhe um inicial, batalha, ganha troféus e Premier Balls, coleciona e sobe o nível dos Pokémon, e avança pelos ginásios de Kanto até a Liga Pokémon.
+
+### 17.1 Fluxo do jogador
+
+1. **Cria a conta** com e-mail, senha e nome de treinador.
+2. **Escolhe o inicial:** Bulbasaur, Charmander ou Squirtle. Cada um vem com um deck inicial diferente (17.2), e essas 8 cartas são a coleção inicial.
+3. **Batalha** contra o bot ou contra amigos. Vitória dá **troféus** e uma **Premier Ball** (se houver espaço).
+4. **Abre a Premier Ball:** cartas de Pokémon, Pokédólares e, às vezes, itens.
+5. **Sobe o nível das cartas** com cópias repetidas + Pokédólares. Cada melhoria dá XP de treinador.
+6. **Troféus levam aos próximos ginásios** (arenas), que liberam novos Pokémon nas Premier Balls.
+7. **Topo:** a Liga Pokémon.
+
+O modo **Treino** (contra o bot, sem conta, com todas as cartas) continua existindo para testes e para quem só quer jogar.
+
+### 17.2 Decks iniciais
+
+| Inicial | Deck (8 cartas) | Custo médio | Ideia |
+|---|---|---|---|
+| 🌿 Bulbasaur | Bulbasaur, Oddish, Caterpie ×3, Pidgey, Nidoran♀, Geodude, Ekans, Choque do Trovão | 2,4 | Barato e rápido, muita pressão |
+| 🔥 Charmander | Charmander, Growlithe, Spearow ×3, Rattata ×3, Mankey, Sandshrew, Zubat ×3, Choque do Trovão | 2,9 | Agressivo, cheio de bandos |
+| 💧 Squirtle | Squirtle, Poliwag, Psyduck, Pidgey, Weedle ×3, Diglett ×3, Nidoran♂, Explosão de Fogo | 2,6 | Equilibrado, bom de defesa |
+
+### 17.3 Troféus e arenas (ginásios de Kanto)
+
+Cada arena tem a cor/tema do ginásio e **libera os Pokémon do seu tipo** nas Premier Balls (além dos das arenas anteriores). A regra de qual Pokémon pertence a qual arena é pelo **primeiro tipo**; lendários ficam na Liga.
+
+| # | Arena | Líder | Troféus | Libera (tipo) | Qtd. de Pokémon |
+|---|---|---|---|---|---|
+| 0 | Rota 1 | — | 0 | Normal, Inseto, Voador, Fada + iniciais | 36 |
+| 1 | Ginásio de Pewter | Brock | 300 | Pedra | 9 |
+| 2 | Ginásio de Cerulean | Misty | 600 | Água | 28 |
+| 3 | Ginásio de Vermilion | Lt. Surge | 1000 | Elétrico | 8 |
+| 4 | Ginásio de Celadon | Erika | 1400 | Planta | 12 |
+| 5 | Ginásio de Fuchsia | Koga | 1800 | Veneno | 14 |
+| 6 | Ginásio de Saffron | Sabrina | 2300 | Psíquico | 6 |
+| 7 | Ginásio de Cinnabar | Blaine | 2800 | Fogo | 11 |
+| 8 | Ginásio de Viridian | Giovanni | 3300 | Terra | 8 |
+| 9 | Liga Pokémon | Elite dos Quatro + Campeão | 4000 | Gelo, Lutador, Fantasma, Dragão + lendários | 19 |
+
+- **Troféus por partida:** vitória online +30 / derrota −20; vitória contra o bot +20 / derrota −10.
+- **Piso da arena:** depois de chegar a uma arena, não se cai abaixo do troféu inicial dela (como no Clash Royale).
+- Ao chegar numa arena nova: tela de **insígnia** do ginásio (Insígnia da Rocha, da Cascata...). As 8 insígnias aparecem no perfil.
+- **Bot por arena:** o bot usa Pokémon das arenas liberadas e fica mais forte (nível das cartas acompanha a arena). Na Liga, cada "membro da Elite" tem um deck temático.
+
+### 17.4 Raridade
+
+| Raridade | Regra | Qtd. |
+|---|---|---|
+| Comum | Estágio básico e total de stats < 400 | 58 |
+| Rara | 1ª evolução, ou total de stats 400–499 | 54 |
+| Épica | 2ª evolução, ou total de stats ≥ 500 | 34 |
+| Lendária | Articuno, Zapdos, Moltres, Mewtwo, Mew | 5 |
+
+### 17.5 Premier Balls (baús)
+
+- **4 espaços.** Uma vitória dá uma ball se houver espaço livre. Só uma ball abre por vez (cronômetro).
+- **Ball grátis:** uma Poké Ball grátis a cada 4 h (acumula até 2).
+- O tipo da ball sai por sorteio na vitória:
+
+| Ball | Chance | Tempo para abrir | Cartas | Pokédólares | Garantido |
+|---|---|---|---|---|---|
+| Premier Ball | 70% | 15 min | 4 | 20–40 | — |
+| Great Ball | 22% | 1 h | 10 | 60–100 | 1 rara |
+| Ultra Ball | 7% | 3 h | 25 | 150–250 | 1 épica + chance de item |
+| Master Ball | 1% | 8 h | 40 | 400–600 | 1 lendária (se a Liga estiver liberada; senão 2 épicas) |
+| Poké Ball (grátis) | — | na hora | 2 | 10–20 | — |
+
+As quantidades crescem com a arena (+10% por arena). O conteúdo é **sorteado no servidor** no momento de abrir.
+
+### 17.6 Itens
+
+| Item | Efeito |
+|---|---|
+| Pedra do Fogo / Água / Trovão / Folha / Lua | Vale como **cópia curinga** de qualquer carta do tipo correspondente (Lua: Fada, Normal, Psíquico e Fantasma) |
+| Doce Raro | Sobe **1 nível** de qualquer carta, sem custo |
+
+### 17.7 Níveis de carta e de treinador
+
+- Cartas vão do **nível 1 ao 10**. Cada nível dá **+8% de vida e dano**.
+- Para subir: cópias + Pokédólares.
+
+| Nível → | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| Cópias (comum) | 2 | 4 | 10 | 20 | 50 | 100 | 200 | 400 | 800 |
+| Cópias (rara) | 2 | 4 | 10 | 20 | 50 | 100 | 200 | 400 | — |
+| Cópias (épica) | 2 | 4 | 10 | 20 | 40 | 80 | 150 | — | — |
+| Cópias (lendária) | 1 | 2 | 4 | 8 | 15 | — | — | — | — |
+| Pokédólares | 5 | 20 | 50 | 150 | 400 | 1000 | 2000 | 4000 | 8000 |
+
+Raras começam no nível 3, épicas no 6 e lendárias no 9, para todas terminarem no 10 (como no Clash Royale).
+
+- **Nível de treinador:** sobe com XP (melhorar cartas e vencer). Cada nível dá +4% de vida e dano aos **seus ginásios** na partida. Máximo 13.
+
+### 17.8 Online e justiça
+
+- Partidas online contra amigos valem troféus e usam os **níveis reais** das cartas.
+- Opção **"Amistoso"** na sala: não vale troféus nem balls, e todas as cartas jogam no mesmo nível (para testar decks de igual para igual).
+
+### 17.9 Técnico
+
+- **Servidor:** funções da Vercel (`/api/*`) + banco **Neon (Postgres)**, criado pela integração da Vercel. O jogo continua estático; só conta, coleção e recompensas passam pelo servidor.
+- **Login:** e-mail + senha. A senha é guardada com hash (`scrypt`), e a sessão vai num cookie `httpOnly`. **Recuperar senha** fica para depois (precisa de um serviço de envio de e-mail).
+- **O servidor é a fonte da verdade** para coleção, troféus, balls e itens. O conteúdo das balls é sorteado no servidor.
+- **Resultado da partida:** o jogo envia o resultado ao fim da partida; o servidor confere se é plausível (duração mínima, limite de partidas por hora, uma recompensa por partida). Num jogo entre amigos isso basta; trapaça "séria" exigiria simular a partida no servidor.
+- **Tabelas:** `users`, `sessions`, `collection` (carta, nível, cópias), `decks`, `balls` (espaço, tipo, arena, abre_em), `items`, `matches` (histórico).
+
+### 17.10 Decisões em aberto
+
+- Tempos das balls estão bons para um grupo de amigos, ou melhor encurtar (ex.: 5 min / 20 min / 1 h / 3 h)?
+- Os números de troféus por arena (300 a 4000) estão bons, ou mais rápido no começo?
+- Nível de treinador deve fortalecer os ginásios, como no Clash Royale, ou ser só visual?
+
+## 18. Questões em aberto
 
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - Raridade de cartas e níveis, ou todas iguais (mais justo entre amigos)?
