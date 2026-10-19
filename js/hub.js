@@ -629,7 +629,8 @@ function renderShop() {
       const cost = o.price;
       const afford = u.gold >= cost.gold && (u.fichas || 0) >= cost.fichas;
       const left = o.limit > 1 ? `<small class="offer-left">${o.remaining}/${o.limit}</small>` : '';
-      return `<div class="offer ${o.kind} ${soldOut ? 'sold-out' : ''} ${o.free ? 'free' : ''}" style="${v.style || ''}">
+      // kind-*: não usar a classe "card" (é a das cartas da mão, que bloqueia gestos de toque)
+      return `<div class="offer kind-${o.kind} ${soldOut ? 'sold-out' : ''} ${o.free ? 'free' : ''}" style="${v.style || ''}">
         <div class="offer-art">${v.img}${o.amount > 1 ? `<span class="offer-amount">×${o.amount}</span>` : ''}</div>
         <b class="offer-name">${v.name}</b>
         <small class="offer-info">${v.info}</small>

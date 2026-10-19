@@ -355,3 +355,8 @@ button.icon { flex: 0 0 auto; padding: 6px 10px; }
 /* A página em si nunca rola (só os painéis por dentro). Sem isso, no celular o navegador escondia a barra
    de endereço ao rolar algo e "puxava" a tela para cima, sem ter como voltar. */
 body { position: fixed; inset: 0; width: 100%; }
+
+/* Imagens nunca são "arrastáveis": no celular, arrastar começando numa imagem tentava arrastar a imagem
+   em vez de rolar a lista (ex.: ofertas da loja). Imagens decorativas também não capturam o toque. */
+img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; }
+.offer-art, .offer-art img, .mini-deck img, .rank-row img, .journey-step img, .reward-card img, .profile-card img { pointer-events: none; }

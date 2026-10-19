@@ -457,12 +457,12 @@ button.link { font-family: inherit; }
   background: var(--panel-2, #1a2649);
   border: 2px solid var(--line, #2f4a8a);
 }
-.offer.card { background: linear-gradient(180deg, color-mix(in srgb, var(--type) 35%, #1a2649), #1a2649 70%); }
+.offer.kind-card { background: linear-gradient(180deg, color-mix(in srgb, var(--type) 35%, #1a2649), #1a2649 70%); }
 .offer.free { border-color: #7ee0a8; box-shadow: 0 0 0 2px rgba(126, 224, 168, 0.25); }
 .offer.sold-out { opacity: 0.5; }
 .offer-art { position: relative; width: 72px; height: 72px; display: grid; place-items: center; }
 .offer-art img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; border-radius: 10px; }
-.offer.ball .offer-art img, .offer.item .offer-art img { width: 52px; height: 52px; }
+.offer.kind-ball .offer-art img, .offer.kind-item .offer-art img { width: 52px; height: 52px; }
 .offer-amount { position: absolute; right: -6px; bottom: -4px; padding: 0 5px; border-radius: 6px; background: #2fb36b; font-family: var(--pixel, sans-serif); font-weight: 700; font-size: 13px; }
 .offer-name { font-size: 14px; }
 .offer-info { font-size: 11px; opacity: 0.8; min-height: 2.4em; }
