@@ -7,7 +7,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = path.join(__dirname, '..');
-const files = ['pokedex', 'sprites', 'data', 'game', 'bot'];
+const files = ['pokedex', 'sprites', 'data', 'progression', 'game', 'bot'];
 vm.runInThisContext(files.map((f) => fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8')).join('\n;\n') + `
 ;globalThis.__api = { CARDS, Game, Bot, randomDeck, MATCH, ARENA };`);
 const { CARDS, Game, Bot, randomDeck, ARENA } = globalThis.__api;

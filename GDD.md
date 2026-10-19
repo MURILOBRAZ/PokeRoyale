@@ -1,6 +1,6 @@
 # PokéRoyale — Game Design Document
 
-> Versão do documento: 0.3 · Data: 19/10/2026
+> Versão do documento: 0.4 · Data: 19/10/2026
 > Fangame sem fins lucrativos, feito para jogar com amigos. Pokémon é marca da Nintendo / Game Freak / The Pokémon Company; este projeto não é afiliado a elas.
 
 ---
@@ -17,7 +17,7 @@ O que o diferencia de um clone direto é a **tabela de tipos**: cada Pokémon te
 | Plataforma | Navegador (PC e celular), sem instalação · https://pokeroyale.vercel.app |
 | Público | O grupo de amigos do autor |
 | Duração da partida | 3 minutos + até 1 minuto de prorrogação |
-| Modos | Contra o bot · Online 1v1 por código de sala |
+| Modos | Conta com progressão (troféus, arenas, Premier Balls) · Treino contra o bot · Online 1v1 por código de sala |
 | Monetização | Nenhuma. Projeto pessoal |
 
 ## 2. Pilares de design
@@ -253,6 +253,7 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
 - [ ] **Animações extras do SpriteCollab**: `Hurt` ao levar dano, `Faint` ao ser derrotado
 - [ ] **Animação de evolução** mais caprichada (brilho branco piscando, como nos jogos)
 - [ ] **Som**: efeito por tipo de ataque, grito ao entrar em campo, trilha de batalha
+- [ ] **Mapas das arenas** (arte do autor, 19/10/2026): prontos os 8 ginásios (Pewter, Cerulean, Vermilion, Celadon, Saffron, Fuchsia, Cinnabar, Viridian) e o design dos ginásios lateral/Líder em azul e vermelho. Faltam **Rota 1** e **Liga Pokémon**. Precisam ser alinhados à grade 18×32 (pontes e rio) e comprimidos para web.
 - [ ] **Multiplayer**: os efeitos devem ser gerados no convidado a partir dos eventos de ataque do snapshot (hoje só projéteis e efeitos genéricos são enviados)
 
 ## 15. Arquitetura técnica
@@ -289,11 +290,12 @@ PokeRoyale/
 | **v0.2** | Multiplayer online por código de sala (PeerJS) | ✅ Feito |
 | v0.2.1 | Publicado online (GitHub Pages, depois Vercel na v0.3) | ✅ Feito |
 | **v0.3** | Os 151 Pokémon, editor de deck, sprites animados (SpriteCollab), testes automáticos | ✅ Feito |
-| v0.4 | Contas, decks iniciais, troféus, arenas (ginásios), Premier Balls, níveis (ver [17](#17-contas-e-progressão-v04--proposta-para-revisão)) | ⏳ Próximo |
+| **v0.4** | Contas, decks iniciais, troféus, arenas (ginásios), Premier Balls, níveis (ver [17](#17-contas-e-progressão-v04)) | ✅ Feito |
+| v0.4.1 | Mapas das arenas e design dos ginásios (arte do autor) no jogo | ⏳ Próximo |
 | v0.5 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
 | v0.6 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
 
-## 17. Contas e progressão (v0.4 — proposta para revisão)
+## 17. Contas e progressão (v0.4)
 
 Inspirado no Clash Royale: o jogador cria uma conta, escolhe um inicial, batalha, ganha troféus e Premier Balls, coleciona e sobe o nível dos Pokémon, e avança pelos ginásios de Kanto até a Liga Pokémon.
 
@@ -373,33 +375,43 @@ As quantidades crescem com a arena (+10% por arena). O conteúdo é **sorteado n
 
 ### 17.7 Níveis de carta e de treinador
 
-- Cartas vão do **nível 1 ao 10**. Cada nível dá **+8% de vida e dano**.
-- Para subir: cópias + Pokédólares.
+- Cartas vão até o **nível 10**. Comuns começam no nível 1, raras no 3, épicas no 6 e lendárias no 9 (como no Clash Royale). Os golpes são raros.
+- **Bônus de nível:** uma carta recém-obtida joga com os stats base; cada nível soma uma parte igual até **+50% de vida e dano no nível 10**. Assim, com tudo no máximo, qualquer raridade tem o mesmo bônus e o balanceamento das cartas continua valendo. *(Mudou da proposta, que era +8% fixo por nível: com isso as comuns, que têm mais níveis, ficariam mais fortes que as épicas.)*
+- Para subir: cópias + Pokédólares. A 1ª cópia libera a carta; as seguintes contam para o próximo nível.
 
-| Nível → | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| Para o nível → | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 |---|---|---|---|---|---|---|---|---|---|
 | Cópias (comum) | 2 | 4 | 10 | 20 | 50 | 100 | 200 | 400 | 800 |
-| Cópias (rara) | 2 | 4 | 10 | 20 | 50 | 100 | 200 | 400 | — |
-| Cópias (épica) | 2 | 4 | 10 | 20 | 40 | 80 | 150 | — | — |
-| Cópias (lendária) | 1 | 2 | 4 | 8 | 15 | — | — | — | — |
+| Cópias (rara) | — | — | 2 | 4 | 10 | 20 | 50 | 100 | 200 |
+| Cópias (épica) | — | — | — | — | — | 2 | 4 | 10 | 20 |
+| Cópias (lendária) | — | — | — | — | — | — | — | — | 2 |
 | Pokédólares | 5 | 20 | 50 | 150 | 400 | 1000 | 2000 | 4000 | 8000 |
 
-Raras começam no nível 3, épicas no 6 e lendárias no 9, para todas terminarem no 10 (como no Clash Royale).
+- **Nível de treinador:** sobe com XP (melhorar cartas: 4 a 400 XP conforme o nível; vitória: 5 XP; derrota: 1 XP). Cada nível dá +4% de vida e dano aos **seus ginásios** na partida. Máximo 13.
 
-- **Nível de treinador:** sobe com XP (melhorar cartas e vencer). Cada nível dá +4% de vida e dano aos **seus ginásios** na partida. Máximo 13.
+| Nível de treinador | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| XP total | 0 | 20 | 50 | 100 | 200 | 400 | 800 | 1.500 | 2.500 | 4.000 | 6.000 | 9.000 | 13.000 |
+
+- **Bot por arena:** o nível das cartas do bot acompanha a arena (nível base na Rota 1 até nível 10 na Liga), e a dificuldade vai de Fácil (Rota 1) a Normal e Difícil (a partir de Saffron).
 
 ### 17.8 Online e justiça
 
-- Partidas online contra amigos valem troféus e usam os **níveis reais** das cartas.
-- Opção **"Amistoso"** na sala: não vale troféus nem balls, e todas as cartas jogam no mesmo nível (para testar decks de igual para igual).
+- Na tela inicial, a sala tem a opção **"Vale troféus"**. Ela só vale se **os dois estiverem logados**; aí cada um registra a própria partida no servidor e as cartas usam os **níveis reais**.
+- Sem a opção (ou com alguém sem conta), é **amistoso**: não vale troféus nem balls, e todas as cartas jogam com os stats base.
+- Se o amigo sair no meio da partida, quem ficou conta como vencedor (desde que a partida tenha durado o mínimo).
 
 ### 17.9 Técnico
 
-- **Servidor:** funções da Vercel (`/api/*`) + banco **Neon (Postgres)**, criado pela integração da Vercel. O jogo continua estático; só conta, coleção e recompensas passam pelo servidor.
+- **Servidor:** uma função da Vercel (`api/[action].js`, ações como `/api/login`, `/api/ball-open`) + banco **Neon (Postgres)**, criado pela integração da Vercel. O jogo continua estático; só conta, coleção e recompensas passam pelo servidor. As tabelas são criadas sozinhas na primeira chamada.
+- **Mesmas regras no jogo e no servidor:** `js/progression.js` (arenas, raridade, balls, níveis) é carregado pelo navegador e pelo servidor (`api/_lib/rules.js`).
+- **Credenciais do banco** ficam só na Vercel (marcadas como *Sensitive*). Para desenvolver, `node tools/dev-server.js` sobe o jogo + API com um Postgres local (PGlite, em `.devdb/`), e `node tools/test-api.js` testa a API inteira num banco em memória (18 testes).
 - **Login:** e-mail + senha. A senha é guardada com hash (`scrypt`), e a sessão vai num cookie `httpOnly`. **Recuperar senha** fica para depois (precisa de um serviço de envio de e-mail).
 - **O servidor é a fonte da verdade** para coleção, troféus, balls e itens. O conteúdo das balls é sorteado no servidor.
 - **Resultado da partida:** o jogo envia o resultado ao fim da partida; o servidor confere se é plausível (duração mínima, limite de partidas por hora, uma recompensa por partida). Num jogo entre amigos isso basta; trapaça "séria" exigiria simular a partida no servidor.
-- **Tabelas:** `users`, `sessions`, `collection` (carta, nível, cópias), `decks`, `balls` (espaço, tipo, arena, abre_em), `items`, `matches` (histórico).
+- **Tabelas:** `users` (inclui troféus, arena, XP, Pokédólares, deck e a Poké Ball grátis), `sessions`, `collection` (carta, nível, cópias), `user_items`, `balls` (tipo, arena, abre_em), `matches` (histórico).
+- **Segurança:** ações só aceitam POST com JSON (bloqueia formulários de outros sites), limite de 40 partidas por hora, uma recompensa por partida, ball só abre quando o cronômetro termina (checado no servidor).
+- **Sem servidor** (ex.: abrir o `index.html` direto), o jogo detecta e oferece só o Treino.
 
 ### 17.10 Decisões em aberto
 

@@ -1,0 +1,14 @@
+{
+  "name": "pokeroyale",
+  "private": true,
+  "description": "Fangame estilo Clash Royale com Pokémon",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "0.10.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.2.17"
+  }
+}

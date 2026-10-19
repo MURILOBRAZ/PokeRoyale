@@ -1,6 +1,6 @@
 .claude/
 tools/sim-report.json
 .vercel
-
-.vercel
 .env*
+node_modules/
+.devdb/

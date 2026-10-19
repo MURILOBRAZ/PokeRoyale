@@ -1,0 +1,199 @@
+/* Telas da conta (v0.4): entrar, inicial, início, caminho dos troféus, recompensas, coleção */
+
+.hidden { display: none !important; }
+.overlay { overflow-y: auto; }
+.panel { max-height: 100%; overflow-y: auto; }
+.sub.small, p.small { font-size: 12px; opacity: 0.75; margin-top: 8px; }
+.waiting::after { content: ''; animation: dots 1.4s steps(4) infinite; }
+button.link {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: none;
+  box-shadow: none;
+  color: #9fb3ff;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 6px;
+}
+button.link:active { transform: none; }
+#menu-account { margin-top: 14px; }
+
+.auth-form { display: grid; gap: 10px; margin-top: 14px; }
+.auth-form input {
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid #4d5d94;
+  background: #161d36;
+  color: #fff;
+  font: inherit;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.auth-form input:focus { outline: 2px solid #f8d030; border-color: transparent; }
+
+/* Escolha do inicial */
+.starter-panel { max-width: 520px; }
+#starter-options { display: grid; gap: 10px; margin-top: 14px; }
+.starter-card {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-areas: 'img title' 'img hint' 'deck deck' 'btn btn';
+  gap: 2px 12px;
+  padding: 10px;
+  border-radius: 14px;
+  text-align: left;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--type) 45%, #222b4a), #222b4a 70%);
+  border: 2px solid color-mix(in srgb, var(--type) 70%, #fff);
+}
+.starter-card > img { grid-area: img; width: 64px; height: 64px; image-rendering: pixelated; border-radius: 10px; }
+.starter-card h3 { grid-area: title; align-self: end; }
+.starter-card p { grid-area: hint; font-size: 13px; opacity: 0.85; }
+.mini-deck { grid-area: deck; display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; margin-top: 6px; }
+.mini-deck img { width: 100%; image-rendering: pixelated; border-radius: 6px; background: rgba(0, 0, 0, 0.25); }
+.starter-card button { grid-area: btn; margin-top: 8px; }
+
+/* Início */
+.hub-panel { text-align: left; }
+.hub-panel h2 { text-align: center; }
+.hub-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.trainer { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.trainer b { font-size: 17px; }
+.lvl-badge {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #8fb0ff, #3b5bdb);
+  border: 3px solid #fff;
+  font-weight: 900;
+}
+.xp-bar { position: relative; width: 150px; max-width: 40vw; height: 14px; margin-top: 3px; border-radius: 7px; background: #0f1430; overflow: hidden; }
+.xp-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ffe27a, #f0b400); }
+.xp-bar span { position: relative; display: block; font-size: 10px; line-height: 14px; text-align: center; font-weight: 700; text-shadow: 0 1px 1px #000; }
+.gold { font-weight: 800; font-size: 16px; white-space: nowrap; }
+
+.arena-banner {
+  width: 100%;
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  text-align: left;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--arena, #74c255) 75%, #000), #2b355c);
+  border: 2px solid color-mix(in srgb, var(--arena, #74c255) 60%, #fff);
+}
+#hub-arena-name, #hub-trophies { font-size: 17px; font-weight: 800; }
+.arena-banner small { grid-column: 1 / -1; opacity: 0.8; font-weight: 600; }
+button.big { margin-top: 12px; padding: 16px; font-size: 20px; }
+
+.ball-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
+.ball-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 92px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  background: #1a2240;
+  border: 2px solid #3b4a7d;
+  box-shadow: none;
+  font-size: 11px;
+  text-align: center;
+}
+.ball-slot img { width: 34px; height: 34px; image-rendering: pixelated; }
+.ball-slot b, .ball-slot small { font-size: 11px; }
+.ball-slot.empty { justify-content: center; border-style: dashed; opacity: 0.6; }
+.ball-slot.empty small { font-size: 9px; }
+.ball-slot.unlocking { border-color: #8fb0ff; }
+.ball-slot.locked.wait { opacity: 0.75; }
+.ball-slot.ready { border-color: #f8d030; background: #3b3416; animation: glow 1.2s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 14px #f8d030; } }
+.free-ball { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.free-ball img { width: 26px; height: 26px; image-rendering: pixelated; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0 6px; }
+.check input { width: 18px; height: 18px; accent-color: #f0b400; }
+
+/* Caminho dos troféus */
+.road-panel { display: flex; flex-direction: column; height: 100%; text-align: left; }
+#road-list { flex: 1; overflow-y: auto; display: grid; gap: 8px; margin-top: 10px; padding: 2px; }
+.road-step {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #1a2240;
+  border: 2px solid #3b4a7d;
+  opacity: 0.6;
+}
+.road-step.reached { opacity: 1; background: linear-gradient(90deg, color-mix(in srgb, var(--arena) 45%, #1a2240), #1a2240); }
+.road-step.current { border-color: #f8d030; box-shadow: 0 0 0 2px #f8d030; }
+.road-trophies { font-weight: 800; font-size: 13px; }
+.road-body { display: grid; gap: 3px; font-size: 14px; }
+.road-body small { opacity: 0.8; font-size: 11px; }
+.road-you { font-weight: 900; color: #f8d030; font-size: 12px; }
+
+/* Recompensas */
+.reward-title { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; }
+.reward-ball { width: 48px; height: 48px; image-rendering: pixelated; animation: wobble 0.6s ease-in-out 2; }
+@keyframes wobble { 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
+#reward-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; margin: 14px 0; align-items: start; }
+.reward-card { animation: pop 0.35s ease-out both; }
+@keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.reward-card .count { position: absolute; top: 2px; right: 4px; font-weight: 900; font-size: 13px; text-shadow: 0 1px 2px #000; }
+.reward-card .new { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-12deg); background: #ef4444; padding: 1px 6px; border-radius: 6px; font-size: 11px; font-weight: 900; }
+#reward-extra { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 14px; font-weight: 700; }
+.reward-gold { font-size: 18px; }
+.reward-item { display: inline-flex; align-items: center; gap: 4px; }
+.item-icon { width: 24px; height: 24px; image-rendering: pixelated; vertical-align: middle; }
+
+/* Cartas na coleção */
+.card { box-shadow: 0 3px 0 #0d1226, inset 0 -4px 0 var(--rarity, transparent); }
+.card .lvl { position: absolute; top: 2px; right: 3px; font-size: 9px; font-weight: 900; background: rgba(0, 0, 0, 0.55); padding: 0 4px; border-radius: 5px; }
+.card.locked { filter: grayscale(1) brightness(0.55); }
+.card.can-upgrade::after {
+  content: '▲';
+  position: absolute;
+  bottom: 16px;
+  right: 3px;
+  color: #7dff8a;
+  font-size: 12px;
+  text-shadow: 0 1px 2px #000;
+  animation: glow-up 1s ease-in-out infinite;
+}
+@keyframes glow-up { 50% { transform: translateY(-3px); } }
+#deck-gold { font-weight: 800; font-size: 13px; }
+#deck-info { flex-wrap: wrap; }
+#deck-info .rarity { font-weight: 800; }
+.info-actions { display: flex; flex-direction: column; gap: 6px; }
+.copies { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.copies-bar { position: relative; flex: 1; min-width: 90px; height: 18px; border-radius: 9px; background: #0f1430; overflow: hidden; }
+.copies-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#7dd3fc, #2563eb); }
+.copies-bar span { position: relative; display: block; text-align: center; font-size: 11px; font-weight: 800; line-height: 18px; text-shadow: 0 1px 1px #000; }
+.copies button { flex: 0 0 auto; padding: 6px 10px; font-size: 12px; }
+.locked-hint { opacity: 0.85; font-size: 12px; }
+.item-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.item-row button { flex: 0 0 auto; padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+#deck-msg { min-height: 1.2em; font-size: 13px; font-weight: 700; text-align: center; }
+#deck-msg.good { color: #7dff8a; }
+#deck-msg.bad { color: #ff8a8a; }
+
+/* Fim de partida */
+#end-reward { display: grid; gap: 8px; margin: -6px 0 16px; }
+.trophy-delta { font-size: 26px; font-weight: 900; }
+.trophy-delta.up { color: #7dff8a; }
+.trophy-delta.down { color: #ff8a8a; }
+.trophy-delta small { font-size: 14px; color: #fff; opacity: 0.75; }
+.won-ball { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; }
+.won-ball img { width: 30px; height: 30px; image-rendering: pixelated; }
+.won-ball.muted { opacity: 0.75; font-size: 13px; }
+.arena-up { padding: 8px; border-radius: 10px; background: rgba(248, 208, 48, 0.15); border: 1px solid #f8d030; font-size: 14px; }
+
+.hub-panel .btn-row { margin-top: 8px; }
+.road-body small { display: block; }

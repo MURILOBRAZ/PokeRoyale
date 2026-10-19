@@ -29,7 +29,13 @@ class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.viewSide = viewSide;
+    this.ground = ARENAS[0].ground;
     this.resize();
+  }
+
+  // Cores do gramado de cada arena (ginásio)
+  setArena(id) {
+    this.ground = (ARENAS[id] || ARENAS[0]).ground;
   }
 
   resize() {
@@ -95,7 +101,7 @@ class Renderer {
     for (let ty = 0; ty < ARENA.H; ty++) {
       for (let tx = 0; tx < ARENA.W; tx++) {
         const [x, y] = this.w2s(tx + (this.viewSide ? 1 : 0), ty + (this.viewSide ? 1 : 0));
-        ctx.fillStyle = (tx + ty) % 2 === 0 ? '#74c255' : '#6ab84c';
+        ctx.fillStyle = this.ground[(tx + ty) % 2];
         ctx.fillRect(x, y, s + 0.5, s + 0.5);
       }
     }

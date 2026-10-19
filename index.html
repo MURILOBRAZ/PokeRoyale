@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>PokéRoyale</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/account.css">
 </head>
 <body>
   <div id="app">
@@ -37,22 +38,32 @@
       </div>
     </footer>
 
-    <section id="menu" class="overlay">
+    <section id="loading" class="overlay">
+      <div class="panel">
+        <h1>Poké<span>Royale</span></h1>
+        <p class="sub waiting">Carregando</p>
+      </div>
+    </section>
+
+    <section id="menu" class="overlay hidden">
       <div class="panel">
         <h1>Poké<span>Royale</span></h1>
         <p class="sub">Monte a estratégia, invoque seus Pokémon e derrube os ginásios rivais!</p>
-        <h2>Jogar contra o bot</h2>
+        <div id="menu-account"></div>
+        <h2>Treino contra o bot</h2>
         <div class="btn-row">
           <button data-level="easy">Fácil</button>
           <button data-level="normal" class="primary">Normal</button>
           <button data-level="hard">Difícil</button>
         </div>
-        <button id="btn-deck" class="wide">🃏 Meu deck <span id="menu-deck-avg"></span></button>
-        <h2>Jogar com amigos</h2>
-        <button id="btn-host" class="wide primary">🌐 Criar sala</button>
-        <div class="join-row">
-          <input id="join-code" placeholder="Código da sala (ex.: PIKA-42)" maxlength="12" autocomplete="off" spellcheck="false">
-          <button id="btn-join">Entrar</button>
+        <button id="btn-deck" class="wide">🃏 Deck de treino <span id="menu-deck-avg"></span></button>
+        <div id="menu-online">
+          <h2>Jogar com amigos (amistoso)</h2>
+          <button id="btn-host" class="wide">🌐 Criar sala</button>
+          <div class="join-row">
+            <input id="join-code" placeholder="Código da sala (ex.: PIKA-42)" maxlength="12" autocomplete="off" spellcheck="false">
+            <button id="btn-join">Entrar</button>
+          </div>
         </div>
         <p id="menu-error" class="error"></p>
         <details>
@@ -65,6 +76,86 @@
             <li>Derrube os ginásios laterais (1 coroa cada) ou o Líder 👑 (vitória na hora).</li>
           </ul>
         </details>
+      </div>
+    </section>
+
+    <section id="auth" class="overlay hidden">
+      <div class="panel">
+        <h2 id="auth-title">Entrar</h2>
+        <form id="auth-form" class="auth-form" novalidate>
+          <input id="auth-name" class="hidden" placeholder="Nome de treinador" maxlength="16" autocomplete="nickname" spellcheck="false">
+          <input id="auth-email" type="email" placeholder="E-mail" autocomplete="email" maxlength="120" spellcheck="false">
+          <input id="auth-pass" type="password" placeholder="Senha (mínimo 6 caracteres)" autocomplete="current-password" maxlength="72">
+          <p id="auth-error" class="error"></p>
+          <button type="submit" id="auth-submit" class="wide primary">Entrar</button>
+        </form>
+        <button id="auth-switch" class="link">Não tem conta? Criar conta</button>
+        <button id="auth-back" class="link">Voltar</button>
+      </div>
+    </section>
+
+    <section id="starter" class="overlay hidden">
+      <div class="panel starter-panel">
+        <h2>Escolha seu primeiro Pokémon</h2>
+        <p class="sub">Cada um vem com um deck inicial diferente. Os outros dois você encontra depois nas Premier Balls.</p>
+        <div id="starter-options"></div>
+        <p id="starter-error" class="error"></p>
+      </div>
+    </section>
+
+    <section id="hub" class="overlay hidden">
+      <div class="panel hub-panel">
+        <div class="hub-top">
+          <div class="trainer">
+            <span id="hub-level" class="lvl-badge" title="Nível de treinador">1</span>
+            <div>
+              <b id="hub-name"></b>
+              <div class="xp-bar"><i id="hub-xp"></i><span id="hub-xp-text"></span></div>
+            </div>
+          </div>
+          <div id="hub-gold" class="gold" title="Pokédólares">💰 0</div>
+        </div>
+        <button id="hub-arena" class="arena-banner">
+          <span id="hub-arena-name">Rota 1</span>
+          <span id="hub-trophies">🏆 0</span>
+          <small>Caminho dos troféus ›</small>
+        </button>
+        <button id="hub-battle" class="wide primary big">⚔️ Batalhar</button>
+        <div id="hub-balls" class="ball-slots"></div>
+        <button id="hub-free" class="wide free-ball"></button>
+        <div class="btn-row">
+          <button id="hub-collection">🃏 Coleção</button>
+          <button id="hub-training">🎯 Treino</button>
+        </div>
+        <h2>Jogar com amigos</h2>
+        <label class="check"><input type="checkbox" id="hub-ranked" checked> Vale troféus (os dois precisam estar logados)</label>
+        <button id="hub-host" class="wide">🌐 Criar sala</button>
+        <div class="join-row">
+          <input id="hub-join-code" placeholder="Código da sala" maxlength="12" autocomplete="off" spellcheck="false">
+          <button id="hub-join">Entrar</button>
+        </div>
+        <p id="hub-error" class="error"></p>
+        <button id="hub-logout" class="link">Sair da conta</button>
+      </div>
+    </section>
+
+    <section id="road" class="overlay hidden">
+      <div class="panel road-panel">
+        <div class="deck-head">
+          <h2>Caminho dos troféus</h2>
+          <button id="road-close" class="icon" title="Fechar">✕</button>
+        </div>
+        <p id="road-summary" class="sub small"></p>
+        <div id="road-list"></div>
+      </div>
+    </section>
+
+    <section id="reward" class="overlay hidden">
+      <div class="panel">
+        <h2 id="reward-title" class="reward-title"></h2>
+        <div id="reward-cards"></div>
+        <div id="reward-extra"></div>
+        <button id="reward-ok" class="wide primary">Coletar</button>
       </div>
     </section>
 
@@ -83,7 +174,8 @@
     <section id="deck" class="overlay hidden">
       <div class="panel deck-panel">
         <div class="deck-head">
-          <h2>Meu deck</h2>
+          <h2 id="deck-title">Meu deck</h2>
+          <span id="deck-gold"></span>
           <span id="deck-avg"></span>
           <button id="deck-close" class="icon" title="Fechar sem salvar">✕</button>
         </div>
@@ -99,6 +191,7 @@
         </div>
         <div id="deck-grid"></div>
         <div id="deck-info"><p class="hint">Toque numa carta para ver os detalhes.</p></div>
+        <div id="deck-msg"></div>
         <div class="btn-row">
           <button id="deck-random">🎲 Aleatório</button>
           <button id="deck-default">Padrão</button>
@@ -111,6 +204,7 @@
       <div class="panel">
         <h1 id="end-title">Vitória!</h1>
         <div id="end-crowns"></div>
+        <div id="end-reward"></div>
         <div class="btn-row">
           <button id="btn-again" class="primary">Jogar de novo</button>
           <button id="btn-menu">Menu</button>
@@ -123,11 +217,14 @@
   <script src="js/pokedex.js"></script>
   <script src="js/sprites.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/progression.js"></script>
+  <script src="js/account.js"></script>
   <script src="js/game.js"></script>
   <script src="js/bot.js"></script>
   <script src="js/render.js"></script>
   <script src="js/net.js"></script>
   <script src="js/deck.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/hub.js"></script>
 </body>
 </html>

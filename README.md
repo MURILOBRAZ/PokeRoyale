@@ -2,25 +2,30 @@
 
 Fangame de estratégia em tempo real no estilo *Clash Royale*, com Pokémon. Feito para jogar com amigos, sem fins lucrativos.
 
-![status](https://img.shields.io/badge/vers%C3%A3o-0.3-blue)
+![status](https://img.shields.io/badge/vers%C3%A3o-0.4-blue)
 
 ### 🎮 Jogar agora: https://pokeroyale.vercel.app
 
-## Como rodar
+## Como rodar localmente
 
-Não precisa instalar nada. Abra o `index.html` no navegador ou, de preferência, sirva a pasta:
+Precisa do Node 20+. Instale as dependências e suba o servidor de desenvolvimento (jogo + API de contas com um banco local):
 
 ```bash
-python -m http.server 5173
+npm install
 ```
 
-Depois acesse http://localhost:5173.
+```bash
+node tools/dev-server.js
+```
+
+Depois acesse http://localhost:5173. Abrindo o `index.html` direto (sem servidor), só o modo Treino funciona.
 
 Os sprites são carregados da internet ([SpriteCollab](https://github.com/PMDCollab/SpriteCollab)), então é preciso estar online para vê-los.
 
-## O que já tem (v0.3)
+## O que já tem (v0.4)
 
 - Arena com rio, pontes, 2 ginásios laterais + Ginásio Líder por lado
+- **Conta com progressão**: escolha Bulbasaur, Charmander ou Squirtle, ganhe troféus, abra Premier Balls, suba o nível das cartas e avance pelos 8 ginásios de Kanto até a Liga
 - **Os 151 Pokémon da 1ª geração** como cartas (stats gerados a partir dos oficiais) + 2 golpes
 - **Editor de deck** com busca, filtro por tipo e deck aleatório
 - **Sprites animados** em 8 direções (parado, andando, atacando)
@@ -47,6 +52,7 @@ Veja o [GDD](GDD.md) para o design completo e o roadmap.
 node tools/build-pokedex.mjs   # baixa os 151 Pokémon da PokéAPI -> js/pokedex.js
 node tools/build-sprites.mjs   # baixa as animações e créditos do SpriteCollab -> js/sprites.js, CREDITS.md
 node tools/simulate.js 1500    # partidas bot x bot: procura erros e mostra o balanceamento
+node tools/test-api.js         # testa a API de contas num banco em memória
 ```
 
 ## Estrutura
@@ -56,13 +62,17 @@ node tools/simulate.js 1500    # partidas bot x bot: procura erros e mostra o ba
 | `js/pokedex.js` | Os 151 Pokémon (gerado da PokéAPI) |
 | `js/sprites.js` | Animações (gerado do SpriteCollab) |
 | `js/data.js` | Regras que geram as cartas, tipos e balanceamento |
-| `js/deck.js` | Editor de deck |
+| `js/progression.js` | Regras de progressão (arenas, raridade, balls, níveis), usadas também pelo servidor |
+| `js/account.js` | Comunicação com a API de contas |
+| `js/hub.js` | Telas da conta: entrar, inicial, início, caminho dos troféus, recompensas |
+| `js/deck.js` | Coleção e editor de deck |
 | `js/game.js` | Simulação da partida (sem nada de tela) |
 | `js/bot.js` | IA do oponente |
 | `js/render.js` | Desenho no canvas |
 | `js/net.js` | Multiplayer (PeerJS, código de sala) |
 | `js/main.js` | Menus, entrada e loop |
-| `tools/` | Geradores de dados e teste automático |
+| `api/` | Servidor (função da Vercel): contas, partidas, balls, melhorias |
+| `tools/` | Geradores de dados, servidor de desenvolvimento e testes |
 
 ---
 

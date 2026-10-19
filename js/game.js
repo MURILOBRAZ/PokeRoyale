@@ -17,7 +17,11 @@ function edgeDist(a, b) {
 }
 
 class Game {
-  constructor({ decks = [DEFAULT_DECK, DEFAULT_DECK] } = {}) {
+  // levels: nível de cada carta por lado ({id: nível}); trainers: nível de treinador por lado (ginásios).
+  // Sem eles, tudo joga com os stats base (treino e amistosos).
+  constructor({ decks = [DEFAULT_DECK, DEFAULT_DECK], levels = [{}, {}], trainers = [1, 1] } = {}) {
+    this.levels = levels;
+    this.trainers = trainers;
     this.nextId = 1;
     this.time = 0;
     this.endTime = MATCH.DURATION;
@@ -61,7 +65,9 @@ class Game {
   }
 
   _addTower(side, kind, x, y, lane) {
-    const s = TOWERS[kind];
+    const base = TOWERS[kind];
+    const m = towerMultiplier(this.trainers[side]);
+    const s = { ...base, hp: Math.round(base.hp * m), dmg: Math.round(base.dmg * m) };
     this.towers.push({
       id: this.nextId++, isTower: true, side, kind, lane, x, y,
       radius: s.radius, hp: s.hp, maxHp: s.hp, types: [], // ginásios não têm tipo
@@ -106,24 +112,27 @@ class Game {
     p.hand[handIndex] = p.queue.shift();
 
     if (card.kind === 'spell') {
-      this.spells.push({ card, side, x, y, timer: card.delay, total: card.delay });
+      const mult = levelMultiplier(card, this.levels[side][cardId]);
+      this.spells.push({ card, side, x, y, timer: card.delay, total: card.delay, mult });
     } else {
       const n = card.count || 1;
       const offsets = n === 1 ? [[0, 0]] : [[0, -0.5], [-0.6, 0.4], [0.6, 0.4]];
       for (let i = 0; i < n; i++) {
         const [ox, oy] = offsets[i % offsets.length];
-        this._spawnUnit(card, side, x + ox, y + (side === 0 ? oy : -oy));
+        this._spawnUnit(card, side, x + ox, y + (side === 0 ? oy : -oy), levelMultiplier(card, this.levels[side][cardId]));
       }
     }
     return true;
   }
 
-  _spawnUnit(card, side, x, y) {
+  _spawnUnit(card, side, x, y, mult = 1) {
+    const hp = Math.round(card.hp * mult);
     const u = {
       id: this.nextId++, side, card,
-      def: { ...card },
+      def: { ...card, hp, dmg: Math.round(card.dmg * mult) },
+      mult,
       x: clamp(x, 0.5, ARENA.W - 0.5), y: clamp(y, 0.5, ARENA.H - 0.5),
-      radius: card.radius, hp: card.hp, maxHp: card.hp,
+      radius: card.radius, hp, maxHp: hp,
       types: card.types, air: !!card.air,
       deploy: MATCH.DEPLOY_TIME, cooldown: 0, stun: 0, target: null,
       kills: 0, evolved: false, dead: false, attackAnim: 0,
@@ -395,7 +404,9 @@ class Game {
     const ratio = Math.max(0.5, u.hp / u.maxHp);
     // Membros de bando evoluem mais fracos que a carta cheia
     const scale = u.card.count > 1 ? 0.6 : 1;
-    u.def = { ...into, hp: Math.round(into.hp * scale), dmg: Math.round(into.dmg * scale) };
+    // Evolui no mesmo nível da carta original
+    const m = scale * (u.mult || 1);
+    u.def = { ...into, hp: Math.round(into.hp * m), dmg: Math.round(into.dmg * m) };
     u.maxHp = u.def.hp;
     u.hp = Math.round(u.maxHp * ratio);
     u.radius = u.card.count > 1 ? Math.min(into.radius, u.radius * 1.3) : into.radius;
@@ -478,7 +489,7 @@ class Game {
     const c = s.card;
     for (const e of [...this._enemiesOf(s.side)]) {
       if (Math.hypot(e.x - s.x, e.y - s.y) > c.radius + e.radius) continue;
-      this._damage(e, c.dmg * (e.isTower ? c.towerMult : 1), c.type, null);
+      this._damage(e, c.dmg * (s.mult || 1) * (e.isTower ? c.towerMult : 1), c.type, null);
       if (c.stun && !e.isTower) e.stun = Math.max(e.stun, c.stun);
     }
     this.effects.push({ kind: 'blast', x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl: 0.5, total: 0.5, spell: c.id });
@@ -493,7 +504,7 @@ class Game {
       time: r(this.time), endTime: this.endTime, overtime: this.overtime,
       over: this.over, winner: this.winner, crowns: this.crowns,
       players: this.players.map((p) => ({ energy: r(p.energy), hand: p.hand, next: p.queue[0] })),
-      towers: this.towers.map((t) => ({ hp: Math.round(t.hp), active: t.active, dead: t.dead, hf: r(t.hitFlash || 0) })),
+      towers: this.towers.map((t) => ({ hp: Math.round(t.hp), mhp: t.maxHp, active: t.active, dead: t.dead, hf: r(t.hitFlash || 0) })),
       units: this.units.map((u) => ({
         id: u.id, c: u.card.id, s: u.side, x: r(u.x), y: r(u.y), hp: Math.round(u.hp), mhp: u.maxHp,
         r: r(u.radius), d: r(u.deploy), st: r(u.stun), ev: u.evolved ? u.def.id : 0, air: u.air, fa: r(u.face), m: u.moving, at: r(u.attackT), a: r(u.attackAnim), hf: r(u.hitFlash || 0),
@@ -513,7 +524,7 @@ class Game {
       Object.assign(this.players[i], { energy: p.energy, hand: p.hand, queue: [p.next] });
     });
     snap.towers.forEach((t, i) => {
-      Object.assign(this.towers[i], { hp: t.hp, active: t.active, dead: t.dead, hitFlash: t.hf });
+      Object.assign(this.towers[i], { hp: t.hp, maxHp: t.mhp, active: t.active, dead: t.dead, hitFlash: t.hf });
     });
     const old = new Map(this.units.map((u) => [u.id, u]));
     this.units = snap.units.map((s) => {

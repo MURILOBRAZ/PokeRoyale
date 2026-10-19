@@ -1,7 +1,7 @@
 // Menus, entrada do jogador, multiplayer e loop principal.
 //
 // Modos:
-//   'bot'   — partida local contra o computador
+//   'bot'   — partida local contra o computador (treino, ou valendo troféus com conta)
 //   'host'  — anfitrião online: roda a simulação (lado 0) e envia snapshots
 //   'guest' — convidado online: só desenha o estado recebido (lado 1) e envia jogadas
 
@@ -22,7 +22,10 @@ let level = 'normal';
 let endShown = false;
 let roomCode = '';
 let snapTimer = 0;
-let guestDeck = null; // deck que o convidado mandou (anfitrião guarda para a revanche)
+let guestInfo = null; // deck/níveis que o convidado mandou (anfitrião guarda para a revanche)
+let ranked = null; // { matchId, mode } quando a partida vale troféus (ver hub.js)
+let lastRankedMode = null; // para o "Jogar de novo"
+let endReward = null; // promessa com o texto do resultado registrado no servidor
 
 // Estado da interface
 const ui = { side: 0, selectedIndex: null, selected: null, hover: null, dragging: false };
@@ -30,24 +33,32 @@ const ui = { side: 0, selectedIndex: null, selected: null, hover: null, dragging
 // ---------- Telas ----------
 
 function showScreen(id) {
-  for (const s of ['#menu', '#lobby', '#end', '#deck']) $(s).classList.toggle('hidden', s !== id);
+  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward']) {
+    $(s).classList.toggle('hidden', s !== id);
+  }
 }
 
+// Volta para o início (conta ou menu de treino) — ver showHome em hub.js
 function showMenu(error = '') {
-  leaveOnline();
-  game = null;
-  $('#menu-error').textContent = error;
-  updateMenuDeck();
-  showScreen('#menu');
+  showHome(error);
+}
+
+function setHomeError(text) {
+  $('#menu-error').textContent = text;
+  $('#hub-error').textContent = text;
 }
 
 function updateMenuDeck() {
   $('#menu-deck-avg').textContent = `(custo médio ${fmt(deckAverageCost(loadDeck()))})`;
 }
 
-const deckEditor = new DeckEditor(() => showMenu());
+const deckEditor = new DeckEditor(() => {
+  if (deckEditor.account) return showHome();
+  renderLanding();
+  showScreen('#menu');
+});
 $('#btn-deck').addEventListener('click', () => {
-  deckEditor.open();
+  deckEditor.open({ account: false });
   showScreen('#deck');
 });
 
@@ -60,20 +71,43 @@ function showEnd(title) {
   const again = $('#btn-again');
   const connected = net && net.conn;
   again.disabled = mode === 'guest' || ((mode === 'host') && !connected);
-  again.textContent = mode === 'bot' ? 'Jogar de novo' : mode === 'host' ? 'Revanche' : 'Aguardando anfitrião…';
+  again.textContent = mode === 'bot' ? (lastRankedMode ? 'Batalhar de novo' : 'Jogar de novo') : mode === 'host' ? 'Revanche' : 'Aguardando anfitrião…';
   again.style.display = mode !== 'bot' && !connected ? 'none' : '';
+  const box = $('#end-reward');
+  box.innerHTML = endReward ? '<div class="won-ball muted">Registrando resultado…</div>' : '';
+  if (endReward) {
+    endReward.then((html) => {
+      box.innerHTML = html || '';
+    });
+  }
   showScreen('#end');
+}
+
+// Fim de partida: avisa o servidor (se valer troféus) e mostra a tela de fim
+function onMatchOver(title) {
+  if (endShown) return;
+  endShown = true;
+  clearSelection();
+  lastRankedMode = ranked ? ranked.mode : null;
+  const w = game.winner;
+  const result = w === -1 ? 'draw' : w === mySide || w === null ? 'win' : 'loss';
+  endReward = ranked ? finishRanked(result) : null;
+  setTimeout(() => showEnd(title), title ? 0 : 1200);
 }
 
 // ---------- Partida ----------
 
-function beginMatch(newMode, side, decks) {
+// opts: levels/trainers (níveis das cartas e dos ginásios), ranked (vale troféus), arena (visual)
+function beginMatch(newMode, side, decks, opts = {}) {
   mode = newMode;
   mySide = side;
   ui.side = side;
   renderer.viewSide = side;
+  renderer.setArena(opts.arena || 0);
   renderer.resize();
-  game = new Game({ decks });
+  game = new Game({ decks, levels: opts.levels, trainers: opts.trainers });
+  ranked = opts.ranked || null;
+  endReward = null;
   bot = mode === 'bot' ? new Bot(game, 1 - side, level) : null;
   endShown = false;
   snapTimer = 0;
@@ -81,7 +115,7 @@ function beginMatch(newMode, side, decks) {
   clearSelection();
   handSignature = '';
   showScreen(null);
-  showBanner(mode === 'bot' ? 'Batalha!' : 'Batalha online!');
+  showBanner(mode === 'bot' ? 'Batalha!' : ranked ? 'Batalha online valendo troféus!' : 'Batalha online!');
 }
 
 document.querySelectorAll('#menu [data-level]').forEach((b) =>
@@ -92,7 +126,8 @@ document.querySelectorAll('#menu [data-level]').forEach((b) =>
   }));
 
 $('#btn-again').addEventListener('click', () => {
-  if (mode === 'bot') beginMatch('bot', 0, [loadDeck(), randomDeck()]);
+  if (mode === 'bot' && lastRankedMode) startRankedBot();
+  else if (mode === 'bot') beginMatch('bot', 0, [loadDeck(), randomDeck()]);
   else if (mode === 'host' && net && net.conn) startOnlineAsHost();
 });
 $('#btn-menu').addEventListener('click', () => showMenu());
@@ -117,7 +152,13 @@ function netHandlers() {
         setLobbyStatus('Amigo conectado! Iniciando', true);
       } else {
         // O anfitrião começa a partida assim que recebe o deck do convidado
-        net.send({ t: 'deck', deck: loadDeck() });
+        const deck = myDeck();
+        net.send({
+          t: 'deck', deck,
+          levels: Account.loggedIn ? Account.levelsFor(deck) : {},
+          trainer: Account.loggedIn ? Account.user.level : 1,
+          account: Account.loggedIn,
+        });
         setLobbyStatus('Conectado! Iniciando', true);
       }
     },
@@ -126,12 +167,15 @@ function netHandlers() {
       if (net.isHost) {
         if (msg.t === 'deploy' && game && mode === 'host') game.deploy(1, msg.i, msg.x, msg.y);
         if (msg.t === 'deck' && !game) {
-          guestDeck = isValidDeck(msg.deck) ? msg.deck : [...DEFAULT_DECK];
+          guestInfo = sanitizeGuest(msg);
           startOnlineAsHost();
         }
         return;
       }
-      if (msg.t === 'start') beginMatch('guest', 1);
+      if (msg.t === 'start') {
+        beginMatch('guest', 1, undefined, { arena: msg.arena, ranked: msg.ranked && Account.loggedIn ? { mode: 'online' } : null });
+        registerOnlineMatch();
+      }
       else if (msg.t === 'snap' && game && mode === 'guest') {
         game.applySnapshot(msg.s);
         for (const ev of msg.ev || []) showBanner(ev.text);
@@ -139,10 +183,10 @@ function netHandlers() {
     },
     onClose() {
       if (game && !game.over) {
+        // Quem fica conta como vencedor (o servidor só aceita se a partida durou o mínimo)
         game.over = true;
-        endShown = true;
-        clearSelection();
-        showEnd(mode === 'host' ? 'Seu amigo saiu' : 'Conexão perdida');
+        game.winner = null;
+        onMatchOver(mode === 'host' ? 'Seu amigo saiu' : 'Conexão perdida');
       } else if (!game) {
         showMenu('A conexão foi encerrada.');
       } else if ($('#end').classList.contains('hidden') === false) {
@@ -176,7 +220,7 @@ function hostRoom() {
 function joinRoom(text) {
   const code = normalizeCode(text);
   if (code.length < 4) {
-    $('#menu-error').textContent = 'Digite o código que seu amigo mandou.';
+    setHomeError('Digite o código que seu amigo mandou.');
     return;
   }
   if (typeof Peer === 'undefined') return showMenu('Não foi possível carregar o multiplayer. Verifique a internet.');
@@ -190,9 +234,34 @@ function joinRoom(text) {
   net.join(code);
 }
 
+// Deck de quem está jogando: o da conta (se logado) ou o de treino
+function myDeck() {
+  return Account.loggedIn && Account.user.deck ? Account.user.deck : loadDeck();
+}
+
+// O anfitrião confere o que o convidado mandou (níveis fora do possível viram nível base)
+function sanitizeGuest(msg) {
+  const deck = isValidDeck(msg.deck) ? msg.deck : [...DEFAULT_DECK];
+  const levels = {};
+  for (const id of deck) {
+    const lvl = Number(msg.levels && msg.levels[id]);
+    if (Number.isInteger(lvl) && lvl >= startLevel(CARDS[id]) && lvl <= MAX_CARD_LEVEL) levels[id] = lvl;
+  }
+  const trainer = Number.isInteger(msg.trainer) ? Math.min(MAX_TRAINER_LEVEL, Math.max(1, msg.trainer)) : 1;
+  return { deck, levels, trainer, account: !!msg.account };
+}
+
 function startOnlineAsHost() {
-  beginMatch('host', 0, [loadDeck(), guestDeck || [...DEFAULT_DECK]]);
-  net.send({ t: 'start' });
+  const deck = myDeck();
+  const g = guestInfo || { deck: [...DEFAULT_DECK], levels: {}, trainer: 1, account: false };
+  // Vale troféus só com os dois logados e a opção marcada; amistoso usa os stats base
+  const isRanked = Account.loggedIn && g.account && $('#hub-ranked').checked;
+  const arena = Account.loggedIn ? Account.user.arena : 0;
+  beginMatch('host', 0, [deck, g.deck], isRanked
+    ? { levels: [Account.levelsFor(deck), g.levels], trainers: [Account.user.level, g.trainer], ranked: { mode: 'online' }, arena }
+    : { arena });
+  net.send({ t: 'start', ranked: isRanked, arena });
+  registerOnlineMatch();
 }
 
 function inviteLink() {
@@ -409,11 +478,7 @@ function simulate() {
     }
   }
 
-  if (game.over && !endShown) {
-    endShown = true;
-    clearSelection();
-    setTimeout(() => showEnd(), 1200);
-  }
+  if (game.over && !endShown) onMatchOver();
 }
 setInterval(simulate, 1000 / 60);
 
@@ -426,16 +491,7 @@ function frame() {
   requestAnimationFrame(frame);
 }
 
-// Arena vazia de fundo no menu
+// Arena vazia de fundo no menu (a tela inicial é escolhida em hub.js, depois de checar a conta)
 const demoGame = new Game();
-updateMenuDeck();
 renderer.resize();
 requestAnimationFrame(frame);
-
-// Link de convite: ?sala=PIKA42 entra direto na sala
-const invite = new URLSearchParams(location.search).get('sala');
-if (invite) {
-  $('#join-code').value = formatCode(normalizeCode(invite));
-  history.replaceState(null, '', location.pathname);
-  joinRoom(invite);
-}

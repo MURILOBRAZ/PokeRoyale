@@ -210,11 +210,11 @@ function deckAverageCost(deck) {
 }
 
 // Deck aleatório jogável: 1–2 golpes, custo médio razoável e defesa contra voadores
-function randomDeck() {
-  const units = Object.values(CARDS).filter((c) => c.kind === 'unit').map((c) => c.id);
-  const spells = Object.keys(SPELLS);
+function randomDeck(pool = Object.keys(CARDS)) {
+  const units = pool.filter((id) => CARDS[id].kind === 'unit');
+  const spells = pool.filter((id) => CARDS[id].kind === 'spell');
   for (let attempt = 0; attempt < 500; attempt++) {
-    const nSpells = Math.random() < 0.5 ? 1 : 2;
+    const nSpells = Math.min(spells.length, Math.random() < 0.5 ? 1 : 2);
     const pickSpells = [...spells].sort(() => Math.random() - 0.5).slice(0, nSpells);
     const pool = [...units];
     const pickUnits = [];
