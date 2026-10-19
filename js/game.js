@@ -205,8 +205,9 @@ class Game {
 
   // ---------- Unidades ----------
 
+  // Pokémon ainda surgindo (deploy > 0) não pode ser alvo nem levar dano
   _canTarget(u, t) {
-    if (!t || t.dead) return false;
+    if (!t || t.dead || t.deploy > 0) return false;
     if (t.side === u.side) return false;
     if (u.def.targets === 'buildings') return !!t.isTower;
     if (t.air && u.def.targets === 'ground') return false;
@@ -380,7 +381,7 @@ class Game {
   }
 
   _damage(e, amount, type, source) {
-    if (e.dead) return;
+    if (e.dead || e.deploy > 0) return; // vale também para golpes, dano em área e projéteis já no ar
     const m = typeMultiplier(type, e.types);
     const v = Math.round(amount * m);
     e.hp -= v;
@@ -449,7 +450,7 @@ class Game {
     t.hitFlash = Math.max(0, (t.hitFlash || 0) - dt);
     if (!t.active) return;
     t.cooldown = Math.max(0, t.cooldown - dt);
-    const inRange = (u) => !u.dead && u.side !== t.side && edgeDist(t, u) <= t.stats.range;
+    const inRange = (u) => !u.dead && !(u.deploy > 0) && u.side !== t.side && edgeDist(t, u) <= t.stats.range;
     if (!t.target || !inRange(t.target)) {
       t.target = null;
       let bestD = Infinity;

@@ -169,7 +169,7 @@ Distribuição de custos: 1 (3 cartas) · 2 (17) · 3 (38) · 4 (23) · 5 (33) �
 2. **Sem alvo por perto:** anda até o ginásio inimigo mais próximo. Terrestres passam pela ponte mais conveniente, e bandos atravessam lado a lado.
 3. **Contorna ginásios** que estejam no caminho (os próprios e os inimigos que não são o alvo).
 4. **Trava no alvo:** depois de começar a atacar, só troca de alvo se o atual morrer ou sair do alcance.
-5. Unidades se empurram (as mais pesadas empurram mais) e levam **1 s para entrar em campo**. Inimigos que não podem atacar um ao outro (ex.: dois tanques de ginásio) passam sem se bloquear.
+5. Unidades se empurram (as mais pesadas empurram mais) e levam **1 s para entrar em campo**. Enquanto surgem, são **invulneráveis**: ninguém mira nelas e nenhum dano as atinge (nem golpes, dano em área ou projéteis já lançados). Inimigos que não podem atacar um ao outro (ex.: dois tanques de ginásio) passam sem se bloquear.
 
 ## 11. Bot (modo solo)
 
