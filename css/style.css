@@ -269,3 +269,83 @@ details ul { margin: 10px 0 0 18px; display: grid; gap: 6px; opacity: 0.9; }
 #lobby-status { margin-bottom: 18px; }
 #lobby-status.waiting::after { content: ''; animation: dots 1.4s steps(4) infinite; }
 @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+
+/* ---------- Editor de deck ---------- */
+#btn-deck { margin-top: 10px; }
+#menu-deck-avg { font-weight: 400; opacity: 0.75; font-size: 13px; }
+
+.deck-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 520px;
+  padding: 14px 12px;
+  gap: 10px;
+}
+.deck-head { display: flex; align-items: center; gap: 10px; }
+.deck-head h2 { flex: 1; text-align: left; }
+button.icon { flex: 0 0 auto; padding: 6px 10px; }
+.deck-head h2 { margin: 0; font-size: 18px; opacity: 1; }
+#deck-avg { font-size: 13px; opacity: 0.85; }
+
+#deck-slots { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.slot {
+  aspect-ratio: 3 / 4;
+  border-radius: 8px;
+  border: 2px dashed #4d5d94;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.deck-filters { display: flex; gap: 6px; }
+.deck-filters input, .deck-filters select {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 2px solid #4d5d94;
+  background: #161d36;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+}
+.deck-filters input { flex: 1; user-select: text; -webkit-user-select: text; }
+
+#deck-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  align-content: start;
+  align-items: start;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  touch-action: pan-y;
+}
+.card.small .name { font-size: 9px; }
+.card.small .cost { width: 18px; height: 18px; font-size: 10px; border-width: 1px; }
+.card.small { border-width: 2px; box-shadow: 0 2px 0 #0d1226; }
+.card.in-deck { opacity: 0.35; }
+.card.focused { border-color: #f8d030; box-shadow: 0 0 0 2px #f8d030; }
+.card .dexno { position: absolute; top: 2px; right: 4px; font-size: 9px; opacity: 0.8; text-shadow: 0 1px 1px #000; }
+
+#deck-info {
+  min-height: 92px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  text-align: left;
+  font-size: 13px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+#deck-info .hint { opacity: 0.7; margin: auto; }
+#deck-info img { width: 72px; height: 72px; image-rendering: pixelated; flex-shrink: 0; }
+#deck-info .info-body { flex: 1; min-width: 0; }
+#deck-info h3 { font-size: 16px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+#deck-info .stats { margin: 4px 0; opacity: 0.9; }
+#deck-info .desc { opacity: 0.8; }
+#deck-info button { flex: 0 0 auto; padding: 10px 12px; }
+.type-chip { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }

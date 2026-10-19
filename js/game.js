@@ -64,7 +64,7 @@ class Game {
     const s = TOWERS[kind];
     this.towers.push({
       id: this.nextId++, isTower: true, side, kind, lane, x, y,
-      radius: s.radius, hp: s.hp, maxHp: s.hp, types: ['normal'],
+      radius: s.radius, hp: s.hp, maxHp: s.hp, types: [], // ginásios não têm tipo
       stats: s, active: kind === 'princess', cooldown: 0, target: null, dead: false,
     });
   }
@@ -127,6 +127,7 @@ class Game {
       types: card.types, air: !!card.air,
       deploy: MATCH.DEPLOY_TIME, cooldown: 0, stun: 0, target: null,
       kills: 0, evolved: false, dead: false, attackAnim: 0,
+      face: side === 0 ? -Math.PI / 2 : Math.PI / 2, moving: false, attackT: -99,
     };
     this.units.push(u);
     return u;
@@ -228,6 +229,7 @@ class Game {
   _updateUnit(u, dt) {
     u.attackAnim = Math.max(0, u.attackAnim - dt);
     u.hitFlash = Math.max(0, (u.hitFlash || 0) - dt);
+    u.moving = false;
     if (u.deploy > 0) {
       u.deploy -= dt;
       return;
@@ -243,26 +245,51 @@ class Game {
     const t = u.target;
     if (!t) return;
 
-    if (edgeDist(u, t) <= u.def.range) {
+    // Pequena tolerância: unidades empurradas por outras ficam a centésimos do alcance
+    if (edgeDist(u, t) <= u.def.range + 0.15) {
       if (u.cooldown <= 0) {
         u.cooldown = u.def.hitSpeed;
         u.attackAnim = 0.2;
+        u.attackT = this.time;
+        u.face = Math.atan2(t.y - u.y, t.x - u.x);
         this._attack(u, t);
       }
     } else {
       const [wx, wy] = this._waypoint(u, t.x, t.y);
-      this._moveToward(u, wx, wy, dt);
+      this._moveToward(u, wx, wy, dt, t);
     }
   }
 
-  _moveToward(u, tx, ty, dt) {
-    const dx = tx - u.x;
-    const dy = ty - u.y;
-    const d = Math.hypot(dx, dy);
+  _moveToward(u, tx, ty, dt, target) {
+    const d = Math.hypot(tx - u.x, ty - u.y);
     if (d < 1e-3) return;
+    let dx = (tx - u.x) / d;
+    let dy = (ty - u.y) / d;
+    if (!u.air) [dx, dy] = this._avoidTowers(u, dx, dy, target);
     const step = Math.min(d, u.def.speed * dt);
-    u.x += (dx / d) * step;
-    u.y += (dy / d) * step;
+    u.face = Math.atan2(dy, dx);
+    u.moving = true;
+    u.x += dx * step;
+    u.y += dy * step;
+  }
+
+  // Ginásio no caminho (que não seja o alvo): contorna pela tangente mais próxima da direção desejada
+  _avoidTowers(u, dx, dy, target) {
+    for (const t of this.towers) {
+      if (t.dead || t === target) continue;
+      const ox = t.x - u.x;
+      const oy = t.y - u.y;
+      const od = Math.hypot(ox, oy);
+      if (od > t.radius + u.radius + 0.6 || dx * ox + dy * oy <= 0) continue;
+      let px = -oy / od;
+      let py = ox / od;
+      if (px * dx + py * dy < 0) {
+        px = -px;
+        py = -py;
+      }
+      return [px, py];
+    }
+    return [dx, dy];
   }
 
   // Terrestres só cruzam o rio pelas pontes
@@ -274,15 +301,19 @@ class Game {
     const bx = Math.abs(u.x - b1) + Math.abs(tx - b1) <= Math.abs(u.x - b2) + Math.abs(tx - b2) ? b1 : b2;
     const goingUp = ty < u.y;
     const inRiver = u.y > RT && u.y < RB;
+    // Faixa da ponte que a unidade pode usar (bandos atravessam lado a lado)
+    const half = Math.max(0.1, ARENA.BRIDGE_HALF - u.radius * 0.5);
     if (inRiver) {
       // Já está na ponte: segue reto até a outra margem, a não ser que o alvo esteja na ponte
       if (ty > RT && ty < RB) return [tx, ty];
-      return [this._nearestBridge(u.x), goingUp ? RT - 0.5 : RB + 0.5];
+      const b = this._nearestBridge(u.x);
+      return [clamp(u.x, b - half, b + half), goingUp ? RT - 0.5 : RB + 0.5];
     }
     const across = (u.y >= RB && ty < RB) || (u.y <= RT && ty > RT);
     if (!across) return [tx, ty];
-    if (Math.abs(u.x - bx) > 0.35) return [bx, goingUp ? RB + 0.2 : RT - 0.2];
-    return [bx, goingUp ? RT - 0.5 : RB + 0.5];
+    const laneX = clamp(u.x, bx - half, bx + half);
+    if (Math.abs(u.x - laneX) > 0.3) return [laneX, goingUp ? RB + 0.2 : RT - 0.2];
+    return [laneX, goingUp ? RT - 0.5 : RB + 0.5];
   }
 
   _nearestBridge(x) {
@@ -292,6 +323,16 @@ class Game {
 
   _attack(u, t) {
     const d = u.def;
+    if (d.kamikaze) {
+      // Explosão: dano em área ao redor de si mesmo, e o Pokémon sai de campo
+      for (const e of [...this._enemiesOf(u.side)]) {
+        if (Math.hypot(e.x - u.x, e.y - u.y) <= d.splash + e.radius) this._damage(e, d.dmg, d.type, u);
+      }
+      this.effects.push({ kind: 'blast', x: u.x, y: u.y, radius: d.splash, color: TYPE_COLORS[d.type], ttl: 0.5, total: 0.5 });
+      u.hp = 0;
+      u.dead = true;
+      return;
+    }
     if (d.range > 1.6) {
       this.projectiles.push({
         x: u.x, y: u.y - (u.air ? 0.8 : 0.3), target: t, speed: 11,
@@ -343,18 +384,28 @@ class Game {
     }
   }
 
+  // Evolui para a carta seguinte da linha evolutiva (Eevee sorteia entre as três).
+  // Pode evoluir de novo: os abates contam a partir da última evolução.
   _creditKill(u) {
     u.kills++;
-    const evo = u.card.evolve;
-    if (!evo || u.evolved || u.kills < evo.kills) return;
+    const evo = u.def.evolve;
+    if (!evo || u.kills < evo.kills) return;
+    const into = CARDS[evo.into[Math.floor(Math.random() * evo.into.length)]];
+    const before = u.def.name;
     const ratio = Math.max(0.5, u.hp / u.maxHp);
-    u.def = { ...u.def, ...evo.into };
-    u.maxHp = evo.into.hp;
+    // Membros de bando evoluem mais fracos que a carta cheia
+    const scale = u.card.count > 1 ? 0.6 : 1;
+    u.def = { ...into, hp: Math.round(into.hp * scale), dmg: Math.round(into.dmg * scale) };
+    u.maxHp = u.def.hp;
     u.hp = Math.round(u.maxHp * ratio);
-    u.radius *= 1.15;
+    u.radius = u.card.count > 1 ? Math.min(into.radius, u.radius * 1.3) : into.radius;
+    u.types = into.types;
+    u.air = !!into.air;
+    u.kills = 0;
     u.evolved = true;
+    u.target = null;
     this.effects.push({ kind: 'evolve', x: u.x, y: u.y, radius: u.radius, ttl: 0.8, total: 0.8 });
-    this.events.push({ text: `${u.card.name} evoluiu para ${evo.into.name}!`, side: u.side });
+    this.events.push({ text: `${before} evoluiu para ${into.name}!`, side: u.side });
   }
 
   _towerDestroyed(t) {
@@ -445,7 +496,7 @@ class Game {
       towers: this.towers.map((t) => ({ hp: Math.round(t.hp), active: t.active, dead: t.dead, hf: r(t.hitFlash || 0) })),
       units: this.units.map((u) => ({
         id: u.id, c: u.card.id, s: u.side, x: r(u.x), y: r(u.y), hp: Math.round(u.hp), mhp: u.maxHp,
-        r: r(u.radius), d: r(u.deploy), st: r(u.stun), ev: u.evolved, a: r(u.attackAnim), hf: r(u.hitFlash || 0),
+        r: r(u.radius), d: r(u.deploy), st: r(u.stun), ev: u.evolved ? u.def.id : 0, air: u.air, fa: r(u.face), m: u.moving, at: r(u.attackT), a: r(u.attackAnim), hf: r(u.hitFlash || 0),
       })),
       projectiles: this.projectiles.map((p) => ({ x: r(p.x), y: r(p.y), type: p.type, tower: !!p.tower })),
       spells: this.spells.map((s) => ({ c: s.card.id, s: s.side, x: s.x, y: s.y, timer: r(s.timer), total: s.total })),
@@ -469,12 +520,15 @@ class Game {
       const card = CARDS[s.c];
       let u = old.get(s.id);
       if (!u) {
-        u = { id: s.id, side: s.s, card, x: s.x, y: s.y, types: card.types, air: !!card.air };
+        u = { id: s.id, side: s.s, card, x: s.x, y: s.y };
       }
-      u.def = s.ev ? { ...card, ...card.evolve.into } : card;
+      u.def = s.ev ? CARDS[s.ev] : card;
+      u.types = u.def.types;
+      u.air = s.air;
       Object.assign(u, {
         tx: s.x, ty: s.y, hp: s.hp, maxHp: s.mhp, radius: s.r, deploy: s.d,
-        stun: s.st, evolved: s.ev, attackAnim: s.a, hitFlash: s.hf,
+        face: s.fa, moving: s.m, attackT: s.at,
+        stun: s.st, evolved: !!s.ev, attackAnim: s.a, hitFlash: s.hf,
       });
       return u;
     });
@@ -485,6 +539,7 @@ class Game {
 
   // Convidado: aproxima suavemente as posições recebidas entre um snapshot e outro
   interpolate(dt) {
+    this.time += dt; // avança o relógio local até o próximo snapshot (animações)
     const k = Math.min(1, dt * 15);
     for (const u of this.units) {
       u.x += (u.tx - u.x) * k;
@@ -503,6 +558,8 @@ class Game {
       for (let j = i + 1; j < us.length; j++) {
         const b = us[j];
         if (b.dead || a.air !== b.air) continue;
+        // Inimigos que não podem atacar um ao outro (ex.: dois tanques de ginásio) passam sem se bloquear
+        if (a.side !== b.side && !this._canTarget(a, b) && !this._canTarget(b, a)) continue;
         let dx = b.x - a.x;
         let dy = b.y - a.y;
         let d = Math.hypot(dx, dy);

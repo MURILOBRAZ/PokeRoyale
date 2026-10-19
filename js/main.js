@@ -22,6 +22,7 @@ let level = 'normal';
 let endShown = false;
 let roomCode = '';
 let snapTimer = 0;
+let guestDeck = null; // deck que o convidado mandou (anfitrião guarda para a revanche)
 
 // Estado da interface
 const ui = { side: 0, selectedIndex: null, selected: null, hover: null, dragging: false };
@@ -29,15 +30,26 @@ const ui = { side: 0, selectedIndex: null, selected: null, hover: null, dragging
 // ---------- Telas ----------
 
 function showScreen(id) {
-  for (const s of ['#menu', '#lobby', '#end']) $(s).classList.toggle('hidden', s !== id);
+  for (const s of ['#menu', '#lobby', '#end', '#deck']) $(s).classList.toggle('hidden', s !== id);
 }
 
 function showMenu(error = '') {
   leaveOnline();
   game = null;
   $('#menu-error').textContent = error;
+  updateMenuDeck();
   showScreen('#menu');
 }
+
+function updateMenuDeck() {
+  $('#menu-deck-avg').textContent = `(custo médio ${fmt(deckAverageCost(loadDeck()))})`;
+}
+
+const deckEditor = new DeckEditor(() => showMenu());
+$('#btn-deck').addEventListener('click', () => {
+  deckEditor.open();
+  showScreen('#deck');
+});
 
 function showEnd(title) {
   const w = game.winner;
@@ -55,13 +67,13 @@ function showEnd(title) {
 
 // ---------- Partida ----------
 
-function beginMatch(newMode, side) {
+function beginMatch(newMode, side, decks) {
   mode = newMode;
   mySide = side;
   ui.side = side;
   renderer.viewSide = side;
   renderer.resize();
-  game = new Game();
+  game = new Game({ decks });
   bot = mode === 'bot' ? new Bot(game, 1 - side, level) : null;
   endShown = false;
   snapTimer = 0;
@@ -76,11 +88,11 @@ document.querySelectorAll('#menu [data-level]').forEach((b) =>
   b.addEventListener('click', () => {
     level = b.dataset.level;
     leaveOnline();
-    beginMatch('bot', 0);
+    beginMatch('bot', 0, [loadDeck(), randomDeck()]);
   }));
 
 $('#btn-again').addEventListener('click', () => {
-  if (mode === 'bot') beginMatch('bot', 0);
+  if (mode === 'bot') beginMatch('bot', 0, [loadDeck(), randomDeck()]);
   else if (mode === 'host' && net && net.conn) startOnlineAsHost();
 });
 $('#btn-menu').addEventListener('click', () => showMenu());
@@ -101,13 +113,22 @@ function netHandlers() {
       $('#btn-copy').style.display = '';
     },
     onConnect() {
-      if (net.isHost) startOnlineAsHost();
-      else setLobbyStatus('Conectado! Iniciando', true);
+      if (net.isHost) {
+        setLobbyStatus('Amigo conectado! Iniciando', true);
+      } else {
+        // O anfitrião começa a partida assim que recebe o deck do convidado
+        net.send({ t: 'deck', deck: loadDeck() });
+        setLobbyStatus('Conectado! Iniciando', true);
+      }
     },
     onData(msg) {
       if (!msg || typeof msg !== 'object') return;
       if (net.isHost) {
         if (msg.t === 'deploy' && game && mode === 'host') game.deploy(1, msg.i, msg.x, msg.y);
+        if (msg.t === 'deck' && !game) {
+          guestDeck = isValidDeck(msg.deck) ? msg.deck : [...DEFAULT_DECK];
+          startOnlineAsHost();
+        }
         return;
       }
       if (msg.t === 'start') beginMatch('guest', 1);
@@ -170,7 +191,7 @@ function joinRoom(text) {
 }
 
 function startOnlineAsHost() {
-  beginMatch('host', 0);
+  beginMatch('host', 0, [loadDeck(), guestDeck || [...DEFAULT_DECK]]);
   net.send({ t: 'start' });
 }
 
@@ -212,7 +233,7 @@ let handSignature = '';
 
 function cardHTML(id) {
   const c = CARDS[id];
-  return `<img src="${cardImage(c)}" alt=""><div class="cost">${c.cost}</div><div class="name">${c.name}</div><div class="lock"></div>`;
+  return `${cardImgTag(c)}<div class="cost">${c.cost}</div><div class="name">${c.name}</div><div class="lock"></div>`;
 }
 
 function buildHand() {
@@ -407,6 +428,7 @@ function frame() {
 
 // Arena vazia de fundo no menu
 const demoGame = new Game();
+updateMenuDeck();
 renderer.resize();
 requestAnimationFrame(frame);
 

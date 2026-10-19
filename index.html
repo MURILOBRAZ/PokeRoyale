@@ -47,6 +47,7 @@
           <button data-level="normal" class="primary">Normal</button>
           <button data-level="hard">Difícil</button>
         </div>
+        <button id="btn-deck" class="wide">🃏 Meu deck <span id="menu-deck-avg"></span></button>
         <h2>Jogar com amigos</h2>
         <button id="btn-host" class="wide primary">🌐 Criar sala</button>
         <div class="join-row">
@@ -79,6 +80,33 @@
       </div>
     </section>
 
+    <section id="deck" class="overlay hidden">
+      <div class="panel deck-panel">
+        <div class="deck-head">
+          <h2>Meu deck</h2>
+          <span id="deck-avg"></span>
+          <button id="deck-close" class="icon" title="Fechar sem salvar">✕</button>
+        </div>
+        <div id="deck-slots"></div>
+        <div class="deck-filters">
+          <input id="deck-search" placeholder="Buscar Pokémon ou nº…" autocomplete="off" spellcheck="false">
+          <select id="deck-type"></select>
+          <select id="deck-sort">
+            <option value="dex">Nº</option>
+            <option value="cost">Custo</option>
+            <option value="name">Nome</option>
+          </select>
+        </div>
+        <div id="deck-grid"></div>
+        <div id="deck-info"><p class="hint">Toque numa carta para ver os detalhes.</p></div>
+        <div class="btn-row">
+          <button id="deck-random">🎲 Aleatório</button>
+          <button id="deck-default">Padrão</button>
+          <button id="deck-save" class="primary">Salvar</button>
+        </div>
+      </div>
+    </section>
+
     <section id="end" class="overlay hidden">
       <div class="panel">
         <h1 id="end-title">Vitória!</h1>
@@ -92,11 +120,14 @@
   </div>
 
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/pokedex.js"></script>
+  <script src="js/sprites.js"></script>
   <script src="js/data.js"></script>
   <script src="js/game.js"></script>
   <script src="js/bot.js"></script>
   <script src="js/render.js"></script>
   <script src="js/net.js"></script>
+  <script src="js/deck.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

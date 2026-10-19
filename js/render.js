@@ -3,6 +3,14 @@
 
 const TEAM = { me: '#3b82f6', enemy: '#ef4444' };
 
+// Escala dos sprites do SpriteCollab: pixels da folha por tile da arena.
+// Pokémon gigantes (Onix, Gyarados...) são reduzidos para não cobrir a arena.
+const PMD_PIXELS_PER_TILE = 16;
+const PMD_MAX_WALK_HEIGHT = 64;
+// Octante da direção (0 = leste, sentido horário na tela) -> linha da folha do SpriteCollab
+const PMD_DIR_ROWS = [2, 1, 0, 7, 6, 5, 4, 3];
+const animLength = (anim) => anim.d.reduce((a, b) => a + b, 0);
+
 const imageCache = {};
 function getImage(url) {
   let entry = imageCache[url];
@@ -251,15 +259,25 @@ class Renderer {
 
     ctx.save();
     if (u.deploy > 0) ctx.globalAlpha = 0.5;
-    const size = s * (2.4 + u.radius * 2.4);
-    const bounce = u.attackAnim > 0 ? -s * 0.12 : 0;
-    const img = getImage(u.side === this.viewSide ? spriteBack(u.def.dex) : spriteFront(u.def.dex));
-    const top = y - size * 0.8 - lift + bounce;
-    if (img) {
-      ctx.imageSmoothingEnabled = false;
-      if (u.hitFlash > 0) ctx.filter = 'brightness(1.9)';
-      ctx.drawImage(img, x - size / 2, top, size, size);
+    ctx.imageSmoothingEnabled = false;
+    if (u.hitFlash > 0) ctx.filter = 'brightness(1.9)';
+    const frame = this._unitFrame(u, game);
+    const fallback = !frame && getImage(spriteFront(u.def.dex));
+    let top;
+    if (frame) {
+      // O centro do quadro é o ponto no chão onde o Pokémon está
+      const dw = frame.w * frame.k;
+      const dh = frame.h * frame.k;
+      ctx.drawImage(frame.img, frame.sx, frame.sy, frame.w, frame.h, x - dw / 2, y - dh / 2 - lift, dw, dh);
+      top = y - frame.walkH * frame.k * 0.5 - lift; // estável: não pula com a animação de ataque
+    } else if (fallback) {
+      // Folha animada ainda carregando: usa o sprite estático da PokéAPI
+      const size = s * (2.4 + u.radius * 2.4);
+      top = y - size * 0.8 - lift;
+      ctx.drawImage(fallback, x - size / 2, top, size, size);
+      top += size * 0.18;
     } else {
+      top = y - r * 2 - lift;
       ctx.fillStyle = TYPE_COLORS[u.def.type];
       ctx.beginPath();
       ctx.arc(x, y - r - lift, r, 0, Math.PI * 2);
@@ -280,7 +298,7 @@ class Renderer {
       ctx.stroke();
     }
 
-    const barY = top + size * 0.18;
+    const barY = top - s * 0.25;
     this._bar(x, barY, Math.max(s * 0.9, r * 1.8), u.hp / u.maxHp, color);
     if (u.evolved) {
       ctx.font = `${s * 0.35}px serif`;
@@ -292,8 +310,46 @@ class Renderer {
       ctx.font = `${s * 0.5}px serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('💫', x + r, top + size * 0.3);
+      ctx.fillText('💫', x + r, top + s * 0.4);
     }
+  }
+
+  // Quadro atual da animação: ataque (logo após atacar), andar (em movimento) ou parado
+  _unitFrame(u, game) {
+    const sp = SPRITES[u.def.dex];
+    if (!sp) return null;
+    const atk = u.def.range > 1.6 ? sp.shoot || sp.attack : sp.attack;
+    const since = (game.time - (u.attackT ?? -99)) * 60; // em quadros de 60 fps, como no SpriteCollab
+    let anim;
+    let tick;
+    if (!(u.deploy > 0) && since >= 0 && since < animLength(atk)) {
+      anim = atk;
+      tick = since;
+    } else {
+      anim = u.moving && !(u.deploy > 0) && !(u.stun > 0) ? sp.walk : sp.idle;
+      tick = ((performance.now() / 1000) * 60 + u.id * 13) % animLength(anim);
+    }
+    let i = 0;
+    while (i < anim.d.length - 1 && tick >= anim.d[i]) {
+      tick -= anim.d[i];
+      i++;
+    }
+    return this._sheetFrame(u.def.dex, anim, i, this._screenAngle(u), sp.walk.h);
+  }
+
+  _screenAngle(u) {
+    const a = u.face ?? (u.side === 0 ? -Math.PI / 2 : Math.PI / 2);
+    return this.viewSide === 1 ? a + Math.PI : a;
+  }
+
+  _sheetFrame(dex, anim, index, angle, walkH) {
+    const img = getImage(animSheetUrl(dex, anim));
+    if (!img) return null;
+    const rows = Math.round(img.naturalHeight / anim.h);
+    const oct = ((Math.round(angle / (Math.PI / 4)) % 8) + 8) % 8;
+    const row = rows >= 8 ? PMD_DIR_ROWS[oct] : 0;
+    const k = (this.scale / PMD_PIXELS_PER_TILE) * Math.min(1, PMD_MAX_WALK_HEIGHT / walkH);
+    return { img, sx: index * anim.w, sy: row * anim.h, w: anim.w, h: anim.h, k, walkH };
   }
 
   _drawProjectile(p) {
@@ -412,9 +468,12 @@ class Renderer {
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      const img = getImage(spriteBack(card.dex));
-      const size = s * (2.4 + card.radius * 2.4);
-      if (img) ctx.drawImage(img, x - size / 2, y - size * 0.8, size, size);
+      const sp = SPRITES[card.dex];
+      const f = sp && this._sheetFrame(card.dex, sp.idle, 0, this.viewSide === 0 ? -Math.PI / 2 : Math.PI / 2, sp.walk.h);
+      if (f) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(f.img, f.sx, f.sy, f.w, f.h, x - (f.w * f.k) / 2, y - (f.h * f.k) / 2, f.w * f.k, f.h * f.k);
+      }
       ctx.globalAlpha = 1;
       ctx.strokeStyle = valid ? '#ffffff' : '#ff4040';
       ctx.lineWidth = 2;
