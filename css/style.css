@@ -360,3 +360,53 @@ body { position: fixed; inset: 0; width: 100%; }
    em vez de rolar a lista (ex.: ofertas da loja). Imagens decorativas também não capturam o toque. */
 img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; }
 .offer-art, .offer-art img, .mini-deck img, .rank-row img, .journey-step img, .reward-card img, .profile-card img { pointer-events: none; }
+
+/* ---------- Emotes na partida ---------- */
+.emote-btn {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 3;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 22px;
+  background: rgba(17, 26, 52, 0.85);
+  border: 2px solid #7fb0ff;
+  box-shadow: 0 3px 0 #0b1124;
+}
+.emote-menu {
+  position: absolute;
+  left: 8px;
+  bottom: 62px;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(2, 64px);
+  gap: 6px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(17, 26, 52, 0.95);
+  border: 2px solid #2f4a8a;
+}
+.emote-menu button { width: 64px; height: 64px; padding: 4px; border-radius: 12px; background: #fff; box-shadow: 0 3px 0 #9aa6c8; }
+.emote-menu img { width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+
+/* ---------- Sair da partida ---------- */
+.leave-btn {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 20px;
+  background: rgba(17, 26, 52, 0.85);
+  border: 2px solid #ff8a80;
+  box-shadow: 0 3px 0 #0b1124;
+}
+button.danger { background: linear-gradient(180deg, #e2453c, #b62c25); box-shadow: 0 4px 0 #7a1712; color: #fff; }
+#leave .panel { max-width: 380px; }
+#leave .sub { margin: 10px 0 16px; }

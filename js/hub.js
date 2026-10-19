@@ -147,7 +147,7 @@ function renderHub() {
   const u = Account.user;
   viewArena = Math.min(viewArena, ARENAS.length - 1);
   $('#hub-name').textContent = u.name;
-  $('#hub-avatar').src = cardImage(CARDS[u.starter]);
+  $('#hub-avatar').src = cardImage(CARDS[(u.look && u.look.avatar) || u.starter] || CARDS[u.starter]);
   $('#hub-level').textContent = u.level;
   const cur = TRAINER_XP[u.level - 1];
   const next = TRAINER_XP[u.level];
@@ -226,7 +226,7 @@ $('#hub-journey').addEventListener('click', (e) => {
 
 function openCollection() {
   setNav('collection');
-  deckEditor.open({ account: true });
+  deckEditor.open({ account: true, sub: 'cards' });
   showScreen('#deck');
 }
 
@@ -404,14 +404,14 @@ async function showRanking() {
     const medal = ['🥇', '🥈', '🥉'];
     const row = (p) => `<div class="rank-row ${p.me ? 'me' : ''}">
         <span class="rank-pos">${medal[p.rank - 1] || `#${p.rank}`}</span>
-        <img src="${cardImage(CARDS[p.starter] || CARDS.pikachu)}" alt="">
-        <span class="rank-name">${escapeHtml(p.name)}${p.me ? ' <em>(você)</em>' : ''}<small>Nv. ${p.level} · ${ARENAS[p.arena].short}</small></span>
+        <img src="${cardImage(CARDS[p.avatar] || CARDS[p.starter] || CARDS.pikachu)}" alt="">
+        <span class="rank-name">${escapeHtml(p.name)}${p.me ? ' <em>(você)</em>' : ''}<small>${COSMETICS[p.title] ? `${COSMETICS[p.title].name} · ` : ''}Nv. ${p.level} · ${ARENAS[p.arena].short}</small></span>
         <span class="rank-trophies">🏆 ${fmtNum(p.trophies)}</span>
       </div>`;
     let html = r.top.map(row).join('');
     if (!r.top.some((p) => p.me)) {
       const u = Account.user;
-      html += `<div class="rank-gap">⋯</div>${row({ rank: r.me.rank, name: u.name, starter: u.starter, level: u.level, arena: u.arena, trophies: r.me.trophies, me: true })}`;
+      html += `<div class="rank-gap">⋯</div>${row({ rank: r.me.rank, name: u.name, starter: u.starter, avatar: u.look.avatar, title: u.look.title, level: u.level, arena: u.arena, trophies: r.me.trophies, me: true })}`;
     }
     list.innerHTML = html || '<p class="sub small">Ninguém no ranking ainda.</p>';
     $('#ranking-summary').textContent = `Você está em ${fmtNum(r.me.rank)}º de ${fmtNum(r.total)} treinadores.`;
@@ -424,7 +424,8 @@ async function showRanking() {
 
 function showSettings() {
   const u = Account.user;
-  $('#set-avatar').src = cardImage(CARDS[u.starter]);
+  $('#set-avatar').src = cardImage(CARDS[u.look.avatar] || CARDS[u.starter]);
+  renderLookForm();
   $('#set-name').textContent = u.name;
   $('#set-email').textContent = u.email;
   $('#set-stats').textContent = `Nv. ${u.level} · 🏆 ${fmtNum(u.trophies)} (recorde ${fmtNum(u.bestTrophies)}) · ${ARENAS[u.arena].name}`;
@@ -435,6 +436,43 @@ function showSettings() {
   $('#msg-pass').textContent = '';
   openDropdown('#settings');
 }
+
+function ownsCosmetic(id) {
+  return hasCosmetic(id, Account.user.arena, Account.state.cosmetics || []);
+}
+
+function renderLookForm() {
+  const look = Account.user.look;
+  const opts = (list, current) => list.map(([value, label]) => `<option value="${value}" ${value === current ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+  const avatars = Account.ownedIds().filter((id) => CARDS[id].kind === 'unit').sort((x, y) => CARDS[x].dex - CARDS[y].dex);
+  $('#look-avatar').innerHTML = opts(avatars.map((id) => [id, `#${CARDS[id].dex} ${CARDS[id].name}`]), look.avatar);
+  for (const kind of ['title', 'skin', 'emotes']) {
+    const mine = Object.entries(COSMETICS).filter(([id, c]) => c.kind === kind && ownsCosmetic(id));
+    if ($(`#look-${kind}`)) $(`#look-${kind}`).innerHTML = opts(mine.map(([id, c]) => [id, c.name]), look[kind]);
+  }
+}
+
+$('#look-skin-open').addEventListener('click', () => {
+  closeDropdown();
+  setNav('collection');
+  deckEditor.open({ account: true, sub: 'skins' });
+  showScreen('#deck');
+});
+
+document.querySelectorAll('#look-avatar, #look-title, #look-emotes').forEach((sel) => {
+  sel.addEventListener('change', async () => {
+    const kind = sel.id.replace('look-', '');
+    try {
+      await Account.api('look', { [kind]: sel.value });
+      $('#set-avatar').src = cardImage(CARDS[Account.user.look.avatar] || CARDS[Account.user.starter]);
+      renderHub();
+      formMsg($('#msg-look'), 'Visual atualizado!', true);
+    } catch (err) {
+      formMsg($('#msg-look'), err.message, false);
+      renderLookForm();
+    }
+  });
+});
 
 function formMsg(el, text, good) {
   el.textContent = text;
@@ -639,9 +677,134 @@ function renderShop() {
       </div>`;
     }).join('')}</div>`;
   const offers = shopData.offers;
-  $('#shop-body').innerHTML = section('Ofertas do dia', 'o preço sobe a cada cópia', offers.filter((o) => o.kind === 'card'))
+  $('#shop-body').innerHTML = safariBanner()
+    + section('Ofertas do dia', 'o preço sobe a cada cópia', offers.filter((o) => o.kind === 'card'))
     + section('Balls e itens do dia', '1 por dia', offers.filter((o) => o.kind !== 'card' && !o.weekly))
-    + section('Especiais da semana', 'com Fichas 🪙', offers.filter((o) => o.weekly));
+    + section('Especiais da semana', 'com Fichas 🪙', offers.filter((o) => o.weekly))
+    + cosmeticsSection();
+}
+
+// ---------- Zona Safári ----------
+
+let safariData = null;
+
+function safariBanner() {
+  const s = safariData;
+  let action = '';
+  if (s && !s.run) {
+    action = `<button id="safari-enter" class="primary" ${Account.user.gold < s.entryGold ? 'disabled' : ''}>Entrar · 💰 ${fmtNum(s.entryGold)}</button>`;
+  } else if (s && !s.run.done) {
+    action = '<button id="safari-enter" class="primary">Continuar</button>';
+  } else if (s) {
+    action = '<button id="safari-enter">Ver resultado</button>';
+  }
+  return `<div class="safari-banner">
+    <img src="${itemIcon('safari-ball')}" alt="">
+    <div><b>Zona Safári</b><small>Capture Pokémon das suas arenas com Isca, Pedra e Safari Balls. 1 entrada por dia.</small></div>
+    ${action}
+  </div>`;
+}
+
+const safariPortrait = (card, mood) => `${SPRITE_COLLAB}/portrait/${String(CARDS[card].dex).padStart(4, '0')}/${mood}.png`;
+
+function renderSafari(flash) {
+  const run = safariData.run;
+  const box = $('#safari-body');
+  if (run.done) {
+    const caught = run.caught.map((c) => {
+      const card = CARDS[c.card];
+      return `<div class="card small reward-card" style="--type:${TYPE_COLORS[card.type]};--rarity:${RARITIES[rarityOf(card)].color}">${cardImgTag(card)}<div class="count">×${c.copies}</div><div class="name">${card.name}</div></div>`;
+    }).join('');
+    box.innerHTML = `<div class="safari-end">
+      <h3>${run.caught.length ? `Você pegou ${run.caught.length} Pokémon!` : 'Nenhum Pokémon desta vez…'}</h3>
+      <div class="safari-caught">${caught}</div>
+      <p class="sub small">A Zona Safári abre de novo amanhã.</p>
+      <button id="safari-done" class="wide primary">Voltar à loja</button>
+    </div>`;
+    return;
+  }
+  const card = CARDS[run.wild.card];
+  const mood = run.wild.angry ? 'Angry' : run.wild.eating ? 'Happy' : 'Normal';
+  const status = run.wild.angry ? '💢 Bravo: mais fácil de pegar, mais fácil de fugir'
+    : run.wild.eating ? '🍓 Comendo: mais difícil de pegar, menos chance de fugir' : 'Atento';
+  const rarity = RARITIES[rarityOf(card)];
+  box.innerHTML = `<div class="safari-scene">
+      <div class="safari-info">Encontro ${run.encounter}/${SAFARI.encounters}
+        <span class="safari-balls">${`<img src="${itemIcon('safari-ball')}" alt="">`.repeat(run.balls)}<b>×${run.balls}</b></span></div>
+      <div class="safari-wild ${flash || ''}" style="--type:${TYPE_COLORS[card.type]}">
+        <img src="${safariPortrait(card.id, mood)}" alt="" onerror="this.onerror=null;this.src='${cardImage(card)}'">
+      </div>
+      <h3>${card.name} <small style="color:${rarity.color}">${rarity.name}</small> ${card.types.map(typeChip).join('')}</h3>
+      <p class="safari-status">${status}</p>
+      <div class="safari-actions">
+        <button data-safari="ball" class="primary"><img src="${itemIcon('safari-ball')}" alt=""> Safari Ball</button>
+        <button data-safari="bait">🍓 Isca</button>
+        <button data-safari="rock">🪨 Pedra</button>
+        <button data-safari="run">🏃 Fugir</button>
+      </div>
+      <div class="safari-log">${run.log.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}</div>
+    </div>`;
+}
+
+async function showSafari() {
+  setNav('shop');
+  try {
+    if (!safariData) safariData = await Account.api('safari');
+    if (!safariData.run) {
+      const r = await Account.api('safari-start', {});
+      safariData.run = r.run;
+      renderHub();
+    }
+    showScreen('#safari');
+    renderSafari();
+  } catch (err) {
+    formMsg($('#shop-msg'), err.message, false);
+  }
+}
+
+$('#safari-body').addEventListener('click', async (e) => {
+  if (e.target.closest('#safari-done')) return showShop();
+  const btn = e.target.closest('[data-safari]');
+  if (!btn || hubBusy) return;
+  hubBusy = true;
+  document.querySelectorAll('[data-safari]').forEach((b) => (b.disabled = true));
+  try {
+    const r = await Account.api('safari-act', { action: btn.dataset.safari });
+    const wasThrow = btn.dataset.safari === 'ball';
+    safariData.run = r.run;
+    if (r.caught) renderHub();
+    renderSafari(wasThrow ? (r.caught ? 'caught' : 'escaped') : '');
+  } catch (err) {
+    renderSafari();
+    $('#safari-body').insertAdjacentHTML('afterbegin', `<p class="error">${escapeHtml(err.message)}</p>`);
+  } finally {
+    hubBusy = false;
+  }
+});
+$('#safari-back').addEventListener('click', () => showShop());
+
+const KIND_NAMES = { title: 'Título', skin: 'Ginásios', emotes: 'Emotes' };
+
+function cosmeticPreview(id, c) {
+  if (c.kind === 'emotes') return `<img src="${emotePortraitUrl(id, 'Happy')}" alt="">`;
+  if (c.kind === 'skin') return `<img src="assets/ginasios/lider-azul.webp" alt="" style="filter:${c.filter || 'none'} drop-shadow(0 0 6px ${c.glow || 'transparent'})">`;
+  return '<span class="title-badge">🏷️</span>';
+}
+
+function cosmeticsSection() {
+  const u = Account.user;
+  const forSale = Object.entries(COSMETICS).filter(([, c]) => c.fichas);
+  return `<h3 class="shop-title">Visual <small>com Fichas 🪙 · não muda atributos · equipe em Minha conta</small></h3>
+    <div class="offer-grid">${forSale.map(([id, c]) => {
+      const have = ownsCosmetic(id);
+      const afford = (u.fichas || 0) >= c.fichas;
+      return `<div class="offer kind-cosmetic ${have ? 'sold-out' : ''}">
+        <div class="offer-art">${cosmeticPreview(id, c)}</div>
+        <b class="offer-name">${escapeHtml(c.name)}</b>
+        <small class="offer-info">${KIND_NAMES[c.kind]}</small>
+        <button data-cosmetic="${id}" ${have || !afford ? 'disabled' : ''}>${have ? 'Você tem' : `🪙 ${fmtNum(c.fichas)}`}</button>
+      </div>`;
+    }).join('')}</div>`;
 }
 
 function updateShopClock() {
@@ -665,7 +828,7 @@ async function showShop() {
   $('#shop-msg').textContent = '';
   if (!shopData) $('#shop-body').innerHTML = '<p class="sub small waiting">Abrindo a loja</p>';
   try {
-    shopData = await Account.api('shop');
+    [shopData, safariData] = await Promise.all([Account.api('shop'), Account.api('safari')]);
     renderShop();
   } catch (err) {
     $('#shop-body').innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
@@ -673,6 +836,26 @@ async function showShop() {
 }
 
 $('#shop-body').addEventListener('click', async (e) => {
+  const cos = e.target.closest('[data-cosmetic]');
+  if (cos && !cos.disabled && !hubBusy) {
+    hubBusy = true;
+    cos.disabled = true;
+    try {
+      await Account.api('cosmetic-buy', { id: cos.dataset.cosmetic });
+      renderHub();
+      renderShop();
+      formMsg($('#shop-msg'), `${COSMETICS[cos.dataset.cosmetic].name} é seu! Equipe em Minha conta (toque no seu nome).`, true);
+    } catch (err) {
+      formMsg($('#shop-msg'), err.message, false);
+    } finally {
+      hubBusy = false;
+    }
+    return;
+  }
+  if (e.target.closest('#safari-enter')) {
+    showSafari();
+    return;
+  }
   const btn = e.target.closest('[data-offer]');
   if (!btn || btn.disabled || hubBusy) return;
   hubBusy = true;

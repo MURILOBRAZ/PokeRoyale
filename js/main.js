@@ -38,13 +38,13 @@ function showScreen(id) {
   const tab = Account.loggedIn && TAB_SCREENS.includes(id);
   dockTabs(Account.loggedIn);
   const keepHub = tab || (Account.loggedIn && ['#reward', '#ranking', '#settings'].includes(id));
-  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends', '#ranking', '#settings', '#shop']) {
+  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends', '#ranking', '#settings', '#shop', '#safari', '#leave']) {
     $(s).classList.toggle('hidden', s !== id && !(keepHub && s === '#hub'));
   }
   $('.hub-main').classList.toggle('hidden', tab);
 }
 
-const TAB_SCREENS = ['#deck', '#road', '#friends', '#menu', '#lobby', '#shop'];
+const TAB_SCREENS = ['#deck', '#road', '#friends', '#menu', '#lobby', '#shop', '#safari'];
 
 // Move essas telas para dentro do início (logado) ou de volta para a página (sem conta)
 function dockTabs(on) {
@@ -115,7 +115,98 @@ function onMatchOver(title) {
 
 // ---------- Partida ----------
 
-// opts: levels/trainers (níveis das cartas e dos ginásios), ranked (vale troféus), arena (visual)
+// ---------- Emotes e visual na partida (cosméticos) ----------
+
+const battleLook = { packs: ['emotes:pikachu', 'emotes:pikachu'], bubbles: [], lastSent: 0, crowns: [0, 0] };
+const EMOTE_PACKS = Object.keys(COSMETICS).filter((id) => COSMETICS[id].kind === 'emotes');
+const SKIN_IDS = Object.keys(COSMETICS).filter((id) => COSMETICS[id].kind === 'skin');
+
+function myLook() {
+  return Account.loggedIn && Account.user.look ? Account.user.look : DEFAULT_LOOK;
+}
+
+function validLook(look) {
+  const ok = (id, kind) => COSMETICS[id] && COSMETICS[id].kind === kind;
+  return {
+    skin: look && ok(look.skin, 'skin') ? look.skin : 'skin:classico',
+    emotes: look && ok(look.emotes, 'emotes') ? look.emotes : 'emotes:pikachu',
+  };
+}
+
+function showEmote(side, mood) {
+  if (!EMOTE_MOODS.some((m) => m.id === mood)) return;
+  battleLook.bubbles = battleLook.bubbles.filter((b) => b.side !== side);
+  battleLook.bubbles.push({ side, pack: battleLook.packs[side], mood, start: performance.now() });
+}
+
+function sendEmote(mood) {
+  const now = performance.now();
+  // Trocar de emote substitui o balão na hora; o intervalo mínimo só evita toque duplo sem querer
+  if (!game || game.over || now - battleLook.lastSent < 400) return;
+  battleLook.lastSent = now;
+  showEmote(mySide, mood);
+  if (net && (mode === 'host' || mode === 'guest')) net.send({ t: 'emote', mood });
+}
+
+function buildEmoteMenu() {
+  const pack = battleLook.packs[mySide];
+  $('#emote-menu').innerHTML = EMOTE_MOODS.map((m) => `<button data-mood="${m.id}" title="${m.name}"><img src="${emotePortraitUrl(pack, m.id)}" alt="${m.name}"></button>`).join('');
+}
+
+$('#emote-btn').addEventListener('click', () => $('#emote-menu').classList.toggle('hidden'));
+$('#emote-menu').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mood]');
+  if (!b) return;
+  sendEmote(b.dataset.mood);
+  $('#emote-menu').classList.add('hidden');
+});
+
+// ---------- Sair da partida ----------
+// Valendo troféus conta como derrota; online, o amigo vence; no treino só encerra.
+
+function leaveWarning() {
+  if (ranked) {
+    const loss = TROPHIES[ranked.mode] ? TROPHIES[ranked.mode].loss : 0;
+    return `A partida vale troféus: sair conta como <b>derrota</b> (${loss} 🏆).`;
+  }
+  if (mode === 'host' || mode === 'guest') return 'Seu amigo vence a partida e a sala é encerrada.';
+  return 'A partida de treino será encerrada.';
+}
+
+$('#leave-btn').addEventListener('click', () => {
+  if (!game || game.over) return;
+  clearSelection();
+  $('#emote-menu').classList.add('hidden');
+  $('#leave-text').innerHTML = leaveWarning();
+  $('#leave').classList.remove('hidden'); // a partida continua rodando por trás
+});
+$('#leave-cancel').addEventListener('click', () => $('#leave').classList.add('hidden'));
+$('#leave-confirm').addEventListener('click', () => {
+  $('#leave').classList.add('hidden');
+  if (!game || game.over) return;
+  game.over = true;
+  game.winner = 1 - mySide; // desistência: o outro lado vence (registra derrota se valia troféus)
+  const online = mode === 'host' || mode === 'guest';
+  onMatchOver('Você saiu da partida');
+  if (online) leaveOnline(); // o amigo recebe "Seu amigo saiu"
+});
+
+// O bot reage aos ginásios derrubados e ao fim da partida
+function botReact(mood, chance = 1) {
+  if (mode !== 'bot' || !game || Math.random() > chance) return;
+  setTimeout(() => game && showEmote(1 - mySide, mood), 500 + Math.random() * 700);
+}
+
+function checkBotReactions() {
+  if (mode !== 'bot') return;
+  const [me, bot] = [game.crowns[mySide], game.crowns[1 - mySide]];
+  if (bot > battleLook.crowns[1]) botReact('Happy', 0.8);
+  if (me > battleLook.crowns[0]) botReact(Math.random() < 0.5 ? 'Angry' : 'Crying', 0.8);
+  battleLook.crowns = [me, bot];
+}
+
+// opts: levels/trainers (níveis das cartas e dos ginásios), ranked (vale troféus), arena (visual),
+// skins/packs (visual dos ginásios e emotes de cada lado)
 function beginMatch(newMode, side, decks, opts = {}) {
   mode = newMode;
   mySide = side;
@@ -123,7 +214,15 @@ function beginMatch(newMode, side, decks, opts = {}) {
   renderer.viewSide = side;
   renderer.setArena(opts.arena || 0);
   renderer.resize();
-  game = new Game({ decks, levels: opts.levels, trainers: opts.trainers });
+  const mine = validLook(myLook());
+  const rivalPack = EMOTE_PACKS[Math.floor(Math.random() * EMOTE_PACKS.length)];
+  const skins = opts.skins || (side === 0 ? [mine.skin, 'skin:classico'] : ['skin:classico', mine.skin]);
+  battleLook.packs = opts.packs || (side === 0 ? [mine.emotes, rivalPack] : [rivalPack, mine.emotes]);
+  battleLook.bubbles = [];
+  battleLook.crowns = [0, 0];
+  game = new Game({ decks, levels: opts.levels, trainers: opts.trainers, skins });
+  buildEmoteMenu();
+  $('#emote-menu').classList.add('hidden');
   ranked = opts.ranked || null;
   endReward = null;
   bot = mode === 'bot' ? new Bot(game, 1 - side, level) : null;
@@ -176,12 +275,17 @@ function netHandlers() {
           levels: Account.loggedIn ? Account.levelsFor(deck) : {},
           trainer: Account.loggedIn ? Account.user.level : 1,
           account: Account.loggedIn,
+          look: validLook(myLook()),
         });
         setLobbyStatus('Conectado! Iniciando', true);
       }
     },
     onData(msg) {
       if (!msg || typeof msg !== 'object') return;
+      if (msg.t === 'emote' && game) {
+        showEmote(1 - mySide, msg.mood);
+        return;
+      }
       if (net.isHost) {
         if (msg.t === 'deploy' && game && mode === 'host') game.deploy(1, msg.i, msg.x, msg.y);
         if (msg.t === 'deck' && !game) {
@@ -191,7 +295,9 @@ function netHandlers() {
         return;
       }
       if (msg.t === 'start') {
-        beginMatch('guest', 1, undefined, { arena: msg.arena, ranked: msg.ranked && Account.loggedIn ? { mode: 'online' } : null });
+        const skins = Array.isArray(msg.skins) ? msg.skins.map((id) => (SKIN_IDS.includes(id) ? id : 'skin:classico')) : undefined;
+        const packs = Array.isArray(msg.packs) ? msg.packs.map((id) => (EMOTE_PACKS.includes(id) ? id : 'emotes:pikachu')) : undefined;
+        beginMatch('guest', 1, undefined, { arena: msg.arena, ranked: msg.ranked && Account.loggedIn ? { mode: 'online' } : null, skins, packs });
         registerOnlineMatch();
       }
       else if (msg.t === 'snap' && game && mode === 'guest') {
@@ -271,19 +377,22 @@ function sanitizeGuest(msg) {
     if (Number.isInteger(lvl) && lvl >= startLevel(CARDS[id]) && lvl <= MAX_CARD_LEVEL) levels[id] = lvl;
   }
   const trainer = Number.isInteger(msg.trainer) ? Math.min(MAX_TRAINER_LEVEL, Math.max(1, msg.trainer)) : 1;
-  return { deck, levels, trainer, account: !!msg.account };
+  return { deck, levels, trainer, account: !!msg.account, look: validLook(msg.look) };
 }
 
 function startOnlineAsHost() {
   const deck = myDeck();
-  const g = guestInfo || { deck: [...DEFAULT_DECK], levels: {}, trainer: 1, account: false };
+  const g = guestInfo || { deck: [...DEFAULT_DECK], levels: {}, trainer: 1, account: false, look: validLook(null) };
+  const mine = validLook(myLook());
+  const skins = [mine.skin, g.look.skin];
+  const packs = [mine.emotes, g.look.emotes];
   // Vale troféus só com os dois logados e a opção marcada; amistoso usa os stats base
   const isRanked = Account.loggedIn && g.account && $('#hub-ranked').checked;
   const arena = Account.loggedIn ? Account.user.arena : 0;
   beginMatch('host', 0, [deck, g.deck], isRanked
-    ? { levels: [Account.levelsFor(deck), g.levels], trainers: [Account.user.level, g.trainer], ranked: { mode: 'online' }, arena }
-    : { arena });
-  net.send({ t: 'start', ranked: isRanked, arena });
+    ? { levels: [Account.levelsFor(deck), g.levels], trainers: [Account.user.level, g.trainer], ranked: { mode: 'online' }, arena, skins, packs }
+    : { arena, skins, packs });
+  net.send({ t: 'start', ranked: isRanked, arena, skins, packs });
   registerOnlineMatch();
 }
 
@@ -530,7 +639,11 @@ function simulate() {
     }
   }
 
-  if (game.over && !endShown) onMatchOver();
+  if (!game.over) checkBotReactions();
+  if (game.over && !endShown) {
+    if (mode === 'bot') botReact(game.winner === mySide ? 'Crying' : game.winner === -1 ? 'Surprised' : 'Happy');
+    onMatchOver();
+  }
 }
 setInterval(simulate, 1000 / 60);
 
@@ -539,7 +652,10 @@ function frame() {
     if (ui.selectedIndex !== null) ui.selected = game.players[mySide].hand[ui.selectedIndex];
     updateHud();
   }
-  renderer.draw(game || demoGame, game ? ui : {});
+  battleLook.bubbles = battleLook.bubbles.filter((b) => performance.now() - b.start < 2400);
+  $('#emote-btn').classList.toggle('hidden', !game || game.over);
+  $('#leave-btn').classList.toggle('hidden', !game || game.over);
+  renderer.draw(game || demoGame, game ? { ...ui, bubbles: battleLook.bubbles } : {});
   requestAnimationFrame(frame);
 }
 

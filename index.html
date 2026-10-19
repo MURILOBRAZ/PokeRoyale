@@ -24,6 +24,9 @@
 
     <main id="arena-wrap">
       <canvas id="arena"></canvas>
+      <button id="emote-btn" class="emote-btn hidden" title="Emotes" aria-label="Emotes">💬</button>
+      <button id="leave-btn" class="leave-btn hidden" title="Sair da partida" aria-label="Sair da partida">🏳️</button>
+      <div id="emote-menu" class="emote-menu hidden"></div>
       <div id="banner"></div>
     </main>
 
@@ -217,6 +220,16 @@
       </div>
     </section>
 
+    <section id="safari" class="overlay hidden">
+      <div class="panel safari-panel">
+        <div class="deck-head">
+          <h2>🌿 Zona Safári</h2>
+          <button id="safari-back" class="icon" title="Voltar à loja" aria-label="Voltar à loja">↩</button>
+        </div>
+        <div id="safari-body"></div>
+      </div>
+    </section>
+
     <section id="ranking" class="overlay dropdown dropdown-right hidden">
       <div class="panel dropdown-panel">
         <div class="deck-head">
@@ -241,6 +254,15 @@
             <small id="set-email"></small>
             <small id="set-stats"></small>
           </div>
+        </div>
+        <div class="settings-form look-form">
+          <h3>Visual <small>(não muda nenhum atributo)</small></h3>
+          <label>Avatar <select id="look-avatar"></select></label>
+          <label>Título no ranking <select id="look-title"></select></label>
+          <label>Ginásios na partida <button type="button" id="look-skin-open">🏰 Ver e trocar na Coleção</button></label>
+          <label>Emotes na partida <select id="look-emotes"></select></label>
+          <p class="sub small">Mais títulos, ginásios e emotes na Loja, com Fichas 🪙.</p>
+          <p id="msg-look" class="form-msg"></p>
         </div>
         <form id="form-name" class="auth-form settings-form">
           <h3>Nome de treinador</h3>
@@ -302,6 +324,15 @@
           <span id="deck-avg"></span>
           <button id="deck-close" class="icon" title="Fechar sem salvar">✕</button>
         </div>
+        <div id="deck-subtabs" class="subtabs hidden">
+          <button data-sub="cards" class="active">🃏 Cartas</button>
+          <button data-sub="skins">🏰 Ginásios</button>
+        </div>
+        <div id="skins-view" class="skins-view">
+          <div id="skin-preview" class="skin-preview"></div>
+          <p id="skin-msg" class="form-msg"></p>
+          <div id="skin-grid" class="skin-grid"></div>
+        </div>
         <div id="deck-slots"></div>
         <div class="deck-filters">
           <input id="deck-search" placeholder="Buscar Pokémon ou nº…" autocomplete="off" spellcheck="false">
@@ -319,6 +350,17 @@
           <button id="deck-random">🎲 Aleatório</button>
           <button id="deck-default">Padrão</button>
           <button id="deck-save" class="primary">Salvar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="leave" class="overlay hidden">
+      <div class="panel">
+        <h2>Sair da partida?</h2>
+        <p id="leave-text" class="sub"></p>
+        <div class="btn-row leave-buttons">
+          <button id="leave-cancel" class="primary">Continuar jogando</button>
+          <button id="leave-confirm" class="danger">🏳️ Sair</button>
         </div>
       </div>
     </section>

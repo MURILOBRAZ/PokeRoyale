@@ -1,6 +1,6 @@
 # PokéRoyale — Game Design Document
 
-> Versão do documento: 0.4.2 · Data: 19/10/2026
+> Versão do documento: 0.6 · Data: 19/10/2026
 > Fangame sem fins lucrativos, feito para jogar com amigos. Pokémon é marca da Nintendo / Game Freak / The Pokémon Company; este projeto não é afiliado a elas.
 
 ---
@@ -228,6 +228,7 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - Fonte *Pixelify Sans* (Google Fonts) nos títulos e botões. Ficou de fora do mockup o que o jogo ainda não tem (gemas, loja, ranking, mensagens).
 
 **Na partida:**
+- **Sair da partida:** botão 🏳️ no canto da arena, com confirmação. Valendo troféus conta como **derrota** (o servidor aceita derrota mesmo em partida curta, então sair cedo não escapa); online, o amigo vence; no treino só encerra.
 
 - **Invocar:** arraste a carta até a arena, ou toque na carta e depois no local. Teclas **1–4** selecionam cartas no PC.
 - Com uma carta selecionada, a área proibida fica **vermelha**; a prévia mostra o Pokémon ou o raio do golpe.
@@ -310,7 +311,7 @@ PokeRoyale/
 | **v0.4.1** | Mapas das 10 arenas e design dos ginásios (arte do autor) no jogo | ✅ Feito |
 | **v0.4.2** | Novo visual da tela inicial e dos menus | ✅ Feito |
 | **v0.5** | Ranking global, Minha conta, nome único, PokéMart e Fichas do Game Corner | ✅ Feito |
-| v0.6 | Cosméticos e Zona Safári | 💡 Ideia |
+| **v0.6** | Cosméticos (avatar, títulos, skins de ginásio, emotes) e Zona Safári | ✅ Feito |
 | v0.7 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
 | v0.8 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
 
@@ -457,7 +458,29 @@ As quantidades crescem com a arena (+10% por arena). O conteúdo é **sorteado n
 
 As cartas oferecidas são, de preferência, as que você já tem (servem para melhorar); se faltar, entram outras das suas arenas.
 
-**Depois:** cosméticos (avatar, título no ranking, skins de ginásio, emotes) e a **Zona Safári** (minijogo de capturar cartas, com entrada diária).
+Cosméticos e Zona Safári: ver 17.12.
+
+### 17.12 Cosméticos e Zona Safári (v0.6)
+
+**Cosméticos** — não mudam nenhum atributo. Equipados em *Minha conta* (toque no nome), comprados na Loja com Fichas 🪙.
+
+| Tipo | Como se consegue | Onde aparece |
+|---|---|---|
+| **Avatar** | Qualquer Pokémon da sua coleção (grátis) | Barra do topo, ranking, Minha conta |
+| **Título** | "Treinador Novato" (grátis); um por arena alcançada (Quebra-Rochas, Surfista de Cerulean… Mestre Pokémon); classes de treinador da 1ª geração com Fichas (Caçador de Insetos, Montanhista, Nadador, Pescador 🪙30 · Cientista, Médium, Faixa-Preta 🪙50 · Recruta da Equipe Rocket 🪙100 · Assistente do Prof. Carvalho 🪙150) | Ranking |
+| **Skin de ginásio** | Clássico (grátis); Dourado, Cristal e Sombrio (🪙120 cada); Campeão (ao chegar na Liga). Escolhida na aba **Coleção → Ginásios**, com prévia grande sobre o mapa da sua arena e as bloqueadas mostrando como conseguir (compra e equipa ali mesmo) | Seus ginásios na partida, para os dois jogadores. Brilho e cor; as cores de time continuam azul/vermelho |
+| **Emotes** | Pacote do Pikachu (grátis); Charmander, Squirtle, Bulbasaur (🪙40) · Psyduck, Meowth, Jigglypuff, Eevee (🪙60) · Snorlax (🪙80) · Mewtwo (🪙150) | Botão 💬 na partida: 4 reações (feliz, bravo, chorando, surpreso) com os retratos do SpriteCollab, num balão perto do seu Ginásio Líder. Escolher outro emote substitui o balão na hora. Funciona online e o bot reage quando derruba ou perde ginásio |
+
+**Zona Safári** — na Loja. Entrada 💰100, **1 vez por dia**. 6 Safari Balls e até 3 Pokémon selvagens das suas arenas (sem lendários; comum 65%, rara 28%, épica 7%).
+
+| Ação | Efeito |
+|---|---|
+| Safari Ball | Tenta capturar: comum 45%, rara 30%, épica 18% |
+| Isca 🍓 | Fica comendo por 1–3 turnos: captura ×0,6, fuga ×0,35 |
+| Pedra 🪨 | Fica bravo por 1–3 turnos: captura ×1,6, fuga ×2 |
+| Fugir | Passa para o próximo Pokémon |
+
+Depois de cada ação o Pokémon pode fugir (comum 10%, rara 18%, épica 28%, com os modificadores). Captura dá cópias da carta: comum 3, rara 2, épica 1. Tudo sorteado e guardado no servidor (uma jogada não conta duas vezes).
 
 ### 17.10 Decisões em aberto
 
@@ -468,5 +491,5 @@ As cartas oferecidas são, de preferência, as que você já tem (servem para me
 ## 18. Questões em aberto
 
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
-- Raridade de cartas e níveis, ou todas iguais (mais justo entre amigos)?
-- Ranking simples entre amigos (vitórias guardadas num placar compartilhado)?
+- ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).
+- ~~Ranking entre amigos~~ → feito na v0.5 (ranking global, ao tocar nos troféus).

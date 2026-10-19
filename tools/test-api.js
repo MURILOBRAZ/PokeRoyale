@@ -93,6 +93,15 @@ async function main() {
   assert.equal((await a('match-finish', { matchId: m1, result: 'win' })).status, 409);
   ok('partida curta demais não dá recompensa');
 
+  // Desistir logo no começo conta como derrota (não dá para escapar saindo cedo)
+  await pg.query("UPDATE users SET trophies = 50 WHERE email = 'ash@teste.local'");
+  r = await a('match-start', { mode: 'bot' });
+  r = await a('match-finish', { matchId: r.data.matchId, result: 'loss' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.delta, -10);
+  await pg.query("UPDATE users SET trophies = 0 WHERE email = 'ash@teste.local'");
+  ok('sair da partida logo no início conta como derrota');
+
   // Vitória (finge que a partida durou 2 minutos)
   await pg.query(`UPDATE matches SET started_at = now() - interval '2 minutes' WHERE id = $1`, [m1]);
   r = await a('match-finish', { matchId: m1, result: 'win' });
@@ -338,6 +347,54 @@ async function main() {
   assert.equal(r.data.firstWin, false);
   assert.equal(r.data.fichas, 0);
   ok('Fichas: +100 arena nova, +20 nível de treinador, +10 só na 1ª vitória do dia');
+
+  // Cosméticos
+  await pg.query('UPDATE users SET fichas = 100, arena = 1 WHERE id = $1', [ashId]);
+  r = await a('me');
+  assert.equal(r.data.user.look.avatar, 'charmander'); // padrão: o inicial
+  assert.equal(r.data.user.look.title, 'title:novato');
+  assert.equal((await a('look', { title: 'title:rocket' })).status, 400); // não comprou
+  assert.equal((await a('look', { title: 'title:mestre' })).status, 400); // precisa da Liga
+  assert.equal((await a('look', { title: 'title:rochas' })).status, 200); // conquistado em Pewter
+  assert.equal((await a('cosmetic-buy', { id: 'title:mestre' })).status, 400); // conquistado, não se compra
+  r = await a('cosmetic-buy', { id: 'title:rocket' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.state.user.fichas, 0);
+  assert.equal((await a('cosmetic-buy', { id: 'title:rocket' })).status, 409); // já tem
+  assert.equal((await a('cosmetic-buy', { id: 'skin:dourado' })).status, 409); // sem fichas
+  r = await a('look', { title: 'title:rocket', avatar: 'zubat', emotes: 'emotes:pikachu', skin: 'skin:classico' });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.data.user.look.title, r.data.user.look.avatar], ['title:rocket', 'zubat']);
+  assert.equal((await a('look', { avatar: 'mewtwo' })).status, 400); // não está na coleção
+  r = await a('ranking', {});
+  const meRow = r.data.top.find((p) => p.me);
+  assert.deepEqual([meRow.avatar, meRow.title], ['zubat', 'title:rocket']);
+  ok('cosméticos: grátis, conquistados por arena e comprados com Fichas; avatar só da coleção; aparecem no ranking');
+
+  // Zona Safári
+  await pg.query('UPDATE users SET gold = 50 WHERE id = $1', [ashId]);
+  assert.equal((await a('safari-act', { action: 'ball' })).status, 409); // sem entrada
+  assert.equal((await a('safari-start', {})).status, 409); // sem saldo
+  await pg.query('UPDATE users SET gold = 500 WHERE id = $1', [ashId]);
+  r = await a('safari-start', {});
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.state.user.gold, 400);
+  assert.equal(r.data.run.balls, R.SAFARI.balls);
+  assert.equal((await a('safari-start', {})).status, 409); // 1 por dia
+  assert.equal((await a('safari-act', { action: 'dançar' })).status, 400);
+  let caughtTotal = 0;
+  let run = r.data.run;
+  for (let i = 0; i < 40 && !run.done; i++) {
+    r = await a('safari-act', { action: 'ball' });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    run = r.data.run;
+    if (r.data.caught) caughtTotal++;
+  }
+  assert.equal(run.done, true);
+  assert.equal(run.caught.length, caughtTotal);
+  assert.ok(run.balls >= 0 && run.encounter <= R.SAFARI.encounters);
+  assert.equal((await a('safari-act', { action: 'ball' })).status, 409); // acabou
+  ok(`Zona Safári: entrada paga 1x por dia, 6 bolas, ${caughtTotal} capturado(s) nesta rodada, acaba e não reabre`);
 
   // Limite de partidas por hora
   await pg.query(`INSERT INTO matches (id, user_id, mode) SELECT 'x' || g, u.id, 'bot' FROM users u, generate_series(1, 40) g WHERE u.email = 'gary@teste.local'`);

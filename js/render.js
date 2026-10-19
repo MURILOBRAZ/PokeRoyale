@@ -102,6 +102,8 @@ class Renderer {
     }
     for (const p of game.projectiles) this._drawProjectile(p);
     for (const e of game.effects) this._drawEffect(e);
+    this._drawSparkles(game);
+    if (ui.bubbles) this._drawBubbles(game, ui.bubbles);
     if (ui.selected && ui.hover) this._drawGhost(game, ui);
   }
 
@@ -244,8 +246,16 @@ class Renderer {
       bottom = y + r * 0.85;
       top = bottom - h;
       ctx.save();
-      if (t.hitFlash > 0) ctx.filter = 'brightness(1.7)';
+      // Skin de ginásio (cosmético): filtro de cor e brilho em volta; as cores de time continuam
+      const skin = COSMETICS[(game.skins || [])[t.side]];
+      const look = skin && skin.filter ? skin.filter : '';
+      if (t.hitFlash > 0 || look) ctx.filter = `${t.hitFlash > 0 ? 'brightness(1.7) ' : ''}${look}`.trim() || 'none';
+      if (skin && skin.glow) {
+        ctx.shadowColor = skin.glow;
+        ctx.shadowBlur = this.scale * 1.6;
+      }
       ctx.drawImage(sprite, x - w / 2, top, w, h);
+      if (skin && skin.glow) ctx.drawImage(sprite, x - w / 2, top, w, h); // 2ª passada reforça o brilho da skin
       ctx.restore();
     } else {
       this._drawPokeballTower(x, y, r, t, color);
@@ -418,6 +428,72 @@ class Renderer {
     const row = rows >= 8 ? PMD_DIR_ROWS[oct] : 0;
     const k = (this.scale / PMD_PIXELS_PER_TILE) * Math.min(1, PMD_MAX_WALK_HEIGHT / walkH);
     return { img, sx: index * anim.w, sy: row * anim.h, w: anim.w, h: anim.h, k, walkH };
+  }
+
+  // Brilhinhos piscando em volta dos ginásios com skin "Cristal" ou "Campeão"
+  _drawSparkles(game) {
+    const ctx = this.ctx;
+    const now = performance.now() / 1000;
+    for (const t of game.towers) {
+      const skin = COSMETICS[(game.skins || [])[t.side]];
+      if (t.dead || !skin || !skin.sparkle) continue;
+      const [x, y] = this.w2s(t.x, t.y);
+      const r = t.radius * this.scale;
+      for (let i = 0; i < 3; i++) {
+        const phase = (now * 1.3 + i * 0.37 + t.id * 0.11) % 1;
+        const ang = (i * 2.1 + t.id) % (Math.PI * 2);
+        const sx = x + Math.cos(ang) * r * 0.9;
+        const sy = y - r * 0.6 + Math.sin(ang) * r * 0.7;
+        const size = this.scale * 0.34 * Math.sin(phase * Math.PI);
+        ctx.save();
+        ctx.globalAlpha = Math.sin(phase * Math.PI);
+        ctx.fillStyle = skin.glow;
+        ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const rr = k % 2 ? size * 0.35 : size;
+          const a = (k * Math.PI) / 4;
+          ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr);
+        }
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  // Balões de emote: aparecem perto do Ginásio Líder de quem mandou
+  _drawBubbles(game, bubbles) {
+    const ctx = this.ctx;
+    const s = this.scale;
+    const now = performance.now();
+    for (const b of bubbles) {
+      const king = game.towers.find((t) => t.side === b.side && t.kind === 'king');
+      if (!king) continue;
+      const age = (now - b.start) / 1000;
+      const [kx, ky] = this.w2s(king.x, king.y);
+      const mine = b.side === this.viewSide;
+      const size = s * 2.8;
+      const pop = Math.min(1, age / 0.18);
+      const fade = age > 2.1 ? Math.max(0, 1 - (age - 2.1) / 0.3) : 1;
+      const cx = kx + (mine ? s * 3 : -s * 3);
+      const cy = ky + (mine ? -s * 2.6 : s * 2.6);
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.translate(cx, cy);
+      ctx.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = this.teamColor(b.side);
+      ctx.lineWidth = Math.max(3, s * 0.15);
+      ctx.beginPath();
+      ctx.roundRect(-size / 2, -size / 2, size, size, s * 0.6);
+      ctx.fill();
+      ctx.stroke();
+      const img = getImage(emotePortraitUrl(b.pack, b.mood));
+      if (img) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, -size / 2 + s * 0.2, -size / 2 + s * 0.2, size - s * 0.4, size - s * 0.4);
+      }
+      ctx.restore();
+    }
   }
 
   _drawProjectile(p) {

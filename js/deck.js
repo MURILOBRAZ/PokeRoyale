@@ -65,6 +65,20 @@ class DeckEditor {
     this.el('#deck-close').addEventListener('click', () => this.onClose(false));
     this.el('#deck-save').addEventListener('click', () => this.save());
     this.el('#deck-grid').addEventListener('click', (e) => this._pick(e));
+    this.el('#deck-subtabs').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-sub]');
+      if (b) this.setSub(b.dataset.sub);
+    });
+    this.el('#skin-grid').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-skin]');
+      if (!b) return;
+      this.skinFocus = b.dataset.skin;
+      this.el('#skin-msg').textContent = '';
+      this.renderSkins();
+    });
+    this.el('#skin-preview').addEventListener('click', (e) => {
+      if (e.target.closest('#skin-action')) this.skinAction();
+    });
     this.el('#deck-slots').addEventListener('click', (e) => this._pick(e));
     this.el('#deck-info').addEventListener('click', (e) => {
       const btn = e.target.closest('button');
@@ -80,7 +94,7 @@ class DeckEditor {
     });
   }
 
-  open({ account = false } = {}) {
+  open({ account = false, sub = 'cards' } = {}) {
     this.account = account;
     const typeSel = this.el('#deck-type');
     typeSel.innerHTML = (account ? '<option value="owned">Minhas cartas</option>' : '')
@@ -88,9 +102,92 @@ class DeckEditor {
       + Object.keys(TYPE_NAMES).map((t) => `<option value="${t}">${TYPE_NAMES[t]}</option>`).join('')
       + '<option value="spell">Golpes</option>';
     this.el('#deck-title').textContent = account ? 'Coleção' : 'Deck de treino';
+    // Sub-abas (só com conta): Cartas | Ginásios
+    this.el('#deck-subtabs').classList.toggle('hidden', !account);
+    this.setSub(sub);
     this.el('#deck-default').textContent = account ? 'Inicial' : 'Padrão';
     this.focused = null;
     this.setDraft(account ? [...Account.user.deck] : loadDeck());
+  }
+
+  setSub(sub) {
+    this.sub = this.account ? sub : 'cards';
+    this.el('.deck-panel').classList.toggle('sub-skins', this.sub === 'skins');
+    document.querySelectorAll('#deck-subtabs [data-sub]').forEach((b) => b.classList.toggle('active', b.dataset.sub === this.sub));
+    if (this.sub === 'skins') {
+      this.skinFocus = Account.user.look.skin;
+      this.renderSkins();
+    }
+  }
+
+  // ---------- Aba Ginásios: prévia de cada skin, inclusive as bloqueadas ----------
+
+  skinStatus(id) {
+    const c = COSMETICS[id];
+    if (Account.user.look.skin === id) return { key: 'equipped', label: '✔ Equipado' };
+    if (ownsCosmetic(id)) return { key: 'owned', label: 'Equipar' };
+    if (c.arena !== undefined) return { key: 'arena', label: `🔒 Chegue a ${ARENAS[c.arena].name} (🏆 ${fmtNum(ARENAS[c.arena].trophies)})` };
+    return { key: 'buy', label: `Comprar · 🪙 ${fmtNum(c.fichas)}` };
+  }
+
+  skinImg(id, which) {
+    const c = COSMETICS[id];
+    const glow = c.glow ? ` drop-shadow(0 0 6px ${c.glow}) drop-shadow(0 0 3px ${c.glow})` : '';
+    return `<img src="assets/ginasios/${which}-azul.webp" alt="" style="filter:${c.filter || ''}${glow}">`;
+  }
+
+  renderSkins() {
+    const skins = Object.keys(COSMETICS).filter((id) => COSMETICS[id].kind === 'skin');
+    const focus = COSMETICS[this.skinFocus] ? this.skinFocus : Account.user.look.skin;
+    const c = COSMETICS[focus];
+    const st = this.skinStatus(focus);
+    const fichas = Account.user.fichas || 0;
+    const arena = ARENAS[Account.user.arena];
+    const disabled = st.key === 'equipped' || st.key === 'arena' || (st.key === 'buy' && fichas < c.fichas);
+    const how = c.free ? 'Grátis.' : c.arena !== undefined ? `Conquistado ao chegar em ${ARENAS[c.arena].name}.` : `Vendido na Loja por 🪙 ${c.fichas}.`;
+    this.el('#skin-preview').innerHTML = `
+      <div class="skin-stage ${c.sparkle ? 'sparkle' : ''} ${st.key === 'arena' || st.key === 'buy' ? 'locked-preview' : ''}" style="--map:url('${new URL(arenaMapUrl(arena, true), document.baseURI).href}')">
+        ${this.skinImg(focus, 'lateral')}${this.skinImg(focus, 'lider')}${this.skinImg(focus, 'lateral')}
+      </div>
+      <div class="skin-detail">
+        <b>${c.name}</b>
+        <small>${how} ${c.sparkle ? 'Com brilhinhos piscando. ' : ''}Só muda o visual dos seus ginásios; seu oponente também vê.</small>
+        <button id="skin-action" class="${st.key === 'owned' || st.key === 'buy' ? 'primary' : ''}" ${disabled ? 'disabled' : ''}>${st.label}</button>
+        ${st.key === 'buy' && fichas < c.fichas ? `<small class="bad">Você tem 🪙 ${fmtNum(fichas)}. Ganhe Fichas subindo de arena, de nível e na 1ª vitória do dia.</small>` : ''}
+      </div>`;
+    this.el('#skin-grid').innerHTML = skins.map((id) => {
+      const s = this.skinStatus(id);
+      const locked = s.key === 'arena' || s.key === 'buy';
+      return `<button class="skin-item ${id === focus ? 'focused' : ''} ${locked ? 'locked' : ''} ${s.key}" data-skin="${id}">
+        ${this.skinImg(id, 'lider')}
+        <b>${COSMETICS[id].name}</b>
+        <small>${s.key === 'equipped' ? '✔ Equipado' : s.key === 'owned' ? 'Seu' : s.key === 'arena' ? `🔒 ${ARENAS[COSMETICS[id].arena].short}` : `🔒 🪙 ${COSMETICS[id].fichas}`}</small>
+      </button>`;
+    }).join('');
+    this.el('#deck-gold').textContent = `💰 ${Account.user.gold.toLocaleString('pt-BR')} · 🪙 ${fichas.toLocaleString('pt-BR')}`;
+  }
+
+  async skinAction() {
+    if (this.busy) return;
+    const id = this.skinFocus;
+    const st = this.skinStatus(id);
+    this.busy = true;
+    try {
+      if (st.key === 'buy') {
+        await Account.api('cosmetic-buy', { id });
+        await Account.api('look', { skin: id });
+        formMsg(this.el('#skin-msg'), `${COSMETICS[id].name} comprado e equipado!`, true);
+      } else if (st.key === 'owned') {
+        await Account.api('look', { skin: id });
+        formMsg(this.el('#skin-msg'), `${COSMETICS[id].name} equipado. Aparece na próxima partida.`, true);
+      }
+      renderHub();
+    } catch (err) {
+      formMsg(this.el('#skin-msg'), err.message, false);
+    } finally {
+      this.busy = false;
+      this.renderSkins();
+    }
   }
 
   async save() {

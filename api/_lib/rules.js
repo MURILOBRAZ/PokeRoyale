@@ -12,7 +12,8 @@ const EXPORTS = [
   'STARTERS', 'TROPHIES', 'MATCH_MIN_SECONDS', 'MATCHES_PER_HOUR', 'BALL_SLOTS', 'FREE_BALL_SECONDS',
   'FREE_BALL_MAX', 'BALLS', 'ITEMS', 'itemFitsCard', 'rollBallTier', 'rollBallContents', 'botProfile',
   'TRAINER_NAME_RE', 'FICHAS', 'SHOP', 'shopDayKey', 'shopWeekRange', 'shopNextRefresh', 'shopPrice',
-  'generateShopOffers',
+  'generateShopOffers', 'COSMETICS', 'DEFAULT_LOOK', 'hasCosmetic', 'EMOTE_MOODS', 'SAFARI', 'newSafariRun',
+  'safariStep',
 ];
 
 const ctx = vm.createContext({});

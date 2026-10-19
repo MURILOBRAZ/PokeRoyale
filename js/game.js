@@ -19,7 +19,9 @@ function edgeDist(a, b) {
 class Game {
   // levels: nível de cada carta por lado ({id: nível}); trainers: nível de treinador por lado (ginásios).
   // Sem eles, tudo joga com os stats base (treino e amistosos).
-  constructor({ decks = [DEFAULT_DECK, DEFAULT_DECK], levels = [{}, {}], trainers = [1, 1] } = {}) {
+  // skins: visual dos ginásios de cada lado (cosmético, não muda nada na simulação)
+  constructor({ decks = [DEFAULT_DECK, DEFAULT_DECK], levels = [{}, {}], trainers = [1, 1], skins = ['skin:classico', 'skin:classico'] } = {}) {
+    this.skins = skins;
     this.levels = levels;
     this.trainers = trainers;
     this.nextId = 1;

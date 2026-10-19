@@ -313,3 +313,168 @@ function generateShopOffers(ownedIds, arena, rand = Math.random) {
   offers.push({ id: 'candy', ...SHOP.fixed.candy });
   return offers;
 }
+
+
+// ---------- Cosméticos (v0.6): não mudam nenhum atributo ----------
+// id no formato "tipo:nome". Grátis (free), conquistados por arena (arena) ou comprados (fichas).
+
+const EMOTE_MOODS = [
+  { id: 'Happy', name: 'Feliz' },
+  { id: 'Angry', name: 'Bravo' },
+  { id: 'Crying', name: 'Chorando' },
+  { id: 'Surprised', name: 'Surpreso' },
+];
+
+const COSMETICS = {
+  // Títulos no ranking
+  'title:novato': { kind: 'title', name: 'Treinador Novato', free: true },
+  'title:rochas': { kind: 'title', name: 'Quebra-Rochas', arena: 1 },
+  'title:surfista': { kind: 'title', name: 'Surfista de Cerulean', arena: 2 },
+  'title:raio': { kind: 'title', name: 'Raio de Vermilion', arena: 3 },
+  'title:jardineiro': { kind: 'title', name: 'Jardineiro de Celadon', arena: 4 },
+  'title:ninja': { kind: 'title', name: 'Ninja de Fuchsia', arena: 5 },
+  'title:mente': { kind: 'title', name: 'Mente de Saffron', arena: 6 },
+  'title:chama': { kind: 'title', name: 'Chama de Cinnabar', arena: 7 },
+  'title:terremoto': { kind: 'title', name: 'Terremoto de Viridian', arena: 8 },
+  'title:mestre': { kind: 'title', name: 'Mestre Pokémon', arena: 9 },
+  'title:inseto': { kind: 'title', name: 'Caçador de Insetos', fichas: 30 },
+  'title:montanhista': { kind: 'title', name: 'Montanhista', fichas: 30 },
+  'title:nadador': { kind: 'title', name: 'Nadador', fichas: 30 },
+  'title:pescador': { kind: 'title', name: 'Pescador', fichas: 30 },
+  'title:cientista': { kind: 'title', name: 'Cientista', fichas: 50 },
+  'title:medium': { kind: 'title', name: 'Médium', fichas: 50 },
+  'title:faixapreta': { kind: 'title', name: 'Faixa-Preta', fichas: 50 },
+  'title:rocket': { kind: 'title', name: 'Recruta da Equipe Rocket', fichas: 100 },
+  'title:carvalho': { kind: 'title', name: 'Assistente do Prof. Carvalho', fichas: 150 },
+  // Visual dos seus ginásios na partida (as cores de time continuam azul/vermelho)
+  'skin:classico': { kind: 'skin', name: 'Clássico', free: true },
+  'skin:dourado': { kind: 'skin', name: 'Dourado', fichas: 120, filter: 'sepia(0.3) saturate(1.7) brightness(1.12)', glow: '#ffd84a' },
+  'skin:cristal': { kind: 'skin', name: 'Cristal', fichas: 120, filter: 'saturate(1.4) brightness(1.18)', glow: '#9fe8ff', sparkle: true },
+  'skin:sombrio': { kind: 'skin', name: 'Sombrio', fichas: 120, filter: 'brightness(0.72) saturate(1.25) contrast(1.1)', glow: '#b46bff' },
+  'skin:campeao': { kind: 'skin', name: 'Campeão', arena: 9, filter: 'saturate(1.35) brightness(1.08)', glow: '#fff3b0', sparkle: true },
+  // Pacotes de emotes (4 reações com os retratos do Pokémon)
+  'emotes:pikachu': { kind: 'emotes', name: 'Pikachu', dex: 25, free: true },
+  'emotes:charmander': { kind: 'emotes', name: 'Charmander', dex: 4, fichas: 40 },
+  'emotes:squirtle': { kind: 'emotes', name: 'Squirtle', dex: 7, fichas: 40 },
+  'emotes:bulbasaur': { kind: 'emotes', name: 'Bulbasaur', dex: 1, fichas: 40 },
+  'emotes:psyduck': { kind: 'emotes', name: 'Psyduck', dex: 54, fichas: 60 },
+  'emotes:meowth': { kind: 'emotes', name: 'Meowth', dex: 52, fichas: 60 },
+  'emotes:jigglypuff': { kind: 'emotes', name: 'Jigglypuff', dex: 39, fichas: 60 },
+  'emotes:eevee': { kind: 'emotes', name: 'Eevee', dex: 133, fichas: 60 },
+  'emotes:snorlax': { kind: 'emotes', name: 'Snorlax', dex: 143, fichas: 80 },
+  'emotes:mewtwo': { kind: 'emotes', name: 'Mewtwo', dex: 150, fichas: 150 },
+};
+
+const DEFAULT_LOOK = { title: 'title:novato', skin: 'skin:classico', emotes: 'emotes:pikachu' };
+
+// Tem o cosmético? (grátis, conquistado pela arena ou comprado)
+function hasCosmetic(id, arena, owned) {
+  const c = COSMETICS[id];
+  if (!c) return false;
+  if (c.free) return true;
+  if (c.arena !== undefined) return arena >= c.arena;
+  return owned.includes(id);
+}
+
+function emotePortraitUrl(packId, mood) {
+  const pack = COSMETICS[packId] || COSMETICS['emotes:pikachu'];
+  return `${SPRITE_COLLAB}/portrait/${String(pack.dex).padStart(4, '0')}/${mood}.png`;
+}
+
+// ---------- Zona Safári ----------
+// Entrada paga 1x por dia. Até 3 Pokémon selvagens das suas arenas e 6 Safari Balls.
+// Isca: fica comendo (pega menos, foge menos). Pedra: fica bravo (pega mais, foge mais). Tudo sorteado no servidor.
+
+const SAFARI = {
+  entryGold: 100,
+  balls: 6,
+  encounters: 3,
+  weights: { common: 65, rare: 28, epic: 7 },
+  catchChance: { common: 0.45, rare: 0.3, epic: 0.18 },
+  fleeChance: { common: 0.1, rare: 0.18, epic: 0.28 },
+  angry: { catch: 1.6, flee: 2 },
+  eating: { catch: 0.6, flee: 0.35 },
+  copies: { common: 3, rare: 2, epic: 1 },
+};
+
+function safariWild(arena, rand = Math.random) {
+  const pool = cardPool(arena).filter((c) => c.kind === 'unit' && !c.legendary);
+  const w = SAFARI.weights;
+  let r = rand() * (w.common + w.rare + w.epic);
+  let rarity = 'common';
+  for (const k of ['common', 'rare', 'epic']) {
+    r -= w[k];
+    if (r < 0) {
+      rarity = k;
+      break;
+    }
+  }
+  const list = pool.filter((c) => rarityOf(c) === rarity);
+  const from = list.length ? list : pool;
+  return from[Math.floor(rand() * from.length)].id;
+}
+
+function newSafariRun(arena, rand = Math.random) {
+  const card = safariWild(arena, rand);
+  return {
+    balls: SAFARI.balls, encounter: 1, wild: { card, angry: 0, eating: 0 },
+    caught: [], log: [`Um ${CARDS[card].name} selvagem apareceu!`], done: false,
+  };
+}
+
+// Aplica uma ação e devolve o novo estado (e o que foi capturado agora, se for o caso)
+function safariStep(state, action, arena, rand = Math.random) {
+  const s = JSON.parse(JSON.stringify(state));
+  if (s.done) return { state: s };
+  const card = CARDS[s.wild.card];
+  const rarity = rarityOf(card);
+  const mod = (k) => (s.wild.angry ? SAFARI.angry[k] : s.wild.eating ? SAFARI.eating[k] : 1);
+  let caught = null;
+  let next = false;
+  if (action === 'ball') {
+    s.balls--;
+    if (rand() < Math.min(0.95, SAFARI.catchChance[rarity] * mod('catch'))) {
+      caught = { card: card.id, copies: SAFARI.copies[rarity] };
+      s.caught.push(caught);
+      s.log.push(`Pegou ${card.name}! +${caught.copies} ${caught.copies > 1 ? 'cópias' : 'cópia'}.`);
+      next = true;
+    } else {
+      s.log.push(`${card.name} escapou da Safari Ball!`);
+    }
+  } else if (action === 'bait') {
+    s.wild.eating = 1 + Math.floor(rand() * 3);
+    s.wild.angry = 0;
+    s.log.push(`${card.name} está comendo a isca.`);
+  } else if (action === 'rock') {
+    s.wild.angry = 1 + Math.floor(rand() * 3);
+    s.wild.eating = 0;
+    s.log.push(`${card.name} ficou bravo!`);
+  } else if (action === 'run') {
+    s.log.push('Você saiu de perto.');
+    next = true;
+  } else {
+    return { state: s, invalid: true };
+  }
+  // Depois da sua ação, o Pokémon pode fugir
+  if (!next && rand() < Math.min(0.9, SAFARI.fleeChance[rarity] * mod('flee'))) {
+    s.log.push(`${card.name} fugiu!`);
+    next = true;
+  } else if (!next) {
+    if (s.wild.angry) s.wild.angry--;
+    if (s.wild.eating) s.wild.eating--;
+  }
+  if (next) {
+    if (s.balls <= 0 || s.encounter >= SAFARI.encounters) {
+      s.done = true;
+    } else {
+      s.encounter++;
+      s.wild = { card: safariWild(arena, rand), angry: 0, eating: 0 };
+      s.log.push(`Um ${CARDS[s.wild.card].name} selvagem apareceu!`);
+    }
+  } else if (s.balls <= 0) {
+    s.log.push('Acabaram as Safari Balls.');
+    s.done = true;
+  }
+  s.log = s.log.slice(-6);
+  return { state: s, caught };
+}

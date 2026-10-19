@@ -41,10 +41,11 @@ function freeBallInfo(readyAt, now) {
 async function loadState(userId) {
   const u = await one('SELECT *, now() AS server_now FROM users WHERE id = $1', [userId]);
   if (!u) fail(401, 'Sessão inválida. Entre de novo.');
-  const [collection, items, balls] = await Promise.all([
+  const [collection, items, balls, cosmetics] = await Promise.all([
     q('SELECT card_id, level, copies FROM collection WHERE user_id = $1', [userId]),
     q('SELECT item, qty FROM user_items WHERE user_id = $1 AND qty > 0', [userId]),
     q('SELECT id, tier, arena, unlock_at FROM balls WHERE user_id = $1 ORDER BY id', [userId]),
+    q('SELECT cosmetic FROM user_cosmetics WHERE user_id = $1', [userId]),
   ]);
   const now = new Date(u.server_now).getTime();
   return {
@@ -61,9 +62,11 @@ async function loadState(userId) {
       gold: u.gold,
       fichas: u.fichas,
       deck: u.deck,
+      look: lookOf(u),
       freeBall: freeBallInfo(u.free_ball_at, u.server_now),
     },
     collection: Object.fromEntries(collection.map((c) => [c.card_id, { level: c.level, copies: c.copies }])),
+    cosmetics: cosmetics.map((c) => c.cosmetic),
     items: Object.fromEntries(items.map((i) => [i.item, i.qty])),
     balls: balls.map((b) => {
       const at = b.unlock_at ? new Date(b.unlock_at).getTime() : null;
@@ -74,6 +77,12 @@ async function loadState(userId) {
       };
     }),
   };
+}
+
+// Visual equipado, com os padrões (avatar = o inicial)
+function lookOf(u) {
+  const look = { ...R.DEFAULT_LOOK, avatar: u.starter, ...(u.look || {}) };
+  return look;
 }
 
 async function requireUser(req) {
@@ -252,7 +261,7 @@ const ACTIONS = {
     const match = await one(
       `UPDATE matches SET finished_at = now(), result = $3
        WHERE id = $1 AND user_id = $2 AND finished_at IS NULL
-         AND started_at < now() - make_interval(secs => $4)
+         AND ($3 = 'loss' OR started_at < now() - make_interval(secs => $4)) -- derrota vale sempre (sair cedo não escapa)
          AND started_at > now() - interval '20 minutes'
        RETURNING mode`,
       [String(body.matchId || ''), userId, result, R.MATCH_MIN_SECONDS],
@@ -380,7 +389,7 @@ const ACTIONS = {
   async ranking({ req }) {
     const userId = await requireUser(req);
     const rows = await q(
-      `SELECT id, name, trophies, best_trophies, xp, arena, starter FROM users
+      `SELECT id, name, trophies, best_trophies, xp, arena, starter, look FROM users
        WHERE starter IS NOT NULL
        ORDER BY trophies DESC, best_trophies DESC, id ASC
        LIMIT 100`,
@@ -397,6 +406,7 @@ const ACTIONS = {
       top: rows.map((r, i) => ({
         rank: i + 1, name: r.name, trophies: r.trophies, level: R.trainerLevel(r.xp),
         arena: r.arena, starter: r.starter, me: r.id === userId,
+        avatar: lookOf(r).avatar, title: lookOf(r).title,
       })),
       me: { rank: pos.rank, trophies: u.trophies },
       total: total.n,
@@ -479,6 +489,99 @@ const ACTIONS = {
     }
     const fresh = await shopDay(userId, day);
     return { ...result, shop: await describeShop(userId, day, fresh), state: await loadState(userId) };
+  },
+
+  async 'cosmetic-buy'({ req, body }) {
+    const userId = await requireUser(req);
+    const id = String(body.id || '');
+    const c = R.COSMETICS[id];
+    if (!c || c.free || c.arena !== undefined) fail(400, 'Esse item não está à venda.');
+    const price = c.fichas || 0;
+    const row = await one(
+      `WITH ins AS (
+         INSERT INTO user_cosmetics (user_id, cosmetic)
+         SELECT $1, $2 WHERE (SELECT fichas FROM users WHERE id = $1) >= $3
+         ON CONFLICT DO NOTHING RETURNING 1
+       ), u AS (
+         UPDATE users SET fichas = fichas - $3 WHERE id = $1 AND EXISTS (SELECT 1 FROM ins) RETURNING fichas
+       )
+       SELECT fichas FROM u`,
+      [userId, id, price],
+    );
+    if (!row) {
+      const has = await one('SELECT 1 FROM user_cosmetics WHERE user_id = $1 AND cosmetic = $2', [userId, id]);
+      fail(409, has ? 'Você já tem esse item.' : 'Fichas insuficientes.');
+    }
+    return { ok: true, state: await loadState(userId) };
+  },
+
+  // Equipa avatar (Pokémon da coleção), título, skin de ginásio ou pacote de emotes
+  async look({ req, body }) {
+    const userId = await requireUser(req);
+    const u = await one('SELECT arena, starter, look FROM users WHERE id = $1', [userId]);
+    const owned = (await q('SELECT cosmetic FROM user_cosmetics WHERE user_id = $1', [userId])).map((r) => r.cosmetic);
+    const next = { ...(u.look || {}) };
+    if (body.avatar !== undefined) {
+      const ok = await one('SELECT 1 FROM collection WHERE user_id = $1 AND card_id = $2', [userId, String(body.avatar)]);
+      if (!ok || !R.CARDS[body.avatar] || R.CARDS[body.avatar].kind !== 'unit') fail(400, 'Escolha um Pokémon da sua coleção.');
+      next.avatar = body.avatar;
+    }
+    for (const kind of ['title', 'skin', 'emotes']) {
+      if (body[kind] === undefined) continue;
+      const id = String(body[kind]);
+      if (!R.COSMETICS[id] || R.COSMETICS[id].kind !== kind || !R.hasCosmetic(id, u.arena, owned)) fail(400, 'Você ainda não tem esse item.');
+      next[kind] = id;
+    }
+    await q('UPDATE users SET look = $2::jsonb WHERE id = $1', [userId, JSON.stringify(next)]);
+    return loadState(userId);
+  },
+
+  async safari({ req }) {
+    const userId = await requireUser(req);
+    const row = await one('SELECT state FROM safari_runs WHERE user_id = $1 AND day_key = $2', [userId, R.shopDayKey()]);
+    return { entryGold: R.SAFARI.entryGold, run: row ? row.state : null, nextRefresh: new Date(R.shopNextRefresh(R.shopDayKey())).toISOString() };
+  },
+
+  async 'safari-start'({ req }) {
+    const userId = await requireUser(req);
+    const u = await one('SELECT arena, starter FROM users WHERE id = $1', [userId]);
+    if (!u.starter) fail(409, 'Escolha seu inicial primeiro.');
+    const day = R.shopDayKey();
+    // Uma instrução só: cobra a entrada e cria a partida do dia, só se ainda não entrou hoje e tem saldo
+    const row = await one(
+      `WITH u AS (
+         UPDATE users SET gold = gold - $3
+         WHERE id = $1 AND gold >= $3 AND NOT EXISTS (SELECT 1 FROM safari_runs WHERE user_id = $1 AND day_key = $2)
+         RETURNING id
+       )
+       INSERT INTO safari_runs (user_id, day_key, state) SELECT $1, $2, $4::jsonb FROM u RETURNING state`,
+      [userId, day, R.SAFARI.entryGold, JSON.stringify(R.newSafariRun(u.arena))],
+    );
+    if (!row) {
+      const used = await one('SELECT 1 FROM safari_runs WHERE user_id = $1 AND day_key = $2', [userId, day]);
+      fail(409, used ? 'Você já entrou na Zona Safári hoje. Volte amanhã!' : 'Pokédólares insuficientes.');
+    }
+    return { run: row.state, state: await loadState(userId) };
+  },
+
+  async 'safari-act'({ req, body }) {
+    const userId = await requireUser(req);
+    const day = R.shopDayKey();
+    const u = await one('SELECT arena FROM users WHERE id = $1', [userId]);
+    const row = await one('SELECT state FROM safari_runs WHERE user_id = $1 AND day_key = $2', [userId, day]);
+    if (!row) fail(409, 'Compre a entrada da Zona Safári primeiro.');
+    if (row.state.done) fail(409, 'A Zona Safári de hoje já acabou.');
+    const step = R.safariStep(row.state, String(body.action || ''), u.arena);
+    if (step.invalid) fail(400, 'Ação inválida.');
+    // Grava só se ninguém mexeu no estado no meio (evita contar a mesma jogada duas vezes)
+    const saved = await one(
+      'UPDATE safari_runs SET state = $3::jsonb WHERE user_id = $1 AND day_key = $2 AND state = $4::jsonb RETURNING 1',
+      [userId, day, JSON.stringify(step.state), JSON.stringify(row.state)],
+    );
+    if (!saved) fail(409, 'Tente de novo.');
+    let newCards = [];
+    if (step.caught) newCards = await applyRewards(userId, { cards: { [step.caught.card]: step.caught.copies }, gold: 0, items: {} });
+    return { run: step.state, caught: step.caught, newCards, state: await loadState(userId) };
   },
 
   async 'use-item'({ req, body }) {

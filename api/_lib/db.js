@@ -27,6 +27,20 @@ const SCHEMA = [
   'CREATE UNIQUE INDEX IF NOT EXISTS users_name_unique ON users (lower(name))',
   // Fichas do Game Corner: moeda rara, ganha só por conquistas
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS fichas INT NOT NULL DEFAULT 0',
+  // Cosméticos: o que está equipado (look) e o que foi comprado
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS look JSONB NOT NULL DEFAULT '{}'`,
+  `CREATE TABLE IF NOT EXISTS user_cosmetics (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cosmetic TEXT NOT NULL,
+    PRIMARY KEY (user_id, cosmetic)
+  )`,
+  // Zona Safári: uma entrada por dia
+  `CREATE TABLE IF NOT EXISTS safari_runs (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day_key INT NOT NULL,
+    state JSONB NOT NULL,
+    PRIMARY KEY (user_id, day_key)
+  )`,
   // PokéMart: ofertas de cada jogador por dia (geradas uma vez) e quantas foram compradas
   `CREATE TABLE IF NOT EXISTS shop_days (
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
