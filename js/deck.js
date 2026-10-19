@@ -98,7 +98,8 @@ class DeckEditor {
     this.busy = true;
     try {
       await Account.api('deck', { deck: this.draft });
-      this.onClose(true);
+      this.flash('Deck salvo! É com ele que você batalha.', true);
+      this.renderAll();
     } catch (err) {
       this.flash(err.message);
     } finally {

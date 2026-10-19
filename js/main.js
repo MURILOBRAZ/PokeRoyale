@@ -33,10 +33,26 @@ const ui = { side: 0, selectedIndex: null, selected: null, hover: null, dragging
 // ---------- Telas ----------
 
 function showScreen(id) {
-  // Coleção, arenas, amigos, treino e recompensas abrem por cima do início (logado)
-  const overHub = Account.loggedIn && ['#deck', '#road', '#friends', '#menu', '#reward', '#lobby'].includes(id);
+  // Logado, Coleção, Arenas, Amigos, Treino e a sala viram abas dentro do início (com a barra e o menu);
+  // só a recompensa abre por cima, como um destaque
+  const tab = Account.loggedIn && TAB_SCREENS.includes(id);
+  dockTabs(Account.loggedIn);
+  const keepHub = tab || (Account.loggedIn && id === '#reward');
   for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends']) {
-    $(s).classList.toggle('hidden', s !== id && !(overHub && s === '#hub'));
+    $(s).classList.toggle('hidden', s !== id && !(keepHub && s === '#hub'));
+  }
+  $('.hub-main').classList.toggle('hidden', tab);
+}
+
+const TAB_SCREENS = ['#deck', '#road', '#friends', '#menu', '#lobby'];
+
+// Move essas telas para dentro do início (logado) ou de volta para a página (sem conta)
+function dockTabs(on) {
+  const target = on ? $('#hub-content') : $('#app');
+  for (const s of TAB_SCREENS) {
+    const el = $(s);
+    if (el.parentElement !== target) target.appendChild(el);
+    el.classList.toggle('docked', on);
   }
 }
 

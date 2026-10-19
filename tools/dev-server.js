@@ -30,6 +30,20 @@ async function main() {
 
   http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${port}`);
+    // Só no desenvolvimento: dá uma ball pronta para abrir à conta logada (/__dev/ball?tier=master)
+    if (url.pathname === '/__dev/ball') {
+      const userId = await require('../api/_lib/auth').currentUserId(req);
+      const tier = ['poke', 'premier', 'great', 'ultra', 'master'].includes(url.searchParams.get('tier')) ? url.searchParams.get('tier') : 'premier';
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (!userId) {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ error: 'Entre na conta primeiro.' }));
+      }
+      const u = (await pg.query('SELECT arena, (SELECT count(*)::int FROM balls WHERE user_id = $1) AS n FROM users WHERE id = $1', [userId])).rows[0];
+      if (u.n >= 4) await pg.query('DELETE FROM balls WHERE id = (SELECT min(id) FROM balls WHERE user_id = $1)', [userId]);
+      await pg.query(`INSERT INTO balls (user_id, tier, arena, unlock_at) VALUES ($1, $2, $3, now() - interval '1 second')`, [userId, tier, u.arena]);
+      return res.end(JSON.stringify({ ok: true, tier }));
+    }
     const api = url.pathname.match(/^\/api\/([\w-]+)$/);
     if (api) {
       req.query = { action: api[1] };

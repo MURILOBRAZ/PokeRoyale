@@ -220,7 +220,8 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - **Navegação:** Início, Coleção, Arenas, Amigos e Treino — menu lateral no PC, barra fixa embaixo no celular.
 - **Centro:** a arena atual com o mapa como prévia, líder, tipos e o Pokémon símbolo do líder; setas para espiar as outras arenas (bloqueadas mostram os troféus necessários); botão **BATALHAR** como ação principal.
 - **Jornada em Kanto** (PC), **Premier Balls**, **deck ativo** com níveis e os modos **Treino** e **Amigos**.
-- O fundo é o mapa da arena atual, desfocado. Coleção, Arenas, Amigos e recompensas abrem por cima do início.
+- O fundo é o mapa da arena atual, desfocado. Coleção, Arenas, Amigos e Treino são **abas**: trocam o conteúdo dentro do início, com a barra e o menu sempre visíveis (volta-se pelo menu). Só a recompensa abre por cima.
+- **Abrir ball:** animação de ~2,5 s (a ball cai, balança 3 vezes, o botão brilha, a tampa abre num clarão da cor do tipo) antes das cartas; tocar pula.
 - Fonte *Pixelify Sans* (Google Fonts) nos títulos e botões. Ficou de fora do mockup o que o jogo ainda não tem (gemas, loja, ranking, mensagens).
 
 **Na partida:**

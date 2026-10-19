@@ -136,6 +136,7 @@
           <button class="nav-btn" data-nav="training"><span class="nav-ico">🎯</span><span>Treino</span></button>
         </nav>
 
+        <div id="hub-content" class="hub-content">
         <main class="hub-main">
           <section class="arena-show">
             <div class="arena-head">
@@ -182,6 +183,7 @@
             <button id="hub-friends" class="mode mode-green"><span class="mode-ico">👥</span><b>Amigos</b><small>Crie ou entre numa sala</small></button>
           </section>
         </main>
+        </div>
       </div>
     </section>
 
@@ -213,11 +215,14 @@
     </section>
 
     <section id="reward" class="overlay hidden">
-      <div class="panel">
-        <h2 id="reward-title" class="reward-title"></h2>
-        <div id="reward-cards"></div>
-        <div id="reward-extra"></div>
-        <button id="reward-ok" class="wide primary">Coletar</button>
+      <div class="panel reward-panel">
+        <div id="reward-open" class="ball-open hidden" title="Toque para pular"></div>
+        <div id="reward-body">
+          <h2 id="reward-title" class="reward-title"></h2>
+          <div id="reward-cards"></div>
+          <div id="reward-extra"></div>
+          <button id="reward-ok" class="wide primary">Coletar</button>
+        </div>
       </div>
     </section>
 

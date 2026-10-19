@@ -164,3 +164,57 @@ button.link:active { transform: none; }
 /* Miniaturas dos mapas como fundo do caminho dos troféus */
 .road-step { background: linear-gradient(90deg, rgba(26, 34, 64, 0.95), rgba(26, 34, 64, 0.7)), var(--map, none) center 40% / cover, #1a2240; }
 .road-step.reached { background: linear-gradient(90deg, rgba(26, 34, 64, 0.9), rgba(26, 34, 64, 0.35)), var(--map, none) center 40% / cover, #1a2240; }
+
+/* Deck inicial no celular: 2 fileiras de 4 para os ícones não ficarem minúsculos */
+@media (max-width: 560px) {
+  .starter-panel { padding: 16px 12px; }
+  .mini-deck { grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .mini-deck span { display: block; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
+  .mini-deck img { display: block; width: 100%; max-width: 72px; margin: 0 auto; }
+}
+
+/* ---------- Ball abrindo (antes das recompensas) ---------- */
+.reward-panel { min-height: 320px; }
+.ball-open {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  cursor: pointer;
+  user-select: none;
+}
+.ball-svg { width: 150px; height: 150px; overflow: visible; filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.5)); }
+.ball-name { margin-top: 14px; font-family: var(--pixel, sans-serif); font-size: 22px; color: #fff; opacity: 0; }
+.ball-skip { margin-top: 6px; font-size: 11px; opacity: 0.5; }
+.ball-top { transform-box: view-box; transform-origin: 95px 50px; }
+.ball-button { transform-box: fill-box; transform-origin: center; }
+.ball-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255, 245, 180, 0.9) 35%, rgba(255, 220, 120, 0) 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+.tier-great .ball-burst { background: radial-gradient(circle, #fff 0%, rgba(150, 200, 255, 0.9) 35%, rgba(80, 140, 255, 0) 70%); }
+.tier-ultra .ball-burst { background: radial-gradient(circle, #fff 0%, rgba(255, 220, 90, 0.95) 35%, rgba(255, 190, 0, 0) 70%); }
+.tier-master .ball-burst { background: radial-gradient(circle, #fff 0%, rgba(230, 150, 255, 0.95) 35%, rgba(180, 80, 255, 0) 70%); }
+
+/* Sequência: cai (0–0,45 s) → balança 3x (0,5–1,6 s) → botão brilha (1,6–1,9 s) → abre e clarão (1,9–2,6 s) */
+.ball-open.playing .ball-svg { animation: ball-drop 0.45s cubic-bezier(0.3, 1.6, 0.6, 1) both, ball-shake 0.36s ease-in-out 0.5s 3; transform-origin: 50% 90%; }
+.ball-open.playing .ball-button { animation: ball-glow 0.3s ease-in-out 1.6s 2 alternate; }
+.ball-open.playing .ball-top { animation: ball-lid 0.45s cubic-bezier(0.2, 1.4, 0.5, 1) 1.95s both; }
+.ball-open.playing .ball-burst { animation: ball-burst 0.7s ease-out 1.95s both; }
+.ball-open.playing .ball-name { animation: ball-name 0.4s ease-out 0.3s both; }
+@keyframes ball-drop { from { transform: translateY(-160px) scale(0.6); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes ball-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-16deg); } 75% { transform: rotate(16deg); } }
+@keyframes ball-glow { to { fill: #fff6b0; transform: scale(1.25); } }
+@keyframes ball-lid { to { transform: translate(-2px, -12px) rotate(48deg); } } /* dobradiça à direita: o lado esquerdo sobe */
+@keyframes ball-burst { 0% { opacity: 0; transform: scale(0.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(9); } }
+@keyframes ball-name { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

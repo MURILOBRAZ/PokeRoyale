@@ -345,3 +345,30 @@ button.link { font-family: inherit; }
 .hub .xp-bar { position: relative; overflow: hidden; border-radius: 6px; }
 .hub .xp-bar i { position: absolute; inset: 0 auto 0 0; }
 .hub .xp-bar span { display: block; text-align: center; font-weight: 700; text-shadow: 0 1px 1px #000; }
+
+/* ---------- Abas dentro do início (Coleção, Arenas, Amigos, Treino, sala) ---------- */
+.hub-content { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; }
+.hub-content > .hub-main { flex: 1; }
+.overlay.docked {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 14px 16px 16px 4px;
+  background: none;
+  backdrop-filter: none;
+  overflow-y: auto;
+}
+.overlay.docked.hidden { display: none; }
+.overlay.docked .panel { width: 100%; max-width: 880px; max-height: none; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.overlay.docked .deck-panel, .overlay.docked .road-panel { height: 100%; }
+.overlay.docked #deck-close, .overlay.docked #road-close, .overlay.docked #friends-close { display: none; }
+#menu.docked .panel > h1, #menu.docked .panel > h1 + .sub { display: none; }
+#menu.docked .panel > h2:first-of-type { margin-top: 0; }
+@media (max-width: 760px) {
+  .overlay.docked { padding: 10px; }
+}
+.overlay.docked #deck-slots { width: 100%; max-width: 600px; margin: 0 auto; }
+#friends.docked .panel, #menu.docked .panel, #lobby.docked .panel { max-width: 560px; }

@@ -44,7 +44,7 @@ function showHome(error = '') {
 function renderLanding() {
   const logged = Account.loggedIn;
   $('#menu-account').innerHTML = logged
-    ? '<button id="menu-back" class="wide primary">← Voltar para a conta</button>'
+    ? '' // logado, o Treino é uma aba: volta-se pelo menu
     : Account.available
       ? '<div class="btn-row"><button id="menu-login" class="primary">Entrar</button><button id="menu-signup">Criar conta</button></div><p class="sub small">Com uma conta você coleciona Pokémon, ganha Premier Balls e sobe pelos ginásios até a Liga.</p>'
       : '<p class="sub small">Contas indisponíveis neste endereço (servidor offline). O treino funciona normalmente.</p>';
@@ -353,6 +353,7 @@ $('#hub-logout').addEventListener('click', async () => {
 // ---------- Caminho dos troféus ----------
 
 function showRoad() {
+  setNav('road');
   const u = Account.user;
   $('#road-list').innerHTML = [...ARENAS].reverse().map((a) => {
     const reached = u.arena >= a.id;
@@ -394,9 +395,74 @@ function showReward(result) {
   }).join('');
   const items = Object.entries(contents.items || {}).map(([id, n]) => `<span class="reward-item">${itemImg(id)} ${ITEMS[id].name} ×${n}</span>`).join('');
   $('#reward-extra').innerHTML = `<span class="reward-gold">💰 +${fmtNum(contents.gold)}</span>${items}`;
+  playBallOpening(tier);
   showScreen('#reward');
 }
 
+// ---------- Animação da ball abrindo ----------
+// A ball cai, balança 3 vezes, o botão brilha, a metade de cima abre num clarão e as cartas aparecem.
+
+const BALL_LOOKS = {
+  poke: { top: '#e3350d', bottom: '#f4f4f4', band: '#222', ring: '#222' },
+  premier: { top: '#f7f7f7', bottom: '#ffffff', band: '#d6301c', ring: '#d6301c' },
+  great: { top: '#2f6fdb', bottom: '#f4f4f4', band: '#222', ring: '#222', extra: 'great' },
+  ultra: { top: '#262626', bottom: '#f4f4f4', band: '#222', ring: '#222', extra: 'ultra' },
+  master: { top: '#7b3fb5', bottom: '#f4f4f4', band: '#222', ring: '#222', extra: 'master' },
+};
+
+function ballSvg(tier) {
+  const b = BALL_LOOKS[tier] || BALL_LOOKS.poke;
+  const extras = {
+    great: '<path d="M14 40 Q22 18 40 14 L34 30 Q24 32 20 44 Z" fill="#e3350d"/><path d="M86 40 Q78 18 60 14 L66 30 Q76 32 80 44 Z" fill="#e3350d"/>',
+    ultra: '<rect x="22" y="2" width="12" height="44" rx="4" fill="#f8c630"/><rect x="66" y="2" width="12" height="44" rx="4" fill="#f8c630"/>',
+    master: '<circle cx="24" cy="30" r="8" fill="#e95ea8"/><circle cx="76" cy="30" r="8" fill="#e95ea8"/><text x="50" y="34" text-anchor="middle" font-size="20" font-weight="900" fill="#fff" font-family="sans-serif">M</text>',
+  };
+  return `<div class="ball-burst"></div>
+    <svg class="ball-svg" viewBox="0 0 100 100" aria-hidden="true">
+      <defs><clipPath id="ball-top-clip" clipPathUnits="userSpaceOnUse"><path d="M5 50 A45 45 0 0 1 95 50 Z"/></clipPath></defs>
+      <path d="M5 50 A45 45 0 0 0 95 50 Z" fill="${b.bottom}" stroke="#1a1a1a" stroke-width="3"/>
+      <g class="ball-top">
+        <g clip-path="url(#ball-top-clip)">
+          <path d="M5 50 A45 45 0 0 1 95 50 Z" fill="${b.top}"/>
+          ${extras[b.extra] || ''}
+          <path d="M14 30 Q22 14 40 10" stroke="rgba(255,255,255,0.55)" stroke-width="5" fill="none" stroke-linecap="round"/>
+        </g>
+        <path d="M5 50 A45 45 0 0 1 95 50" fill="none" stroke="#1a1a1a" stroke-width="3"/>
+      </g>
+      <rect x="4" y="46" width="92" height="8" fill="${b.band}"/>
+      <circle class="ball-button" cx="50" cy="50" r="13" fill="#f4f4f4" stroke="${b.ring}" stroke-width="5"/>
+      <circle cx="50" cy="50" r="6" fill="#fff" stroke="#bbb" stroke-width="1.5"/>
+    </svg>
+    <div class="ball-name">${BALLS[tier].name}</div>
+    <small class="ball-skip">toque para pular</small>`;
+}
+
+let ballTimer = null;
+
+function playBallOpening(tier) {
+  const open = $('#reward-open');
+  const body = $('#reward-body');
+  clearTimeout(ballTimer);
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    open.classList.add('hidden');
+    body.classList.remove('hidden');
+    return;
+  }
+  open.innerHTML = ballSvg(tier);
+  open.className = `ball-open tier-${tier}`;
+  body.classList.add('hidden');
+  void open.offsetWidth; // reinicia as animações CSS
+  open.classList.add('playing');
+  ballTimer = setTimeout(revealReward, 2600);
+}
+
+function revealReward() {
+  clearTimeout(ballTimer);
+  $('#reward-open').classList.add('hidden');
+  $('#reward-body').classList.remove('hidden');
+}
+
+$('#reward-open').addEventListener('click', revealReward);
 $('#reward-ok').addEventListener('click', () => showHome());
 
 // ---------- Partidas que valem troféus ----------
