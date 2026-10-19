@@ -141,6 +141,7 @@ function renderHub() {
   $('#hub-arena-name').textContent = arena.name;
   $('#hub-trophies').textContent = `🏆 ${fmtNum(u.trophies)}`;
   $('#hub-arena').style.setProperty('--arena', arena.ground[0]);
+  $('#hub-arena').style.setProperty('--map', `url(${arenaMapUrl(arena, true)})`);
   renderBalls();
 }
 
@@ -253,7 +254,7 @@ function showRoad() {
     const current = u.arena === a.id;
     const count = Object.values(CARDS).filter((c) => arenaOfCard(c) === a.id).length;
     const types = a.types.map(typeChip).join('');
-    return `<div class="road-step ${reached ? 'reached' : ''} ${current ? 'current' : ''}" style="--arena:${a.ground[0]}">
+    return `<div class="road-step ${reached ? 'reached' : ''} ${current ? 'current' : ''}" style="--arena:${a.ground[0]};--map:url(${arenaMapUrl(a, true)})">
       <div class="road-trophies">🏆 ${fmtNum(a.trophies)}</div>
       <div class="road-body">
         <b>${a.name}</b>${a.leader ? ` <small>· ${a.leader}</small>` : ''}

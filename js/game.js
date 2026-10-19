@@ -58,8 +58,8 @@ class Game {
     for (const side of [0, 1]) {
       const yP = side === 0 ? 25.5 : 6.5;
       const yK = side === 0 ? 29 : 3;
-      this._addTower(side, 'princess', 3.5, yP, 0);
-      this._addTower(side, 'princess', 14.5, yP, 1);
+      this._addTower(side, 'princess', ARENA.BRIDGES[0], yP, 0);
+      this._addTower(side, 'princess', ARENA.BRIDGES[1], yP, 1);
       this._addTower(side, 'king', 9, yK, -1);
     }
   }
@@ -127,6 +127,10 @@ class Game {
 
   _spawnUnit(card, side, x, y, mult = 1) {
     const hp = Math.round(card.hp * mult);
+    // Terrestres nunca nascem dentro do rio (bandos se espalham ao redor do ponto escolhido)
+    if (!card.air && y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM) {
+      y = side === 0 ? ARENA.RIVER_BOTTOM + 0.05 : ARENA.RIVER_TOP - 0.05;
+    }
     const u = {
       id: this.nextId++, side, card,
       def: { ...card, hp, dmg: Math.round(card.dmg * mult) },
@@ -255,7 +259,7 @@ class Game {
     if (!t) return;
 
     // Pequena tolerância: unidades empurradas por outras ficam a centésimos do alcance
-    if (edgeDist(u, t) <= u.def.range + 0.15) {
+    if (edgeDist(u, t) <= u.def.range + 0.3) {
       if (u.cooldown <= 0) {
         u.cooldown = u.def.hitSpeed;
         u.attackAnim = 0.2;
@@ -293,6 +297,13 @@ class Game {
       let px = -oy / od;
       let py = ox / od;
       if (px * dx + py * dy < 0) {
+        px = -px;
+        py = -py;
+      }
+      // Ginásio colado na parede: contorna pelo lado que tem espaço para o Pokémon passar
+      const towardCenter = Math.sign(ARENA.W / 2 - t.x);
+      const wallRoom = towardCenter > 0 ? t.x - t.radius - 0.4 : ARENA.W - 0.4 - (t.x + t.radius);
+      if (Math.abs(px) > 0.3 && Math.sign(px) !== towardCenter && wallRoom < u.radius * 2) {
         px = -px;
         py = -py;
       }

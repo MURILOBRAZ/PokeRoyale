@@ -2,7 +2,7 @@
 
 Fangame de estratégia em tempo real no estilo *Clash Royale*, com Pokémon. Feito para jogar com amigos, sem fins lucrativos.
 
-![status](https://img.shields.io/badge/vers%C3%A3o-0.4-blue)
+![status](https://img.shields.io/badge/vers%C3%A3o-0.4.1-blue)
 
 ### 🎮 Jogar agora: https://pokeroyale.vercel.app
 
@@ -29,6 +29,7 @@ Os sprites são carregados da internet ([SpriteCollab](https://github.com/PMDCol
 - **Os 151 Pokémon da 1ª geração** como cartas (stats gerados a partir dos oficiais) + 2 golpes
 - **Editor de deck** com busca, filtro por tipo e deck aleatório
 - **Sprites animados** em 8 direções (parado, andando, atacando)
+- **Mapas desenhados** para as 10 arenas (Rota 1, os 8 ginásios de Kanto e a Liga) e ginásios com design próprio
 - Energia com recarga dupla no último minuto, prorrogação com morte súbita
 - Tabela de tipos completa (18 tipos)
 - Evolução em batalha, inclusive em cadeia (Charmander → Charmeleon → Charizard) e Eevee aleatório
@@ -53,6 +54,7 @@ node tools/build-pokedex.mjs   # baixa os 151 Pokémon da PokéAPI -> js/pokedex
 node tools/build-sprites.mjs   # baixa as animações e créditos do SpriteCollab -> js/sprites.js, CREDITS.md
 node tools/simulate.js 1500    # partidas bot x bot: procura erros e mostra o balanceamento
 node tools/test-api.js         # testa a API de contas num banco em memória
+python tools/build-arenas.py   # converte a arte das arenas e ginásios (assets/originais -> assets/)
 ```
 
 ## Estrutura

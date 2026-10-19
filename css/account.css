@@ -197,3 +197,14 @@ button.big { margin-top: 12px; padding: 16px; font-size: 20px; }
 
 .hub-panel .btn-row { margin-top: 8px; }
 .road-body small { display: block; }
+
+/* Miniaturas dos mapas como fundo do cartão da arena e do caminho dos troféus */
+.arena-banner {
+  background:
+    linear-gradient(90deg, rgba(15, 20, 40, 0.88), rgba(15, 20, 40, 0.45)),
+    var(--map, none) center 40% / cover,
+    color-mix(in srgb, var(--arena, #74c255) 60%, #000);
+  min-height: 74px;
+}
+.road-step { background: linear-gradient(90deg, rgba(26, 34, 64, 0.95), rgba(26, 34, 64, 0.7)), var(--map, none) center 40% / cover, #1a2240; }
+.road-step.reached { background: linear-gradient(90deg, rgba(26, 34, 64, 0.9), rgba(26, 34, 64, 0.35)), var(--map, none) center 40% / cover, #1a2240; }

@@ -1,6 +1,6 @@
 # PokéRoyale — Game Design Document
 
-> Versão do documento: 0.4 · Data: 19/10/2026
+> Versão do documento: 0.4.1 · Data: 19/10/2026
 > Fangame sem fins lucrativos, feito para jogar com amigos. Pokémon é marca da Nintendo / Game Freak / The Pokémon Company; este projeto não é afiliado a elas.
 
 ---
@@ -57,7 +57,7 @@ Energia enche ──► Escolhe carta da mão (4 de 8) ──► Posiciona na ar
 ## 5. Arena
 
 - Grade lógica de **18 × 32 tiles**, em retrato. O jogador fica embaixo e o oponente em cima.
-- Um **rio** atravessa o meio (linhas 15–17) com **2 pontes** (colunas ~3,5 e ~14,5). Pokémon terrestres só cruzam pelas pontes; voadores passam por cima.
+- Um **rio** atravessa o meio (linhas 14,7–17,3) com **2 pontes** (colunas 2,35 e 15,65, largura 2,3). Pokémon terrestres só cruzam pelas pontes; voadores passam por cima. As medidas seguem os mapas desenhados das arenas: cada pista sai de um ginásio lateral e passa por uma ponte.
 - Cada lado tem:
   - 2 **Ginásios laterais** (um por pista)
   - 1 **Ginásio Líder** no centro, que fica *dormindo* até levar dano ou até um ginásio lateral cair
@@ -225,7 +225,9 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - **Sprites:** [SpriteCollab](https://github.com/PMDCollab/SpriteCollab) (estilo *Pokémon Mystery Dungeon*), licença CC BY-NC 4.0, créditos em `CREDITS.md`. Animações de parado, andar e atacar (corpo a corpo ou à distância), em **8 direções**: seus Pokémon andam de costas para você, os do oponente de frente.
 - **Arte das cartas:** retratos do SpriteCollab.
 - **Reserva:** enquanto a folha animada carrega, o jogo usa o sprite estático da PokéAPI; sem nenhum dos dois, um círculo da cor do tipo com a inicial.
-- **Ginásios:** desenhados como Pokébolas gigantes (azuis ou vermelhas); o Líder tem coroa.
+- **Mapas das arenas** (arte do autor): um para cada uma das 10 arenas — Rota 1, os 8 ginásios de Kanto e a Liga Pokémon. Na partida que vale troféus aparece o mapa da sua arena; no Treino o mapa é sorteado. As miniaturas aparecem no início e no caminho dos troféus.
+- **Ginásios** (arte do autor): lateral e Líder, em azul (você) e vermelho (oponente). Enquanto a imagem carrega, o jogo desenha uma Pokébola na cor do time.
+- **Conversão:** `python tools/build-arenas.py` recorta os originais (`assets/originais/`, fora do git) para a grade 18×32, alinhando pontes e rio às regras do jogo, e gera WebP (~130 KB por mapa) + miniaturas; também separa os 4 ginásios da folha. `--debug pasta` salva os mapas com as linhas do jogo por cima para conferir.
 - **Som (futuro):** efeitos de ataque, grito do Pokémon ao entrar em campo e trilha de batalha 8-bit.
 
 ### 14.1 Backlog visual (para a v0.5)
@@ -253,7 +255,7 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
 - [ ] **Animações extras do SpriteCollab**: `Hurt` ao levar dano, `Faint` ao ser derrotado
 - [ ] **Animação de evolução** mais caprichada (brilho branco piscando, como nos jogos)
 - [ ] **Som**: efeito por tipo de ataque, grito ao entrar em campo, trilha de batalha
-- [ ] **Mapas das arenas** (arte do autor, 19/10/2026): prontos os 8 ginásios (Pewter, Cerulean, Vermilion, Celadon, Saffron, Fuchsia, Cinnabar, Viridian) e o design dos ginásios lateral/Líder em azul e vermelho. Faltam **Rota 1** e **Liga Pokémon**. Precisam ser alinhados à grade 18×32 (pontes e rio) e comprimidos para web.
+- [x] **Mapas das arenas e ginásios** (arte do autor): as 10 arenas e os ginásios lateral/Líder, no jogo desde a v0.4.1.
 - [ ] **Multiplayer**: os efeitos devem ser gerados no convidado a partir dos eventos de ataque do snapshot (hoje só projéteis e efeitos genéricos são enviados)
 
 ## 15. Arquitetura técnica
@@ -291,7 +293,7 @@ PokeRoyale/
 | v0.2.1 | Publicado online (GitHub Pages, depois Vercel na v0.3) | ✅ Feito |
 | **v0.3** | Os 151 Pokémon, editor de deck, sprites animados (SpriteCollab), testes automáticos | ✅ Feito |
 | **v0.4** | Contas, decks iniciais, troféus, arenas (ginásios), Premier Balls, níveis (ver [17](#17-contas-e-progressão-v04)) | ✅ Feito |
-| v0.4.1 | Mapas das arenas e design dos ginásios (arte do autor) no jogo | ⏳ Próximo |
+| **v0.4.1** | Mapas das 10 arenas e design dos ginásios (arte do autor) no jogo | ✅ Feito |
 | v0.5 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
 | v0.6 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
 

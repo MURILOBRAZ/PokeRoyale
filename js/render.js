@@ -29,13 +29,23 @@ class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.viewSide = viewSide;
-    this.ground = ARENAS[0].ground;
+    this.setArena(0);
     this.resize();
   }
 
-  // Cores do gramado de cada arena (ginásio)
+  // Visual de cada arena: mapa desenhado (assets/arenas); enquanto carrega, o gramado nas cores do ginásio
   setArena(id) {
-    this.ground = (ARENAS[id] || ARENAS[0]).ground;
+    const arena = ARENAS[id] || ARENAS[0];
+    this.ground = arena.ground;
+    this.mapUrl = arena.map ? arenaMapUrl(arena) : null;
+    if (this.mapUrl) getImage(this.mapUrl); // começa a carregar já
+  }
+
+  // Retângulo do mundo -> tela (cuida da arena invertida do jogador de cima)
+  _rect(x1, y1, x2, y2) {
+    const [ax, ay] = this.w2s(x1, y1);
+    const [bx, by] = this.w2s(x2, y2);
+    return [Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay)];
   }
 
   resize() {
@@ -98,6 +108,18 @@ class Renderer {
   _drawGround() {
     const ctx = this.ctx;
     const s = this.scale;
+    const map = this.mapUrl && getImage(this.mapUrl);
+    if (map) {
+      // O mapa já tem rio, pontes e pistas alinhados à grade (tools/build-arenas.py)
+      const w = ARENA.W * s;
+      const h = ARENA.H * s;
+      ctx.save();
+      ctx.translate(this.ox + w / 2, this.oy + h / 2);
+      if (this.viewSide === 1) ctx.rotate(Math.PI);
+      ctx.drawImage(map, -w / 2, -h / 2, w, h);
+      ctx.restore();
+      return;
+    }
     for (let ty = 0; ty < ARENA.H; ty++) {
       for (let tx = 0; tx < ARENA.W; tx++) {
         const [x, y] = this.w2s(tx + (this.viewSide ? 1 : 0), ty + (this.viewSide ? 1 : 0));
@@ -105,6 +127,19 @@ class Renderer {
         ctx.fillRect(x, y, s + 0.5, s + 0.5);
       }
     }
+    // Reserva enquanto o mapa carrega: pistas e plataformas no mesmo molde dos mapas
+    ctx.fillStyle = 'rgba(245, 228, 190, 0.38)';
+    for (const b of ARENA.BRIDGES) {
+      ctx.fillRect(...this._rect(b - ARENA.BRIDGE_HALF * 0.9, 5, b + ARENA.BRIDGE_HALF * 0.9, 27));
+    }
+    ctx.fillRect(...this._rect(6.4, 0.6, 11.6, 5.3));
+    ctx.fillRect(...this._rect(6.4, 26.7, 11.6, 31.4));
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = Math.max(2, s * 0.12);
+    const [cx, cy] = this.w2s(9, 9.5);
+    ctx.beginPath();
+    ctx.arc(cx, cy, s * 2.2, 0, Math.PI * 2);
+    ctx.stroke();
     // Rio
     const [rx, ry] = this.w2s(this.viewSide ? ARENA.W : 0, this.viewSide ? ARENA.RIVER_BOTTOM : ARENA.RIVER_TOP);
     const rh = (ARENA.RIVER_BOTTOM - ARENA.RIVER_TOP) * s;
@@ -197,8 +232,53 @@ class Renderer {
       return;
     }
 
-    // Pokébola: metade de cima na cor do time
     const color = this.teamColor(t.side);
+    const mine = t.side === this.viewSide;
+    const sprite = getImage(`assets/ginasios/${t.kind === 'king' ? 'lider' : 'lateral'}-${mine ? 'azul' : 'vermelho'}.webp`);
+    let top = y - r;
+    let bottom = y + r;
+    if (sprite) {
+      // Desenho do ginásio apoiado na base do círculo de colisão
+      const w = r * (t.kind === 'king' ? 2.15 : 2.3);
+      const h = (w * sprite.height) / sprite.width;
+      bottom = y + r * 0.85;
+      top = bottom - h;
+      ctx.save();
+      if (t.hitFlash > 0) ctx.filter = 'brightness(1.7)';
+      ctx.drawImage(sprite, x - w / 2, top, w, h);
+      ctx.restore();
+    } else {
+      this._drawPokeballTower(x, y, r, t, color);
+    }
+    if (t.kind === 'king' && !t.active) {
+      ctx.font = `bold ${r * 0.45}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeText('z z', x + r * 0.95, top + r * 0.5);
+      ctx.fillText('z z', x + r * 0.95, top + r * 0.5);
+    }
+    // Barra de vida do lado de dentro da arena (abaixo dos ginásios de cima, acima dos de baixo)
+    const bw = r * 2;
+    const upper = y < this.oy + (ARENA.H * this.scale) / 2;
+    const by = upper ? bottom + this.scale * 0.1 : top - this.scale * 0.75;
+    this._bar(x, by, bw, t.hp / t.maxHp, color);
+    ctx.font = `bold ${Math.max(9, this.scale * 0.36)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillStyle = '#fff';
+    const txt = String(Math.ceil(t.hp));
+    ctx.strokeText(txt, x, by + this.scale * 0.22);
+    ctx.fillText(txt, x, by + this.scale * 0.22);
+  }
+
+  // Reserva enquanto o desenho do ginásio carrega: Pokébola na cor do time
+  _drawPokeballTower(x, y, r, t, color) {
+    const ctx = this.ctx;
     ctx.fillStyle = '#f4f4f4';
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -219,30 +299,12 @@ class Renderer {
     ctx.arc(x, y, r * 0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-
     if (t.kind === 'king') {
       ctx.font = `${r * 0.9}px serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('👑', x, y - r * 1.15);
-      if (!t.active) {
-        ctx.font = `bold ${r * 0.45}px sans-serif`;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('z z', x + r * 0.9, y - r * 0.8);
-      }
     }
-    const bw = r * 2;
-    const by = y + r + this.scale * 0.15;
-    this._bar(x, by, bw, t.hp / t.maxHp, color);
-    ctx.font = `bold ${Math.max(9, this.scale * 0.36)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillStyle = '#fff';
-    const txt = String(Math.ceil(t.hp));
-    ctx.strokeText(txt, x, by + this.scale * 0.22);
-    ctx.fillText(txt, x, by + this.scale * 0.22);
   }
 
   _drawUnit(u, game) {

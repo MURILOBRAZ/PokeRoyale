@@ -1,13 +1,15 @@
 // Dados e balanceamento do PokéRoyale. Todos os números do jogo ficam aqui.
 // As cartas de Pokémon são geradas a partir de POKEDEX (js/pokedex.js) por makePokemonCard().
 
+// Geometria alinhada aos mapas das arenas (assets/arenas, ver tools/build-arenas.py):
+// as pistas passam pelas pontes e os ginásios laterais ficam no começo de cada pista.
 const ARENA = {
   W: 18,
   H: 32,
-  RIVER_TOP: 15,
-  RIVER_BOTTOM: 17,
-  BRIDGES: [3.5, 14.5],
-  BRIDGE_HALF: 1.0,
+  RIVER_TOP: 14.7,
+  RIVER_BOTTOM: 17.3,
+  BRIDGES: [2.35, 15.65],
+  BRIDGE_HALF: 1.15,
 };
 
 const MATCH = {
@@ -95,6 +97,8 @@ const GROUNDED_BIRDS = new Set(['doduo', 'dodrio']);
 const BUILDING_TARGETERS = new Set(['onix', 'graveler', 'golem', 'rhyhorn', 'rhydon', 'snorlax']);
 const SWARMS = { caterpie: 3, weedle: 3, rattata: 3, spearow: 3, zubat: 3, diglett: 3, exeggcute: 3 };
 const KAMIKAZE = new Set(['voltorb', 'electrode']);
+// Ajuste fino de custo para quem ficou forte demais nos testes automáticos (Aço resiste a quase tudo)
+const COST_ADJUST = { magnemite: 1, magneton: 1 };
 
 const clampNum = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -110,7 +114,7 @@ function makePokemonCard(p) {
 
   // Custo vem do total de stats; a distribuição dos stats decide vida x dano
   const baseCost = clampNum(Math.round((bst - 150) / 62), 1, 9);
-  const cost = Math.min(9, baseCost + (count > 1 ? 1 : 0));
+  const cost = Math.min(9, baseCost + (count > 1 ? 1 : 0) + (COST_ADJUST[p.id] || 0));
   // Expoente < 1 suaviza os extremos (canhões de vidro como Abra/Gengar e tanques puros)
   const bulk = (((s.hp + (s.def + s.spd) / 2) / bst) * 3) ** 0.7;
   const offense = (((ranged ? s.spa : s.atk) / bst) * 6) ** 0.7;

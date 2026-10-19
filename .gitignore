@@ -4,3 +4,4 @@ tools/sim-report.json
 .env*
 node_modules/
 .devdb/
+assets/originais/

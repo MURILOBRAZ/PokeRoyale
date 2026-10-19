@@ -122,12 +122,12 @@ document.querySelectorAll('#menu [data-level]').forEach((b) =>
   b.addEventListener('click', () => {
     level = b.dataset.level;
     leaveOnline();
-    beginMatch('bot', 0, [loadDeck(), randomDeck()]);
+    beginMatch('bot', 0, [loadDeck(), randomDeck()], { arena: randomArena() });
   }));
 
 $('#btn-again').addEventListener('click', () => {
   if (mode === 'bot' && lastRankedMode) startRankedBot();
-  else if (mode === 'bot') beginMatch('bot', 0, [loadDeck(), randomDeck()]);
+  else if (mode === 'bot') beginMatch('bot', 0, [loadDeck(), randomDeck()], { arena: randomArena() });
   else if (mode === 'host' && net && net.conn) startOnlineAsHost();
 });
 $('#btn-menu').addEventListener('click', () => showMenu());
@@ -232,6 +232,11 @@ function joinRoom(text) {
   setLobbyStatus('Conectando', true);
   showScreen('#lobby');
   net.join(code);
+}
+
+// No treino, o visual da arena é sorteado entre todos os mapas
+function randomArena() {
+  return Math.floor(Math.random() * ARENAS.length);
 }
 
 // Deck de quem está jogando: o da conta (se logado) ou o de treino
