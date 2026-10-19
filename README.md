@@ -4,6 +4,8 @@ Fangame de estratégia em tempo real no estilo *Clash Royale*, com Pokémon. Fei
 
 ![status](https://img.shields.io/badge/vers%C3%A3o-0.2-blue)
 
+### 🎮 Jogar agora: https://murilobraz.github.io/PokeRoyale/
+
 ## Como rodar
 
 Não precisa instalar nada. Abra o `index.html` no navegador ou, de preferência, sirva a pasta:
@@ -33,7 +35,7 @@ Os sprites vêm da [PokéAPI](https://github.com/PokeAPI/sprites), então é pre
 2. Mande o convite para o amigo. Ele abre o link ou digita o código em **Entrar**.
 3. A partida começa assim que os dois se conectam.
 
-Para isso funcionar entre computadores diferentes, o jogo precisa estar publicado (ex.: GitHub Pages). Em `localhost` só dá para testar com duas abas no mesmo PC.
+Use sempre o link publicado acima. Em `localhost` só dá para testar com duas abas no mesmo PC.
 
 Veja o [GDD](GDD.md) para o design completo e o roadmap.
 

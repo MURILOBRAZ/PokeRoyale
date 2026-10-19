@@ -194,7 +194,7 @@ PokeRoyale/
 |---|---|---|
 | **v0.1** | Arena, 8 cartas, energia, tipos, evolução, ginásios, bot com 3 dificuldades | ✅ Feito |
 | **v0.2** | Multiplayer online por código de sala (PeerJS) | ✅ Feito |
-| v0.2.1 | Publicar no GitHub Pages para jogar com os amigos | ⏳ Próximo |
+| v0.2.1 | Publicado no GitHub Pages: https://murilobraz.github.io/PokeRoyale/ | ✅ Feito |
 | v0.3 | Editor de deck + mais Pokémon (Geodude, Gastly, Snorlax, Machop, Eevee...) | 💡 Ideia |
 | v0.4 | Sons, animações de ataque, emotes (Pikachu feliz/bravo) | 💡 Ideia |
 | v0.5 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) e pedras evolutivas | 💡 Ideia |
