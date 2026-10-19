@@ -1,6 +1,6 @@
 # PokéRoyale — Game Design Document
 
-> Versão do documento: 0.4.1 · Data: 19/10/2026
+> Versão do documento: 0.4.2 · Data: 19/10/2026
 > Fangame sem fins lucrativos, feito para jogar com amigos. Pokémon é marca da Nintendo / Game Freak / The Pokémon Company; este projeto não é afiliado a elas.
 
 ---
@@ -215,6 +215,16 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 
 ## 13. Controles e interface
 
+**Tela inicial (com conta, v0.4.2):** inspirada num mockup do autor, adaptada ao que o jogo tem.
+- **Barra do topo:** treinador (retrato do inicial), nível e XP, troféus, Pokédólares e sair.
+- **Navegação:** Início, Coleção, Arenas, Amigos e Treino — menu lateral no PC, barra fixa embaixo no celular.
+- **Centro:** a arena atual com o mapa como prévia, líder, tipos e o Pokémon símbolo do líder; setas para espiar as outras arenas (bloqueadas mostram os troféus necessários); botão **BATALHAR** como ação principal.
+- **Jornada em Kanto** (PC), **Premier Balls**, **deck ativo** com níveis e os modos **Treino** e **Amigos**.
+- O fundo é o mapa da arena atual, desfocado. Coleção, Arenas, Amigos e recompensas abrem por cima do início.
+- Fonte *Pixelify Sans* (Google Fonts) nos títulos e botões. Ficou de fora do mockup o que o jogo ainda não tem (gemas, loja, ranking, mensagens).
+
+**Na partida:**
+
 - **Invocar:** arraste a carta até a arena, ou toque na carta e depois no local. Teclas **1–4** selecionam cartas no PC.
 - Com uma carta selecionada, a área proibida fica **vermelha**; a prévia mostra o Pokémon ou o raio do golpe.
 - **HUD:** coroas (inimigo / você) e cronômetro no topo; mão de 4 cartas + "Próxima" embaixo; barra de energia com 10 segmentos.
@@ -294,6 +304,7 @@ PokeRoyale/
 | **v0.3** | Os 151 Pokémon, editor de deck, sprites animados (SpriteCollab), testes automáticos | ✅ Feito |
 | **v0.4** | Contas, decks iniciais, troféus, arenas (ginásios), Premier Balls, níveis (ver [17](#17-contas-e-progressão-v04)) | ✅ Feito |
 | **v0.4.1** | Mapas das 10 arenas e design dos ginásios (arte do autor) no jogo | ✅ Feito |
+| **v0.4.2** | Novo visual da tela inicial e dos menus | ✅ Feito |
 | v0.5 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
 | v0.6 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
 

@@ -53,43 +53,7 @@ button.link:active { transform: none; }
 .mini-deck img { width: 100%; image-rendering: pixelated; border-radius: 6px; background: rgba(0, 0, 0, 0.25); }
 .starter-card button { grid-area: btn; margin-top: 8px; }
 
-/* Início */
-.hub-panel { text-align: left; }
-.hub-panel h2 { text-align: center; }
-.hub-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.trainer { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.trainer b { font-size: 17px; }
-.lvl-badge {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #8fb0ff, #3b5bdb);
-  border: 3px solid #fff;
-  font-weight: 900;
-}
-.xp-bar { position: relative; width: 150px; max-width: 40vw; height: 14px; margin-top: 3px; border-radius: 7px; background: #0f1430; overflow: hidden; }
-.xp-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ffe27a, #f0b400); }
-.xp-bar span { position: relative; display: block; font-size: 10px; line-height: 14px; text-align: center; font-weight: 700; text-shadow: 0 1px 1px #000; }
-.gold { font-weight: 800; font-size: 16px; white-space: nowrap; }
-
-.arena-banner {
-  width: 100%;
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 2px 8px;
-  text-align: left;
-  padding: 12px 14px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--arena, #74c255) 75%, #000), #2b355c);
-  border: 2px solid color-mix(in srgb, var(--arena, #74c255) 60%, #fff);
-}
-#hub-arena-name, #hub-trophies { font-size: 17px; font-weight: 800; }
-.arena-banner small { grid-column: 1 / -1; opacity: 0.8; font-weight: 600; }
-button.big { margin-top: 12px; padding: 16px; font-size: 20px; }
-
+/* Início: ver css/hub.css. Peças reaproveitadas lá: */
 .ball-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
 .ball-slot {
   display: flex;
@@ -115,8 +79,8 @@ button.big { margin-top: 12px; padding: 16px; font-size: 20px; }
 @keyframes glow { 50% { box-shadow: 0 0 14px #f8d030; } }
 .free-ball { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .free-ball img { width: 26px; height: 26px; image-rendering: pixelated; }
-.check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0 6px; }
-.check input { width: 18px; height: 18px; accent-color: #f0b400; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 10px 0 8px; text-align: left; }
+.check input { width: 18px; height: 18px; accent-color: #f0b400; flex-shrink: 0; }
 
 /* Caminho dos troféus */
 .road-panel { display: flex; flex-direction: column; height: 100%; text-align: left; }
@@ -195,16 +159,8 @@ button.big { margin-top: 12px; padding: 16px; font-size: 20px; }
 .won-ball.muted { opacity: 0.75; font-size: 13px; }
 .arena-up { padding: 8px; border-radius: 10px; background: rgba(248, 208, 48, 0.15); border: 1px solid #f8d030; font-size: 14px; }
 
-.hub-panel .btn-row { margin-top: 8px; }
 .road-body small { display: block; }
 
-/* Miniaturas dos mapas como fundo do cartão da arena e do caminho dos troféus */
-.arena-banner {
-  background:
-    linear-gradient(90deg, rgba(15, 20, 40, 0.88), rgba(15, 20, 40, 0.45)),
-    var(--map, none) center 40% / cover,
-    color-mix(in srgb, var(--arena, #74c255) 60%, #000);
-  min-height: 74px;
-}
+/* Miniaturas dos mapas como fundo do caminho dos troféus */
 .road-step { background: linear-gradient(90deg, rgba(26, 34, 64, 0.95), rgba(26, 34, 64, 0.7)), var(--map, none) center 40% / cover, #1a2240; }
 .road-step.reached { background: linear-gradient(90deg, rgba(26, 34, 64, 0.9), rgba(26, 34, 64, 0.35)), var(--map, none) center 40% / cover, #1a2240; }

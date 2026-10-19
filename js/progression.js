@@ -2,17 +2,18 @@
 // Usado no navegador (interface) e no servidor (api/), que é quem aplica as recompensas.
 // Depende de CARDS e POKEDEX (js/pokedex.js + js/data.js).
 
+// short: nome curto; mascot: nº do Pokémon símbolo da arena (o principal do líder)
 const ARENAS = [
-  { id: 0, name: 'Rota 1', leader: null, trophies: 0, badge: null, types: ['normal', 'bug', 'flying', 'fairy'], ground: ['#74c255', '#6ab84c'], map: 'rota1' },
-  { id: 1, name: 'Ginásio de Pewter', leader: 'Brock', trophies: 300, badge: 'Insígnia da Rocha', types: ['rock'], ground: ['#b9a77c', '#ab996f'], map: 'pewter' },
-  { id: 2, name: 'Ginásio de Cerulean', leader: 'Misty', trophies: 600, badge: 'Insígnia da Cascata', types: ['water'], ground: ['#7cc3c9', '#6eb5bb'], map: 'cerulean' },
-  { id: 3, name: 'Ginásio de Vermilion', leader: 'Lt. Surge', trophies: 1000, badge: 'Insígnia do Trovão', types: ['electric'], ground: ['#c9c26a', '#bbb45d'], map: 'vermilion' },
-  { id: 4, name: 'Ginásio de Celadon', leader: 'Erika', trophies: 1400, badge: 'Insígnia do Arco-íris', types: ['grass'], ground: ['#5fae5a', '#54a04f'], map: 'celadon' },
-  { id: 5, name: 'Ginásio de Fuchsia', leader: 'Koga', trophies: 1800, badge: 'Insígnia da Alma', types: ['poison'], ground: ['#a98bb5', '#9b7ea7'], map: 'fuchsia' },
-  { id: 6, name: 'Ginásio de Saffron', leader: 'Sabrina', trophies: 2300, badge: 'Insígnia do Pântano', types: ['psychic'], ground: ['#d79bb3', '#c98ea6'], map: 'saffron' },
-  { id: 7, name: 'Ginásio de Cinnabar', leader: 'Blaine', trophies: 2800, badge: 'Insígnia do Vulcão', types: ['fire'], ground: ['#cf8f62', '#c18256'], map: 'cinnabar' },
-  { id: 8, name: 'Ginásio de Viridian', leader: 'Giovanni', trophies: 3300, badge: 'Insígnia da Terra', types: ['ground'], ground: ['#a8906a', '#9a835e'], map: 'viridian' },
-  { id: 9, name: 'Liga Pokémon', leader: 'Elite dos Quatro', trophies: 4000, badge: null, types: ['ice', 'fighting', 'ghost', 'dragon'], ground: ['#8a93b8', '#7d86ab'], map: 'liga' },
+  { id: 0, name: 'Rota 1', short: 'Rota 1', mascot: 16, leader: null, trophies: 0, badge: null, types: ['normal', 'bug', 'flying', 'fairy'], ground: ['#74c255', '#6ab84c'], map: 'rota1' },
+  { id: 1, name: 'Ginásio de Pewter', short: 'Pewter', mascot: 95, leader: 'Brock', trophies: 300, badge: 'Insígnia da Rocha', types: ['rock'], ground: ['#b9a77c', '#ab996f'], map: 'pewter' },
+  { id: 2, name: 'Ginásio de Cerulean', short: 'Cerulean', mascot: 121, leader: 'Misty', trophies: 600, badge: 'Insígnia da Cascata', types: ['water'], ground: ['#7cc3c9', '#6eb5bb'], map: 'cerulean' },
+  { id: 3, name: 'Ginásio de Vermilion', short: 'Vermilion', mascot: 26, leader: 'Lt. Surge', trophies: 1000, badge: 'Insígnia do Trovão', types: ['electric'], ground: ['#c9c26a', '#bbb45d'], map: 'vermilion' },
+  { id: 4, name: 'Ginásio de Celadon', short: 'Celadon', mascot: 45, leader: 'Erika', trophies: 1400, badge: 'Insígnia do Arco-íris', types: ['grass'], ground: ['#5fae5a', '#54a04f'], map: 'celadon' },
+  { id: 5, name: 'Ginásio de Fuchsia', short: 'Fuchsia', mascot: 110, leader: 'Koga', trophies: 1800, badge: 'Insígnia da Alma', types: ['poison'], ground: ['#a98bb5', '#9b7ea7'], map: 'fuchsia' },
+  { id: 6, name: 'Ginásio de Saffron', short: 'Saffron', mascot: 65, leader: 'Sabrina', trophies: 2300, badge: 'Insígnia do Pântano', types: ['psychic'], ground: ['#d79bb3', '#c98ea6'], map: 'saffron' },
+  { id: 7, name: 'Ginásio de Cinnabar', short: 'Cinnabar', mascot: 59, leader: 'Blaine', trophies: 2800, badge: 'Insígnia do Vulcão', types: ['fire'], ground: ['#cf8f62', '#c18256'], map: 'cinnabar' },
+  { id: 8, name: 'Ginásio de Viridian', short: 'Viridian', mascot: 112, leader: 'Giovanni', trophies: 3300, badge: 'Insígnia da Terra', types: ['ground'], ground: ['#a8906a', '#9a835e'], map: 'viridian' },
+  { id: 9, name: 'Liga Pokémon', short: 'Liga', mascot: 149, leader: 'Elite dos Quatro', trophies: 4000, badge: null, types: ['ice', 'fighting', 'ghost', 'dragon'], ground: ['#8a93b8', '#7d86ab'], map: 'liga' },
 ];
 
 // Mapa desenhado da arena (assets/arenas, gerado por tools/build-arenas.py)

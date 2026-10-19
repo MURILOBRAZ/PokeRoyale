@@ -25,6 +25,8 @@ function showHome(error = '') {
   ranked = null;
   if (Account.loggedIn && !Account.user.starter) return showStarter();
   if (Account.loggedIn) {
+    viewArena = Account.user.arena;
+    setNav('home');
     renderHub();
     $('#hub-error').textContent = error;
     showScreen('#hub');
@@ -128,22 +130,131 @@ $('#starter-options').addEventListener('click', async (e) => {
 
 // ---------- Início ----------
 
+let viewArena = 0; // arena mostrada na vitrine (as setas deixam espiar as outras)
+
+const mascotImg = (arena) => cardImage(CARDS[POKEDEX[arena.mascot - 1].id]);
+// Caminho absoluto: dentro de variáveis CSS, url() relativo seria resolvido a partir da pasta css/
+const cssUrl = (path) => `url("${new URL(path, document.baseURI).href}")`;
+
+function setNav(name) {
+  document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === name));
+}
+
 function renderHub() {
   const u = Account.user;
-  const arena = ARENAS[u.arena];
+  viewArena = Math.min(viewArena, ARENAS.length - 1);
   $('#hub-name').textContent = u.name;
+  $('#hub-avatar').src = cardImage(CARDS[u.starter]);
   $('#hub-level').textContent = u.level;
   const cur = TRAINER_XP[u.level - 1];
   const next = TRAINER_XP[u.level];
   $('#hub-xp').style.width = next ? `${((u.xp - cur) / (next - cur)) * 100}%` : '100%';
-  $('#hub-xp-text').textContent = next ? `${fmtNum(u.xp - cur)}/${fmtNum(next - cur)} XP` : 'Nível máximo';
-  $('#hub-gold').textContent = `💰 ${fmtNum(u.gold)}`;
-  $('#hub-arena-name').textContent = arena.name;
-  $('#hub-trophies').textContent = `🏆 ${fmtNum(u.trophies)}`;
-  $('#hub-arena').style.setProperty('--arena', arena.ground[0]);
-  $('#hub-arena').style.setProperty('--map', `url(${arenaMapUrl(arena, true)})`);
+  $('#hub-xp-text').textContent = next ? `${fmtNum(u.xp - cur)}/${fmtNum(next - cur)} XP` : 'Máximo';
+  $('#hub-gold').textContent = fmtNum(u.gold);
+  $('#hub-trophies').textContent = fmtNum(u.trophies);
+  $('#hub').style.setProperty('--map-full', cssUrl(arenaMapUrl(ARENAS[u.arena])));
+  renderShowcase();
+  renderJourney();
+  renderDeckStrip();
   renderBalls();
 }
+
+function renderShowcase() {
+  const u = Account.user;
+  const a = ARENAS[viewArena];
+  const mine = viewArena === u.arena;
+  const locked = viewArena > u.arena;
+  $('#hub-mascot').src = mascotImg(a);
+  $('#hub-arena-name').textContent = a.name;
+  $('#hub-arena-sub').textContent = `${a.leader ? `Líder: ${a.leader} · ` : ''}${a.types.map((t) => TYPE_NAMES[t]).join(', ')}`;
+  const preview = $('#hub-arena');
+  preview.style.setProperty('--map', cssUrl(arenaMapUrl(a)));
+  preview.classList.toggle('current', mine);
+  const lock = $('#hub-arena-lock');
+  lock.classList.toggle('hidden', !locked);
+  if (locked) lock.innerHTML = `<b>🔒</b>Chegue a 🏆 ${fmtNum(a.trophies)} para liberar`;
+  $('#arena-prev').disabled = viewArena === 0;
+  $('#arena-next').disabled = viewArena === ARENAS.length - 1;
+  $('#hub-battle-sub').textContent = mine
+    ? 'Contra o bot · vale troféus e Premier Balls'
+    : `Você batalha na sua arena: ${ARENAS[u.arena].name}`;
+  document.querySelectorAll('.journey-step').forEach((el) => el.classList.toggle('viewing', Number(el.dataset.arena) === viewArena));
+}
+
+function renderJourney() {
+  const u = Account.user;
+  $('#hub-journey').innerHTML = ARENAS.map((a) => {
+    const reached = u.arena >= a.id;
+    const cls = [reached ? '' : 'locked', u.arena === a.id ? 'current' : '', viewArena === a.id ? 'viewing' : ''].join(' ');
+    return `<button class="journey-step ${cls}" data-arena="${a.id}">
+      <img src="${mascotImg(a)}" alt="">
+      <span class="j-name">${a.short}<small>${a.leader || 'Começo da jornada'} · 🏆 ${fmtNum(a.trophies)}</small></span>
+      ${reached ? '' : '🔒'}<span class="type-dot" style="background:${TYPE_COLORS[a.types[0]]}" title="${TYPE_NAMES[a.types[0]]}"></span>
+    </button>`;
+  }).join('');
+}
+
+function renderDeckStrip() {
+  const deck = Account.user.deck || [];
+  $('#hub-deck').innerHTML = deck.map((id) => {
+    const c = CARDS[id];
+    const own = Account.card(id);
+    return `<div class="card small" data-card="${id}" title="${c.name}" style="--type:${TYPE_COLORS[c.type]};--rarity:${RARITIES[rarityOf(c)].color}">
+      ${cardImgTag(c)}<div class="cost">${c.cost}</div><div class="lvl-tag">Nv. ${own ? own.level : 1}</div></div>`;
+  }).join('');
+  $('#hub-deck-avg').textContent = deck.length ? `Custo médio ${fmt(deckAverageCost(deck))}` : '';
+}
+
+$('#arena-prev').addEventListener('click', () => {
+  viewArena = Math.max(0, viewArena - 1);
+  renderShowcase();
+});
+$('#arena-next').addEventListener('click', () => {
+  viewArena = Math.min(ARENAS.length - 1, viewArena + 1);
+  renderShowcase();
+});
+$('#hub-journey').addEventListener('click', (e) => {
+  const step = e.target.closest('[data-arena]');
+  if (!step) return;
+  viewArena = Number(step.dataset.arena);
+  renderShowcase();
+});
+
+function openCollection() {
+  setNav('collection');
+  deckEditor.open({ account: true });
+  showScreen('#deck');
+}
+
+function openFriends() {
+  setNav('friends');
+  showScreen('#friends');
+}
+
+function openTraining() {
+  setNav('training');
+  renderLanding();
+  showScreen('#menu');
+}
+
+$('.hub-nav').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-nav]');
+  if (!btn) return;
+  const go = {
+    home: () => showHome(),
+    collection: openCollection,
+    road: () => {
+      setNav('road');
+      showRoad();
+    },
+    friends: openFriends,
+    training: openTraining,
+  }[btn.dataset.nav];
+  if (go) go();
+});
+$('#hub-deck').addEventListener('click', openCollection);
+$('#hub-friends').addEventListener('click', openFriends);
+$('#friends-close').addEventListener('click', () => showHome());
 
 function renderBalls() {
   if (!Account.loggedIn) return;
@@ -226,14 +337,8 @@ $('#hub-free').addEventListener('click', async () => {
 });
 
 $('#hub-battle').addEventListener('click', () => startRankedBot());
-$('#hub-collection').addEventListener('click', () => {
-  deckEditor.open({ account: true });
-  showScreen('#deck');
-});
-$('#hub-training').addEventListener('click', () => {
-  renderLanding();
-  showScreen('#menu');
-});
+$('#hub-collection').addEventListener('click', openCollection);
+$('#hub-training').addEventListener('click', openTraining);
 $('#hub-arena').addEventListener('click', () => showRoad());
 $('#hub-host').addEventListener('click', () => hostRoom());
 $('#hub-join').addEventListener('click', () => joinRoom($('#hub-join-code').value));
@@ -254,7 +359,7 @@ function showRoad() {
     const current = u.arena === a.id;
     const count = Object.values(CARDS).filter((c) => arenaOfCard(c) === a.id).length;
     const types = a.types.map(typeChip).join('');
-    return `<div class="road-step ${reached ? 'reached' : ''} ${current ? 'current' : ''}" style="--arena:${a.ground[0]};--map:url(${arenaMapUrl(a, true)})">
+    return `<div class="road-step ${reached ? 'reached' : ''} ${current ? 'current' : ''}" style='--arena:${a.ground[0]};--map:${cssUrl(arenaMapUrl(a, true))}'>
       <div class="road-trophies">🏆 ${fmtNum(a.trophies)}</div>
       <div class="road-body">
         <b>${a.name}</b>${a.leader ? ` <small>· ${a.leader}</small>` : ''}

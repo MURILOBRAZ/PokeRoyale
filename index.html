@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>PokéRoyale</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap">
   <link rel="stylesheet" href="css/account.css">
+  <link rel="stylesheet" href="css/hub.css">
 </head>
 <body>
   <div id="app">
@@ -103,39 +107,97 @@
       </div>
     </section>
 
-    <section id="hub" class="overlay hidden">
-      <div class="panel hub-panel">
-        <div class="hub-top">
-          <div class="trainer">
-            <span id="hub-level" class="lvl-badge" title="Nível de treinador">1</span>
-            <div>
-              <b id="hub-name"></b>
+    <section id="hub" class="hub hidden">
+      <header class="hub-bar">
+        <div class="brand"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="">Poké<span>Royale</span></div>
+        <div class="trainer-chip">
+          <img id="hub-avatar" alt="">
+          <div class="trainer-info">
+            <b id="hub-name"></b>
+            <div class="lvl-line">
+              <span class="lvl-badge" title="Nível de treinador">Nv. <b id="hub-level">1</b></span>
               <div class="xp-bar"><i id="hub-xp"></i><span id="hub-xp-text"></span></div>
             </div>
           </div>
-          <div id="hub-gold" class="gold" title="Pokédólares">💰 0</div>
         </div>
-        <button id="hub-arena" class="arena-banner">
-          <span id="hub-arena-name">Rota 1</span>
-          <span id="hub-trophies">🏆 0</span>
-          <small>Caminho dos troféus ›</small>
-        </button>
-        <button id="hub-battle" class="wide primary big">⚔️ Batalhar</button>
-        <div id="hub-balls" class="ball-slots"></div>
-        <button id="hub-free" class="wide free-ball"></button>
-        <div class="btn-row">
-          <button id="hub-collection">🃏 Coleção</button>
-          <button id="hub-training">🎯 Treino</button>
+        <div class="stats">
+          <div class="stat-chip" title="Troféus">🏆 <b id="hub-trophies">0</b></div>
+          <div class="stat-chip" title="Pokédólares">💰 <b id="hub-gold">0</b></div>
+          <button id="hub-logout" class="icon-btn" title="Sair da conta" aria-label="Sair da conta">🚪</button>
         </div>
-        <h2>Jogar com amigos</h2>
-        <label class="check"><input type="checkbox" id="hub-ranked" checked> Vale troféus (os dois precisam estar logados)</label>
-        <button id="hub-host" class="wide">🌐 Criar sala</button>
+      </header>
+
+      <div class="hub-body">
+        <nav class="hub-nav" aria-label="Menu">
+          <button class="nav-btn active" data-nav="home"><span class="nav-ico">🏠</span><span>Início</span></button>
+          <button class="nav-btn" data-nav="collection"><span class="nav-ico">🃏</span><span>Coleção</span></button>
+          <button class="nav-btn" data-nav="road"><span class="nav-ico">🏅</span><span>Arenas</span></button>
+          <button class="nav-btn" data-nav="friends"><span class="nav-ico">👥</span><span>Amigos</span></button>
+          <button class="nav-btn" data-nav="training"><span class="nav-ico">🎯</span><span>Treino</span></button>
+        </nav>
+
+        <main class="hub-main">
+          <section class="arena-show">
+            <div class="arena-head">
+              <button class="arrow" id="arena-prev" aria-label="Arena anterior">‹</button>
+              <div class="arena-title">
+                <img id="hub-mascot" alt="">
+                <div>
+                  <h2 id="hub-arena-name">Rota 1</h2>
+                  <small id="hub-arena-sub"></small>
+                </div>
+              </div>
+              <button class="arrow" id="arena-next" aria-label="Próxima arena">›</button>
+            </div>
+            <div id="hub-arena" class="arena-preview">
+              <div id="hub-arena-lock" class="arena-lock hidden"></div>
+            </div>
+            <button id="hub-battle" class="battle-btn"><span>⚔️</span> Batalhar</button>
+            <small id="hub-battle-sub" class="battle-sub"></small>
+            <p id="hub-error" class="error"></p>
+          </section>
+
+          <section class="box balls-box">
+            <h3>Premier Balls</h3>
+            <div id="hub-balls" class="ball-slots"></div>
+            <button id="hub-free" class="free-ball"></button>
+          </section>
+
+          <aside class="box journey">
+            <h3>Jornada em Kanto</h3>
+            <div id="hub-journey"></div>
+          </aside>
+
+          <section class="box deck-box">
+            <div class="box-head">
+              <h3>Deck ativo</h3>
+              <span id="hub-deck-avg"></span>
+            </div>
+            <div id="hub-deck" class="deck-strip"></div>
+            <button id="hub-collection" class="ghost-btn">🃏 Editar deck</button>
+          </section>
+
+          <section class="modes">
+            <button id="hub-training" class="mode mode-red"><span class="mode-ico">🎯</span><b>Treino</b><small>Sem riscos, todas as cartas</small></button>
+            <button id="hub-friends" class="mode mode-green"><span class="mode-ico">👥</span><b>Amigos</b><small>Crie ou entre numa sala</small></button>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section id="friends" class="overlay hidden">
+      <div class="panel">
+        <div class="deck-head">
+          <h2>Jogar com amigos</h2>
+          <button id="friends-close" class="icon" title="Fechar">✕</button>
+        </div>
+        <p class="sub small">Crie uma sala e mande o convite, ou digite o código que seu amigo mandou.</p>
+        <label class="check"><input type="checkbox" id="hub-ranked" checked> Vale troféus <small>(os dois precisam estar logados; sem isso é amistoso)</small></label>
+        <button id="hub-host" class="wide primary">🌐 Criar sala</button>
         <div class="join-row">
-          <input id="hub-join-code" placeholder="Código da sala" maxlength="12" autocomplete="off" spellcheck="false">
+          <input id="hub-join-code" placeholder="Código da sala (ex.: PIKA-42)" maxlength="12" autocomplete="off" spellcheck="false">
           <button id="hub-join">Entrar</button>
         </div>
-        <p id="hub-error" class="error"></p>
-        <button id="hub-logout" class="link">Sair da conta</button>
       </div>
     </section>
 

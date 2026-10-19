@@ -33,8 +33,10 @@ const ui = { side: 0, selectedIndex: null, selected: null, hover: null, dragging
 // ---------- Telas ----------
 
 function showScreen(id) {
-  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward']) {
-    $(s).classList.toggle('hidden', s !== id);
+  // Coleção, arenas, amigos, treino e recompensas abrem por cima do início (logado)
+  const overHub = Account.loggedIn && ['#deck', '#road', '#friends', '#menu', '#reward', '#lobby'].includes(id);
+  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends']) {
+    $(s).classList.toggle('hidden', s !== id && !(overHub && s === '#hub'));
   }
 }
 
