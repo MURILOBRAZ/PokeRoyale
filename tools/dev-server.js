@@ -44,6 +44,19 @@ async function main() {
       await pg.query(`INSERT INTO balls (user_id, tier, arena, unlock_at) VALUES ($1, $2, $3, now() - interval '1 second')`, [userId, tier, u.arena]);
       return res.end(JSON.stringify({ ok: true, tier }));
     }
+    // Só no desenvolvimento: dá Fichas e Pokédólares à conta logada (/__dev/saldo?fichas=200&gold=1000)
+    if (url.pathname === '/__dev/saldo') {
+      const userId = await require('../api/_lib/auth').currentUserId(req);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (!userId) {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ error: 'Entre na conta primeiro.' }));
+      }
+      const fichas = Number(url.searchParams.get('fichas')) || 0;
+      const gold = Number(url.searchParams.get('gold')) || 0;
+      await pg.query('UPDATE users SET fichas = fichas + $2, gold = gold + $3 WHERE id = $1', [userId, fichas, gold]);
+      return res.end(JSON.stringify({ ok: true, fichas, gold }));
+    }
     // Só no desenvolvimento: cria treinadores de mentira para testar o ranking (/__dev/treinadores?n=15)
     if (url.pathname === '/__dev/treinadores') {
       const n = Math.min(200, Number(url.searchParams.get('n')) || 15);

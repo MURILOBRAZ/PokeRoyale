@@ -123,6 +123,7 @@
         <div class="stats">
           <div id="hub-trophies-chip" class="stat-chip clickable" role="button" tabindex="0" title="Ranking global">🏆 <b id="hub-trophies">0</b></div>
           <div class="stat-chip" title="Pokédólares">💰 <b id="hub-gold">0</b></div>
+          <div class="stat-chip" title="Fichas do Game Corner (moeda rara: arena nova, nível novo e 1ª vitória do dia)">🪙 <b id="hub-fichas">0</b></div>
           <button id="hub-logout" class="icon-btn" title="Sair da conta" aria-label="Sair da conta">🚪</button>
         </div>
       </header>
@@ -131,6 +132,7 @@
         <nav class="hub-nav" aria-label="Menu">
           <button class="nav-btn active" data-nav="home"><span class="nav-ico">🏠</span><span>Início</span></button>
           <button class="nav-btn" data-nav="collection"><span class="nav-ico">🃏</span><span>Coleção</span></button>
+          <button class="nav-btn" data-nav="shop"><span class="nav-ico">🛒</span><span>Loja</span></button>
           <button class="nav-btn" data-nav="road"><span class="nav-ico">🏅</span><span>Arenas</span></button>
           <button class="nav-btn" data-nav="friends"><span class="nav-ico">👥</span><span>Amigos</span></button>
           <button class="nav-btn" data-nav="training"><span class="nav-ico">🎯</span><span>Treino</span></button>
@@ -200,6 +202,18 @@
           <input id="hub-join-code" placeholder="Código da sala (ex.: PIKA-42)" maxlength="12" autocomplete="off" spellcheck="false">
           <button id="hub-join">Entrar</button>
         </div>
+      </div>
+    </section>
+
+    <section id="shop" class="overlay hidden">
+      <div class="panel shop-panel">
+        <div class="deck-head">
+          <h2>🛒 PokéMart</h2>
+          <span id="shop-wallet"></span>
+        </div>
+        <p id="shop-refresh" class="sub small"></p>
+        <p id="shop-msg" class="form-msg"></p>
+        <div id="shop-body" class="shop-body"></div>
       </div>
     </section>
 

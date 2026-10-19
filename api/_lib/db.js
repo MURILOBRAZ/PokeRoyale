@@ -25,6 +25,16 @@ const SCHEMA = [
   `UPDATE users u SET name = left(u.name, 16 - length('_' || u.id)) || '_' || u.id
    WHERE EXISTS (SELECT 1 FROM users o WHERE lower(o.name) = lower(u.name) AND o.id < u.id)`,
   'CREATE UNIQUE INDEX IF NOT EXISTS users_name_unique ON users (lower(name))',
+  // Fichas do Game Corner: moeda rara, ganha só por conquistas
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS fichas INT NOT NULL DEFAULT 0',
+  // PokéMart: ofertas de cada jogador por dia (geradas uma vez) e quantas foram compradas
+  `CREATE TABLE IF NOT EXISTS shop_days (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day_key INT NOT NULL,
+    offers JSONB NOT NULL,
+    bought JSONB NOT NULL DEFAULT '{}',
+    PRIMARY KEY (user_id, day_key)
+  )`,
   `CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

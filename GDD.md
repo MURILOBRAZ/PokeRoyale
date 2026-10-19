@@ -309,8 +309,10 @@ PokeRoyale/
 | **v0.4** | Contas, decks iniciais, troféus, arenas (ginásios), Premier Balls, níveis (ver [17](#17-contas-e-progressão-v04)) | ✅ Feito |
 | **v0.4.1** | Mapas das 10 arenas e design dos ginásios (arte do autor) no jogo | ✅ Feito |
 | **v0.4.2** | Novo visual da tela inicial e dos menus | ✅ Feito |
-| v0.5 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
-| v0.6 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
+| **v0.5** | Ranking global, Minha conta, nome único, PokéMart e Fichas do Game Corner | ✅ Feito |
+| v0.6 | Cosméticos e Zona Safári | 💡 Ideia |
+| v0.7 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
+| v0.8 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -429,6 +431,33 @@ As quantidades crescem com a arena (+10% por arena). O conteúdo é **sorteado n
 - **Tabelas:** `users` (inclui troféus, arena, XP, Pokédólares, deck e a Poké Ball grátis), `sessions`, `collection` (carta, nível, cópias), `user_items`, `balls` (tipo, arena, abre_em), `matches` (histórico).
 - **Segurança:** ações só aceitam POST com JSON (bloqueia formulários de outros sites), limite de 40 partidas por hora, uma recompensa por partida, ball só abre quando o cronômetro termina (checado no servidor).
 - **Sem servidor** (ex.: abrir o `index.html` direto), o jogo detecta e oferece só o Treino.
+
+### 17.11 PokéMart (loja) e Fichas do Game Corner (v0.5)
+
+**Regras para não quebrar o jogo**
+1. Só moedas ganhas jogando: **Pokédólares** (balls e Poké Ball grátis) e **Fichas do Game Corner 🪙** (só por conquistas). Nada de dinheiro de verdade.
+2. Ofertas com **limite** e **preço que sobe** a cada compra no dia.
+3. Só cartas das **arenas já liberadas**; **lendários nunca** são vendidos.
+4. O **servidor** gera as ofertas (uma vez por dia por jogador, guardadas) e valida preço, saldo e limite numa instrução só.
+
+**Fichas 🪙** (moeda rara): +100 ao chegar numa arena nova, +20 por nível de treinador novo, +10 na primeira vitória do dia (partida que vale troféus). Não vêm em balls.
+
+**Ofertas** — trocam à meia-noite (horário de Brasília); as semanais, na segunda-feira.
+
+| Oferta | Preço | Limite |
+|---|---|---|
+| Presente do dia: 5 cópias de uma carta comum sua | Grátis | 1 por dia |
+| 3 cartas comuns | 💰 10 × n (10, 20, 30…) | 10 cópias cada |
+| 1 carta rara | 💰 100 × n | 5 cópias |
+| 1 carta rara ou, com 25% de chance, épica | rara 💰 100 × n · épica 💰 1.000 × n | 5 / 2 cópias |
+| Great Ball (abre na hora, com a animação) | 💰 250 | 1 por dia |
+| Pedra evolutiva do dia | 💰 300 | 1 por dia |
+| Ultra Ball | 🪙 60 | 1 por semana |
+| Doce Raro | 🪙 80 | 1 por semana |
+
+As cartas oferecidas são, de preferência, as que você já tem (servem para melhorar); se faltar, entram outras das suas arenas.
+
+**Depois:** cosméticos (avatar, título no ranking, skins de ginásio, emotes) e a **Zona Safári** (minijogo de capturar cartas, com entrada diária).
 
 ### 17.10 Decisões em aberto
 

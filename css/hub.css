@@ -436,3 +436,51 @@ button.link { font-family: inherit; }
   .dropdown-left .dropdown-panel { margin-left: 0; }
   .dropdown-panel { max-width: none; }
 }
+
+/* ---------- PokéMart ---------- */
+.shop-panel { display: flex; flex-direction: column; text-align: left; }
+.overlay.docked .shop-panel { height: 100%; }
+#shop-wallet { font-family: var(--pixel, sans-serif); font-size: 16px; white-space: nowrap; }
+.shop-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+.shop-title { font-size: 16px; margin: 14px 0 8px; }
+.shop-title small { font-family: system-ui, sans-serif; font-weight: 400; font-size: 12px; opacity: 0.7; }
+.offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.offer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 14px;
+  text-align: center;
+  background: var(--panel-2, #1a2649);
+  border: 2px solid var(--line, #2f4a8a);
+}
+.offer.card { background: linear-gradient(180deg, color-mix(in srgb, var(--type) 35%, #1a2649), #1a2649 70%); }
+.offer.free { border-color: #7ee0a8; box-shadow: 0 0 0 2px rgba(126, 224, 168, 0.25); }
+.offer.sold-out { opacity: 0.5; }
+.offer-art { position: relative; width: 72px; height: 72px; display: grid; place-items: center; }
+.offer-art img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; border-radius: 10px; }
+.offer.ball .offer-art img, .offer.item .offer-art img { width: 52px; height: 52px; }
+.offer-amount { position: absolute; right: -6px; bottom: -4px; padding: 0 5px; border-radius: 6px; background: #2fb36b; font-family: var(--pixel, sans-serif); font-weight: 700; font-size: 13px; }
+.offer-name { font-size: 14px; }
+.offer-info { font-size: 11px; opacity: 0.8; min-height: 2.4em; }
+.offer-left { position: absolute; top: 6px; right: 8px; font-size: 11px; opacity: 0.75; }
+.offer button { width: 100%; padding: 8px 6px; font-size: 14px; margin-top: auto; }
+#shop-msg { margin-top: 4px; }
+
+@media (max-width: 760px) {
+  .offer-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .offer { padding: 8px; }
+  #shop-wallet { font-size: 13px; }
+}
+
+/* Celular: barra do topo com 3 moedas cabe sem esmagar o nome (sair fica em Minha conta) */
+@media (max-width: 760px) {
+  #hub-logout { display: none; }
+  .hub-bar .stats { gap: 4px; }
+  .hub-bar .stat-chip { padding: 5px 7px; font-size: 13px; gap: 3px; }
+  .trainer-chip { min-width: 0; }
+  .trainer-info b#hub-name { font-size: 14px; }
+}

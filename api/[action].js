@@ -59,6 +59,7 @@ async function loadState(userId) {
       xp: u.xp,
       level: R.trainerLevel(u.xp),
       gold: u.gold,
+      fichas: u.fichas,
       deck: u.deck,
       freeBall: freeBallInfo(u.free_ball_at, u.server_now),
     },
@@ -108,6 +109,51 @@ async function applyRewards(userId, contents) {
     );
   }
   return ids.filter((id) => !owned.includes(id));
+}
+
+// XP de treinador; cada nível novo dá Fichas
+async function grantXp(userId, amount) {
+  const r = await one('UPDATE users SET xp = xp + $2 WHERE id = $1 RETURNING xp', [userId, amount]);
+  const levels = R.trainerLevel(r.xp) - R.trainerLevel(r.xp - amount);
+  if (levels > 0) await q('UPDATE users SET fichas = fichas + $2 WHERE id = $1', [userId, levels * R.FICHAS.levelUp]);
+  return levels;
+}
+
+// Ofertas do dia (geradas na primeira visita do dia e guardadas, para não mudarem ao comprar)
+async function shopDay(userId, day) {
+  const read = () => one('SELECT offers, bought FROM shop_days WHERE user_id = $1 AND day_key = $2', [userId, day]);
+  let row = await read();
+  if (!row) {
+    const u = await one('SELECT arena FROM users WHERE id = $1', [userId]);
+    const owned = (await q('SELECT card_id FROM collection WHERE user_id = $1', [userId])).map((r) => r.card_id);
+    await q(
+      'INSERT INTO shop_days (user_id, day_key, offers) VALUES ($1, $2, $3::jsonb) ON CONFLICT DO NOTHING',
+      [userId, day, JSON.stringify(R.generateShopOffers(owned, u.arena))],
+    );
+    row = await read();
+  }
+  return row;
+}
+
+// Quantas vezes a oferta foi comprada: no dia, ou na semana para as semanais
+async function shopBoughtCount(userId, day, offer, row) {
+  if (!offer.weekly) return Number(row.bought[offer.id] || 0);
+  const [start, end] = R.shopWeekRange(day);
+  const r = await one(
+    `SELECT COALESCE(sum((bought->>$2)::int), 0)::int AS n FROM shop_days WHERE user_id = $1 AND day_key BETWEEN $3 AND $4`,
+    [userId, offer.id, start, end],
+  );
+  return r.n;
+}
+
+async function describeShop(userId, day, row) {
+  const offers = [];
+  for (const o of row.offers) {
+    const bought = await shopBoughtCount(userId, day, o, row);
+    const today = Number(row.bought[o.id] || 0);
+    offers.push({ ...o, bought, remaining: Math.max(0, o.limit - bought), price: R.shopPrice(o, today) });
+  }
+  return { day, nextRefresh: new Date(R.shopNextRefresh(day)).toISOString(), offers };
 }
 
 // ---------- Ações ----------
@@ -219,10 +265,24 @@ const ACTIONS = {
     const delta = trophies - u.trophies;
     const arena = Math.max(u.arena, R.arenaForTrophies(trophies));
     await q(
-      `UPDATE users SET trophies = $2, best_trophies = GREATEST(best_trophies, $2), arena = $3, xp = xp + $4 WHERE id = $1`,
-      [userId, trophies, arena, result === 'win' ? 5 : 1],
+      `UPDATE users SET trophies = $2, best_trophies = GREATEST(best_trophies, $2), arena = $3 WHERE id = $1`,
+      [userId, trophies, arena],
     );
     await q('UPDATE matches SET trophies_delta = $2 WHERE id = $1', [body.matchId, delta]);
+
+    // Fichas: arena nova, nível de treinador novo e primeira vitória do dia
+    const levels = await grantXp(userId, result === 'win' ? 5 : 1);
+    let firstWin = false;
+    if (result === 'win') {
+      const dayStart = new Date(R.shopNextRefresh(R.shopDayKey()) - 86400e3).toISOString();
+      firstWin = !(await one(
+        `SELECT 1 FROM matches WHERE user_id = $1 AND result = 'win' AND id <> $2 AND finished_at >= $3`,
+        [userId, body.matchId, dayStart],
+      ));
+    }
+    const fichas = (arena - u.arena) * R.FICHAS.arenaUp + (firstWin ? R.FICHAS.firstWin : 0);
+    if (fichas) await q('UPDATE users SET fichas = fichas + $2 WHERE id = $1', [userId, fichas]);
+    const fichasGained = fichas + levels * R.FICHAS.levelUp;
 
     let ball = null;
     let slotsFull = false;
@@ -236,7 +296,10 @@ const ACTIONS = {
       );
       slotsFull = !ball;
     }
-    return { delta, trophies, arena, arenaUp: arena > u.arena, ball, slotsFull, state: await loadState(userId) };
+    return {
+      delta, trophies, arena, arenaUp: arena > u.arena, ball, slotsFull,
+      fichas: fichasGained, firstWin, levelUp: levels > 0, state: await loadState(userId),
+    };
   },
 
   async 'ball-unlock'({ req, body }) {
@@ -303,12 +366,13 @@ const ACTIONS = {
            AND (SELECT gold FROM users WHERE id = $1) >= $5
          RETURNING level
        ), u AS (
-         UPDATE users SET gold = gold - $5, xp = xp + $6 WHERE id = $1 AND EXISTS (SELECT 1 FROM c) RETURNING gold
+         UPDATE users SET gold = gold - $5 WHERE id = $1 AND EXISTS (SELECT 1 FROM c) RETURNING gold
        )
        SELECT c.level, u.gold FROM c, u`,
-      [userId, card.id, cost.copies, c.level, cost.gold, cost.xp],
+      [userId, card.id, cost.copies, c.level, cost.gold],
     );
     if (!row) fail(409, 'Pokédólares insuficientes.');
+    await grantXp(userId, cost.xp);
     return { level: row.level, state: await loadState(userId) };
   },
 
@@ -364,6 +428,59 @@ const ACTIONS = {
     return { ok: true };
   },
 
+  async shop({ req }) {
+    const userId = await requireUser(req);
+    const u = await one('SELECT starter FROM users WHERE id = $1', [userId]);
+    if (!u.starter) fail(409, 'Escolha seu inicial primeiro.');
+    const day = R.shopDayKey();
+    return describeShop(userId, day, await shopDay(userId, day));
+  },
+
+  async 'shop-buy'({ req, body }) {
+    const userId = await requireUser(req);
+    const u = await one('SELECT starter, arena FROM users WHERE id = $1', [userId]);
+    if (!u.starter) fail(409, 'Escolha seu inicial primeiro.');
+    const day = R.shopDayKey();
+    const row = await shopDay(userId, day);
+    const offer = row.offers.find((o) => o.id === body.offer);
+    if (!offer) fail(404, 'Essa oferta não está mais na loja. Ela troca à meia-noite.');
+    if ((await shopBoughtCount(userId, day, offer, row)) >= offer.limit) {
+      fail(409, offer.weekly ? 'Esgotado nesta semana.' : 'Esgotado hoje. Volte amanhã!');
+    }
+    const today = Number(row.bought[offer.id] || 0);
+    const price = R.shopPrice(offer, today);
+    // Uma instrução só: marca a compra e desconta, só se ainda tiver saldo e a compra não mudou no meio
+    const paid = await one(
+      `WITH s AS (
+         UPDATE shop_days SET bought = jsonb_set(bought, ARRAY[$3::text], to_jsonb($4::int + 1))
+         WHERE user_id = $1 AND day_key = $2 AND COALESCE((bought->>$3)::int, 0) = $4
+           AND (SELECT gold FROM users WHERE id = $1) >= $5
+           AND (SELECT fichas FROM users WHERE id = $1) >= $6
+         RETURNING 1
+       ), u AS (
+         UPDATE users SET gold = gold - $5, fichas = fichas - $6 WHERE id = $1 AND EXISTS (SELECT 1 FROM s) RETURNING gold
+       )
+       SELECT gold FROM u`,
+      [userId, day, offer.id, today, price.gold, price.fichas],
+    );
+    if (!paid) fail(409, price.fichas ? 'Fichas insuficientes.' : 'Pokédólares insuficientes.');
+
+    let result;
+    if (offer.kind === 'card') {
+      const newCards = await applyRewards(userId, { cards: { [offer.card]: offer.amount }, gold: 0, items: {} });
+      result = { kind: 'card', card: offer.card, amount: offer.amount, newCards };
+    } else if (offer.kind === 'ball') {
+      const contents = R.rollBallContents(offer.tier, u.arena);
+      const newCards = await applyRewards(userId, contents);
+      result = { kind: 'ball', tier: offer.tier, contents, newCards };
+    } else {
+      await applyRewards(userId, { cards: {}, gold: 0, items: { [offer.item]: 1 } });
+      result = { kind: 'item', item: offer.item };
+    }
+    const fresh = await shopDay(userId, day);
+    return { ...result, shop: await describeShop(userId, day, fresh), state: await loadState(userId) };
+  },
+
   async 'use-item'({ req, body }) {
     const userId = await requireUser(req);
     const card = R.CARDS[body.card];
@@ -384,7 +501,7 @@ const ACTIONS = {
       [userId, card.id, item, candy ? 0 : 1, candy ? 1 : 0],
     );
     if (!row) fail(409, 'Você não tem esse item.');
-    if (candy) await q('UPDATE users SET xp = xp + $2 WHERE id = $1', [userId, R.upgradeCost(card, c.level).xp]);
+    if (candy) await grantXp(userId, R.upgradeCost(card, c.level).xp);
     return { level: row.level, copies: row.copies, state: await loadState(userId) };
   },
 };

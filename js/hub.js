@@ -154,6 +154,7 @@ function renderHub() {
   $('#hub-xp').style.width = next ? `${((u.xp - cur) / (next - cur)) * 100}%` : '100%';
   $('#hub-xp-text').textContent = next ? `${fmtNum(u.xp - cur)}/${fmtNum(next - cur)} XP` : 'Máximo';
   $('#hub-gold').textContent = fmtNum(u.gold);
+  $('#hub-fichas').textContent = fmtNum(u.fichas || 0);
   $('#hub-trophies').textContent = fmtNum(u.trophies);
   $('#hub').style.setProperty('--map-full', cssUrl(arenaMapUrl(ARENAS[u.arena])));
   renderShowcase();
@@ -252,6 +253,7 @@ $('.hub-nav').addEventListener('click', (e) => {
     },
     friends: openFriends,
     training: openTraining,
+    shop: () => showShop(),
   }[btn.dataset.nav];
   if (go) go();
 });
@@ -585,7 +587,117 @@ function revealReward() {
 }
 
 $('#reward-open').addEventListener('click', revealReward);
-$('#reward-ok').addEventListener('click', () => showHome());
+let rewardReturn = null; // tela para voltar depois de coletar (ex.: a loja, quando a ball foi comprada lá)
+$('#reward-ok').addEventListener('click', () => {
+  const back = rewardReturn;
+  rewardReturn = null;
+  if (back === '#shop') showShop();
+  else showHome();
+});
+
+// ---------- PokéMart ----------
+
+let shopData = null;
+
+const priceLabel = (p) => (p.fichas ? `🪙 ${fmtNum(p.fichas)}` : p.gold ? `💰 ${fmtNum(p.gold)}` : 'Grátis');
+
+function offerView(o) {
+  if (o.kind === 'card') {
+    const c = CARDS[o.card];
+    const r = RARITIES[rarityOf(c)];
+    return {
+      img: cardImgTag(c), name: c.name,
+      info: o.free ? `Presente do dia · ×${o.amount}` : `<span style="color:${r.color}">${r.name}</span> · ${Account.owns(o.card) ? `Nv ${Account.card(o.card).level}` : 'nova!'}`,
+      style: `--type:${TYPE_COLORS[c.type]}`,
+    };
+  }
+  if (o.kind === 'ball') return { img: ballImg(o.tier), name: BALLS[o.tier].name, info: `${BALLS[o.tier].cards}+ cartas, abre na hora` };
+  const item = ITEMS[o.item];
+  const info = o.item === 'rarecandy' ? 'Sobe 1 nível de qualquer carta'
+    : `Cópia curinga de ${item.types.map((t) => TYPE_NAMES[t]).join(', ')}`;
+  return { img: itemImg(o.item), name: item.name, info };
+}
+
+function renderShop() {
+  const u = Account.user;
+  $('#shop-wallet').innerHTML = `💰 ${fmtNum(u.gold)} · 🪙 ${fmtNum(u.fichas || 0)}`;
+  updateShopClock();
+  const section = (title, hint, list) => `<h3 class="shop-title">${title}${hint ? ` <small>${hint}</small>` : ''}</h3>
+    <div class="offer-grid">${list.map((o) => {
+      const v = offerView(o);
+      const soldOut = o.remaining <= 0;
+      const cost = o.price;
+      const afford = u.gold >= cost.gold && (u.fichas || 0) >= cost.fichas;
+      const left = o.limit > 1 ? `<small class="offer-left">${o.remaining}/${o.limit}</small>` : '';
+      return `<div class="offer ${o.kind} ${soldOut ? 'sold-out' : ''} ${o.free ? 'free' : ''}" style="${v.style || ''}">
+        <div class="offer-art">${v.img}${o.amount > 1 ? `<span class="offer-amount">×${o.amount}</span>` : ''}</div>
+        <b class="offer-name">${v.name}</b>
+        <small class="offer-info">${v.info}</small>
+        ${left}
+        <button data-offer="${o.id}" class="${o.free ? 'primary' : ''}" ${soldOut || !afford ? 'disabled' : ''}>${soldOut ? (o.weekly ? 'Esgotado na semana' : 'Esgotado') : priceLabel(cost)}</button>
+      </div>`;
+    }).join('')}</div>`;
+  const offers = shopData.offers;
+  $('#shop-body').innerHTML = section('Ofertas do dia', 'o preço sobe a cada cópia', offers.filter((o) => o.kind === 'card'))
+    + section('Balls e itens do dia', '1 por dia', offers.filter((o) => o.kind !== 'card' && !o.weekly))
+    + section('Especiais da semana', 'com Fichas 🪙', offers.filter((o) => o.weekly));
+}
+
+function updateShopClock() {
+  if (!shopData) return;
+  const left = (Date.parse(shopData.nextRefresh) - Account.now()) / 1000;
+  if (left <= 0 && !$('#shop').classList.contains('hidden')) {
+    shopData = null;
+    showShop();
+    return;
+  }
+  $('#shop-refresh').textContent = `Novas ofertas em ${fmtDuration(left)} (meia-noite, horário de Brasília)`;
+}
+
+setInterval(() => {
+  if (!$('#shop').classList.contains('hidden')) updateShopClock();
+}, 1000);
+
+async function showShop() {
+  setNav('shop');
+  showScreen('#shop');
+  $('#shop-msg').textContent = '';
+  if (!shopData) $('#shop-body').innerHTML = '<p class="sub small waiting">Abrindo a loja</p>';
+  try {
+    shopData = await Account.api('shop');
+    renderShop();
+  } catch (err) {
+    $('#shop-body').innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+$('#shop-body').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-offer]');
+  if (!btn || btn.disabled || hubBusy) return;
+  hubBusy = true;
+  btn.disabled = true;
+  try {
+    const r = await Account.api('shop-buy', { offer: btn.dataset.offer });
+    shopData = r.shop;
+    renderHub();
+    if (r.kind === 'ball') {
+      rewardReturn = '#shop';
+      showReward(r);
+      return;
+    }
+    renderShop();
+    const msg = r.kind === 'card'
+      ? `+${r.amount} ${CARDS[r.card].name}${r.newCards.length ? ' (nova!)' : ''} na sua coleção.`
+      : `${ITEMS[r.item].name} guardada. Use na Coleção, na carta que quiser.`;
+    formMsg($('#shop-msg'), msg, true);
+  } catch (err) {
+    formMsg($('#shop-msg'), err.message, false);
+    await Account.refresh();
+    showShop();
+  } finally {
+    hubBusy = false;
+  }
+});
 
 // ---------- Partidas que valem troféus ----------
 
@@ -639,6 +751,10 @@ async function finishRanked(result) {
     lines.push(`<div class="trophy-delta ${out.delta >= 0 ? 'up' : 'down'}">🏆 ${sign}${out.delta} <small>(${fmtNum(out.trophies)})</small></div>`);
     if (out.ball) lines.push(`<div class="won-ball">${ballImg(out.ball.tier)} Você ganhou uma <b>${BALLS[out.ball.tier].name}</b>!</div>`);
     else if (out.slotsFull) lines.push('<div class="won-ball muted">Espaços de ball cheios: abra uma para ganhar a próxima.</div>');
+    if (out.fichas > 0) {
+      const why = [out.arenaUp && 'arena nova', out.levelUp && 'nível de treinador novo', out.firstWin && '1ª vitória do dia'].filter(Boolean).join(' · ');
+      lines.push(`<div class="won-ball">🪙 <b>+${out.fichas} Fichas</b> <small>(${why})</small></div>`);
+    }
     if (out.arenaUp) {
       const a = ARENAS[out.arena];
       lines.push(`<div class="arena-up">🎉 Nova arena: <b>${a.name}</b>!${a.badge ? ` Você ganhou a ${a.badge}.` : ''}</div>`);

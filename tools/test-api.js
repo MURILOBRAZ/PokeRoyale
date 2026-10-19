@@ -34,6 +34,7 @@ async function main() {
     };
   }
 
+  const one2 = (db, text, params) => db.query(text, params).then((x) => x.rows[0]);
   let passed = 0;
   const ok = (name) => {
     passed++;
@@ -258,6 +259,85 @@ async function main() {
   assert.equal((await a('settings-name', { name: 'ash ketchum' })).status, 200); // o próprio nome com outra caixa pode
   await assert.rejects(pg.query("INSERT INTO users (email, name, pass_hash) VALUES ('x@teste.local', 'gArY', 'x')"));
   ok('nome de treinador único: cadastro, troca de nome e o próprio banco bloqueiam repetidos');
+
+  // PokéMart
+  const ashId = (await pg.query("SELECT id FROM users WHERE email = 'ash@teste.local'")).rows[0].id;
+  await pg.query('UPDATE users SET gold = 500, fichas = 0 WHERE id = $1', [ashId]);
+  r = await a('shop', {});
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const offers = Object.fromEntries(r.data.offers.map((o) => [o.id, o]));
+  assert.ok(offers.gift && offers.gift.free && offers.great && offers.stone && offers.ultra && offers.candy);
+  assert.equal(r.data.offers.filter((o) => o.kind === 'card').length, 6);
+  assert.ok(r.data.offers.every((o) => o.kind !== 'card' || !R.CARDS[o.card].legendary), 'loja não vende lendário');
+  const again = await a('shop', {});
+  assert.deepEqual(again.data.offers.map((o) => o.card || o.id), r.data.offers.map((o) => o.card || o.id));
+  ok('loja: 6 cartas (1 grátis) + Great Ball, pedra, Ultra Ball e Doce Raro; mesmas ofertas o dia todo');
+
+  const copies = async (id) => ((await pg.query('SELECT copies FROM collection WHERE user_id = $1 AND card_id = $2', [ashId, id])).rows[0] || { copies: -1 }).copies;
+  const giftBefore = await copies(offers.gift.card);
+  r = await a('shop-buy', { offer: 'gift' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.state.user.gold, 500);
+  assert.equal(await copies(offers.gift.card), giftBefore + R.SHOP.giftAmount);
+  assert.equal((await a('shop-buy', { offer: 'gift' })).status, 409);
+  ok('presente grátis: 5 cópias, uma vez por dia');
+
+  const common = r.data.shop.offers.find((o) => o.kind === 'card' && !o.free && R.rarityOf(R.CARDS[o.card]) === 'common');
+  r = await a('shop-buy', { offer: common.id });
+  assert.equal(r.data.state.user.gold, 490); // 1ª cópia: 10
+  r = await a('shop-buy', { offer: common.id });
+  assert.equal(r.data.state.user.gold, 470); // 2ª: 20
+  assert.equal(r.data.shop.offers.find((o) => o.id === common.id).price.gold, 30);
+  ok('preço das cartas sobe a cada cópia comprada no dia (10, 20, 30...)');
+
+  await pg.query('UPDATE users SET gold = 40 WHERE id = $1', [ashId]);
+  r = await a('shop-buy', { offer: 'great' });
+  assert.equal(r.status, 409);
+  assert.match(r.data.error, /Pokédólares insuficientes/);
+  assert.equal((await pg.query('SELECT gold FROM users WHERE id = $1', [ashId])).rows[0].gold, 40);
+  await pg.query('UPDATE users SET gold = 1000 WHERE id = $1', [ashId]);
+  r = await a('shop-buy', { offer: 'great' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.tier, 'great');
+  assert.ok(Object.keys(r.data.contents.cards).length > 0);
+  assert.equal((await a('shop-buy', { offer: 'great' })).status, 409);
+  ok('Great Ball: sem saldo não cobra nada; com saldo abre na hora; 1 por dia');
+
+  assert.equal((await a('shop-buy', { offer: 'ultra' })).status, 409); // sem fichas
+  await pg.query('UPDATE users SET fichas = 200 WHERE id = $1', [ashId]);
+  r = await a('shop-buy', { offer: 'ultra' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.state.user.fichas, 140);
+  // Mesma semana, outro dia: continua esgotada
+  const day = R.shopDayKey();
+  const [weekStart, weekEnd] = R.shopWeekRange(day);
+  const otherDay = day === weekEnd ? weekStart : day + 1;
+  await pg.query("INSERT INTO shop_days (user_id, day_key, offers) SELECT user_id, $2, offers FROM shop_days WHERE user_id = $1 AND day_key = $3", [ashId, otherDay, day]);
+  const weekly = await one2(pg, 'SELECT COALESCE(sum((bought->>\'ultra\')::int), 0)::int AS n FROM shop_days WHERE user_id = $1 AND day_key BETWEEN $2 AND $3', [ashId, weekStart, weekEnd]);
+  assert.equal(weekly.n, 1);
+  assert.equal((await a('shop-buy', { offer: 'ultra' })).status, 409);
+  r = await a('shop-buy', { offer: 'candy' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.state.items.rarecandy >= 1, true);
+  ok('Ultra Ball e Doce Raro com Fichas, 1 por semana cada');
+
+  // Fichas por conquistas
+  await pg.query('UPDATE users SET fichas = 0, trophies = 290, arena = 0, xp = 18 WHERE id = $1', [ashId]);
+  await pg.query("UPDATE matches SET result = 'loss' WHERE user_id = $1", [ashId]);
+  r = await a('match-start', { mode: 'online' });
+  await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [r.data.matchId]);
+  r = await a('match-finish', { matchId: r.data.matchId, result: 'win' });
+  assert.equal(r.data.arenaUp, true);
+  assert.equal(r.data.firstWin, true);
+  assert.equal(r.data.levelUp, true); // 18 + 5 XP passa de 20
+  assert.equal(r.data.fichas, R.FICHAS.arenaUp + R.FICHAS.firstWin + R.FICHAS.levelUp);
+  assert.equal(r.data.state.user.fichas, 130);
+  r = await a('match-start', { mode: 'online' });
+  await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [r.data.matchId]);
+  r = await a('match-finish', { matchId: r.data.matchId, result: 'win' });
+  assert.equal(r.data.firstWin, false);
+  assert.equal(r.data.fichas, 0);
+  ok('Fichas: +100 arena nova, +20 nível de treinador, +10 só na 1ª vitória do dia');
 
   // Limite de partidas por hora
   await pg.query(`INSERT INTO matches (id, user_id, mode) SELECT 'x' || g, u.id, 'bot' FROM users u, generate_series(1, 40) g WHERE u.email = 'gary@teste.local'`);

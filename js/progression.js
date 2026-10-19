@@ -236,3 +236,80 @@ function botProfile(arena) {
 }
 
 const TRAINER_NAME_RE = /^[\p{L}\p{N} _.-]{3,16}$/u;
+
+// ---------- PokéMart (loja) e Fichas do Game Corner ----------
+// Tudo com Pokédólares (ganhos jogando) ou Fichas (só por conquistas). Sem dinheiro de verdade.
+// As ofertas são geradas pelo servidor uma vez por dia (horário de Brasília) e guardadas.
+
+const FICHAS = { arenaUp: 100, levelUp: 20, firstWin: 10 };
+
+const SHOP = {
+  tzHours: -3, // as ofertas trocam à meia-noite de Brasília
+  cardBase: { common: 10, rare: 100, epic: 1000 }, // preço da 1ª cópia; a n-ésima custa base × n
+  cardLimit: { common: 10, rare: 5, epic: 2 },
+  giftAmount: 5,
+  epicChance: 0.25,
+  fixed: {
+    great: { kind: 'ball', tier: 'great', gold: 250, limit: 1 },
+    stone: { kind: 'item', gold: 300, limit: 1 },
+    ultra: { kind: 'ball', tier: 'ultra', fichas: 60, limit: 1, weekly: true },
+    candy: { kind: 'item', item: 'rarecandy', fichas: 80, limit: 1, weekly: true },
+  },
+};
+
+function shopDayKey(ms = Date.now()) {
+  return Math.floor((ms + SHOP.tzHours * 3600e3) / 86400e3);
+}
+
+// Semana começando na segunda-feira (o dia 0 de 1970 foi uma quinta)
+function shopWeekRange(day) {
+  const start = day - ((day + 3) % 7);
+  return [start, start + 6];
+}
+
+function shopNextRefresh(day) {
+  return (day + 1) * 86400e3 - SHOP.tzHours * 3600e3;
+}
+
+// Preço da próxima compra de uma oferta (cartas ficam mais caras a cada cópia comprada no dia)
+function shopPrice(offer, boughtToday) {
+  if (offer.free) return { gold: 0, fichas: 0 };
+  if (offer.kind === 'card') return { gold: offer.base * (boughtToday + 1), fichas: 0 };
+  return { gold: offer.gold || 0, fichas: offer.fichas || 0 };
+}
+
+function generateShopOffers(ownedIds, arena, rand = Math.random) {
+  const usable = (id) => CARDS[id] && !CARDS[id].legendary;
+  const owned = ownedIds.filter(usable);
+  const pool = cardPool(arena).map((c) => c.id).filter(usable);
+  const used = new Set();
+  // Prefere cartas que você já tem (servem para melhorar); sem opção, qualquer uma liberada
+  const pick = (rarity) => {
+    for (const list of [owned, pool]) {
+      const options = list.filter((id) => rarityOf(CARDS[id]) === rarity && !used.has(id));
+      if (options.length) {
+        const id = options[Math.floor(rand() * options.length)];
+        used.add(id);
+        return id;
+      }
+    }
+    return null;
+  };
+  const cardOffer = (id, rarity, extra = {}) => ({
+    id: `c${used.size}`, kind: 'card', card: id, amount: 1,
+    base: SHOP.cardBase[rarity], limit: SHOP.cardLimit[rarity], ...extra,
+  });
+  const offers = [];
+  const gift = pick('common');
+  if (gift) offers.push({ id: 'gift', kind: 'card', card: gift, amount: SHOP.giftAmount, free: true, limit: 1 });
+  for (const rarity of ['common', 'common', 'common', 'rare', rand() < SHOP.epicChance ? 'epic' : 'rare']) {
+    const id = pick(rarity) || pick('rare') || pick('common');
+    if (id) offers.push(cardOffer(id, rarityOf(CARDS[id])));
+  }
+  const stones = Object.keys(ITEMS).filter((k) => k !== 'rarecandy');
+  offers.push({ id: 'great', ...SHOP.fixed.great });
+  offers.push({ id: 'stone', ...SHOP.fixed.stone, item: stones[Math.floor(rand() * stones.length)] });
+  offers.push({ id: 'ultra', ...SHOP.fixed.ultra });
+  offers.push({ id: 'candy', ...SHOP.fixed.candy });
+  return offers;
+}
