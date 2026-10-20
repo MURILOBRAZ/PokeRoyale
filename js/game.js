@@ -262,13 +262,17 @@ class Game {
       }
     }
     if (best) return best;
-    // Nada por perto: segue a própria pista (como no Clash Royale) — o ginásio lateral dela
-    // e, se ele já caiu, o Líder. Não atravessa o mapa para o ginásio da outra pista.
-    const lane = u.x < ARENA.W / 2 ? 0 : 1;
-    const laneTower = this.towers.find((t) => t.kind === 'princess' && t.lane === lane && this._canTarget(u, t));
-    if (laneTower) return laneTower;
-    const king = this.towers.find((t) => t.kind === 'king' && this._canTarget(u, t));
-    if (king) return king;
+    // Nada por perto. Do próprio lado do rio: segue a pista (como no Clash Royale) — o ginásio lateral
+    // dela e, se ele já caiu, o Líder; não atravessa o mapa para o ginásio da outra pista.
+    // Já no lado do adversário: vai para o ginásio mais próximo (abaixo).
+    const onEnemySide = u.side === 0 ? u.y < ARENA.RIVER_TOP : u.y > ARENA.RIVER_BOTTOM;
+    if (!onEnemySide) {
+      const lane = u.x < ARENA.W / 2 ? 0 : 1;
+      const laneTower = this.towers.find((t) => t.kind === 'princess' && t.lane === lane && this._canTarget(u, t));
+      if (laneTower) return laneTower;
+      const king = this.towers.find((t) => t.kind === 'king' && this._canTarget(u, t));
+      if (king) return king;
+    }
     for (const t of this.towers) {
       if (!this._canTarget(u, t)) continue;
       const d = edgeDist(u, t);
