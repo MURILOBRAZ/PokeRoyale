@@ -750,11 +750,45 @@ async function openPendingGift() {
 }
 
 function showReward(result) {
-  const { tier, contents, newCards } = result;
+  const { tier } = result;
   $('#reward-title').innerHTML = result.title
     ? `${ballImg(tier, 'reward-ball')}<span>${result.title}${result.text ? `<small class="reward-sub">${result.text}</small>` : ''}</span>`
     : `${ballImg(tier, 'reward-ball')}<span>${BALLS[tier].name}</span>`;
-  const cards = Object.entries(contents.cards).sort((a, b) => {
+  fillReward(result);
+  $('.reward-panel').classList.remove('reward-pop');
+  playBallOpening(tier);
+  openRewardOverlay();
+}
+
+// O pop-up abre por cima da aba em que você está (ex.: a Loja); no início, como uma tela própria
+function openRewardOverlay() {
+  const onTab = Account.loggedIn && TAB_SCREENS.some((s) => !$(s).classList.contains('hidden'));
+  rewardOverTab = onTab;
+  if (onTab) $('#reward').classList.remove('hidden');
+  else showScreen('#reward');
+}
+let rewardOverTab = false;
+
+// Compra ou resgate na loja (carta, item ou visual): o mesmo pop-up da ball, sem a bola abrindo —
+// o que você ganhou aparece direto, com um brilho atrás
+function showPurchase({ title, text, icon, contents = {}, newCards = [], extra = '' }) {
+  $('#reward-title').innerHTML = `${icon ? `<span class="reward-icon">${icon}</span>` : ''}<span>${title}${text ? `<small class="reward-sub">${text}</small>` : ''}</span>`;
+  fillReward({ contents, newCards });
+  if (extra) $('#reward-extra').innerHTML += extra;
+  clearTimeout(ballTimer);
+  $('#reward-open').classList.add('hidden');
+  $('#reward-body').classList.remove('hidden');
+  const panel = $('.reward-panel');
+  panel.classList.remove('reward-pop');
+  void panel.offsetWidth; // reinicia a animação
+  panel.classList.add('reward-pop');
+  rewardReturn = '#shop';
+  openRewardOverlay();
+}
+
+// Cartas, Pokédólares e itens ganhos, dentro do pop-up de recompensa
+function fillReward({ contents, newCards = [] }) {
+  const cards = Object.entries(contents.cards || {}).sort((a, b) => {
     const order = ['legendary', 'epic', 'rare', 'common'];
     return order.indexOf(rarityOf(CARDS[a[0]])) - order.indexOf(rarityOf(CARDS[b[0]]));
   });
@@ -766,8 +800,6 @@ function showReward(result) {
   }).join('');
   const items = Object.entries(contents.items || {}).map(([id, n]) => `<span class="reward-item">${itemImg(id)} ${ITEMS[id].name} ×${n}</span>`).join('');
   $('#reward-extra').innerHTML = `${contents.gold ? `<span class="reward-gold">💰 +${fmtNum(contents.gold)}</span>` : ''}${items}`;
-  playBallOpening(tier);
-  showScreen('#reward');
 }
 
 // ---------- Animação da ball abrindo ----------
@@ -839,7 +871,9 @@ $('#reward-ok').addEventListener('click', () => {
   const back = rewardReturn;
   rewardReturn = null;
   if (back === '#shop') showShop();
+  else if (rewardOverTab) $('#reward').classList.add('hidden'); // continua na aba de baixo
   else showHome();
+  rewardOverTab = false;
 });
 
 // ---------- PokéMart ----------
@@ -1050,10 +1084,16 @@ $('#shop-body').addEventListener('click', async (e) => {
     hubBusy = true;
     cos.disabled = true;
     try {
-      await Account.api('cosmetic-buy', { id: cos.dataset.cosmetic });
+      const id = cos.dataset.cosmetic;
+      await Account.api('cosmetic-buy', { id });
       renderHub();
       renderShop();
-      formMsg($('#shop-msg'), `${COSMETICS[cos.dataset.cosmetic].name} é seu! Equipe em Minha conta (toque no seu nome).`, true);
+      const c = COSMETICS[id];
+      showPurchase({
+        title: 'Comprado!',
+        text: `${escapeHtml(c.name)} · ${KIND_NAMES[c.kind]}`,
+        extra: `<div class="reward-cosmetic">${cosmeticPreview(id, c)}<small>Equipe em Minha conta (toque no seu nome).</small></div>`,
+      });
     } catch (err) {
       formMsg($('#shop-msg'), err.message, false);
     } finally {
@@ -1069,6 +1109,7 @@ $('#shop-body').addEventListener('click', async (e) => {
   if (!btn || btn.disabled || hubBusy) return;
   hubBusy = true;
   btn.disabled = true;
+  const offer = shopData.offers.find((o) => o.id === btn.dataset.offer);
   try {
     const r = await Account.api('shop-buy', { offer: btn.dataset.offer });
     shopData = r.shop;
@@ -1079,10 +1120,22 @@ $('#shop-body').addEventListener('click', async (e) => {
       return;
     }
     renderShop();
-    const msg = r.kind === 'card'
-      ? `+${r.amount} ${CARDS[r.card].name}${r.newCards.length ? ' (nova!)' : ''} na sua Pokédex.`
-      : `${ITEMS[r.item].name} guardada. Use na Pokédex, na carta que quiser.`;
-    formMsg($('#shop-msg'), msg, true);
+    const title = offer && offer.free ? 'Resgatado!' : 'Comprado!';
+    if (r.kind === 'card') {
+      showPurchase({
+        title,
+        text: r.newCards.length ? 'Pokémon novo na sua Pokédex!' : 'Cópias guardadas na sua Pokédex',
+        contents: { cards: { [r.card]: r.amount } },
+        newCards: r.newCards,
+      });
+    } else {
+      showPurchase({
+        title,
+        text: 'Use na Pokédex, na carta que quiser',
+        icon: itemImg(r.item),
+        contents: { items: { [r.item]: r.amount || 1 } },
+      });
+    }
   } catch (err) {
     formMsg($('#shop-msg'), err.message, false);
     await Account.refresh();

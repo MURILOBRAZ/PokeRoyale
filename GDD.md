@@ -477,6 +477,8 @@ As quantidades crescem com a arena (+10% por arena). O conteúdo é **sorteado n
 3. Só cartas das **arenas já liberadas**; **lendários nunca** são vendidos.
 4. O **servidor** gera as ofertas (uma vez por dia por jogador, guardadas) e valida preço, saldo e limite numa instrução só.
 
+**Ao comprar ou resgatar:** aparece o mesmo pop-up das balls, por cima da Loja, com "Comprado!" (ou "Resgatado!", no presente grátis) e o que você ganhou, que pode ser a carta (com "Novo!" se for nova), o item ou o visual, com um brilho girando atrás e o botão Coletar. Balls compradas abrem com a animação de sempre. Ao coletar, você continua na Loja.
+
 **Fichas 🪙** (moeda rara): +100 ao chegar numa arena nova, +20 por nível de treinador novo, +10 na primeira vitória do dia (partida que vale troféus). Não vêm em balls.
 
 **Ofertas** — trocam à meia-noite (horário de Brasília); as semanais, na segunda-feira.

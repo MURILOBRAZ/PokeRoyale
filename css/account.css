@@ -176,6 +176,21 @@ button.link:active { transform: none; }
 
 /* ---------- Ball abrindo (antes das recompensas) ---------- */
 .reward-panel { min-height: 320px; }
+/* Compra na loja: o painel entra com um pulinho e um brilho girando atrás do que você ganhou */
+.reward-panel.reward-pop { animation: pop 0.3s ease-out; position: relative; overflow: hidden; }
+.reward-panel.reward-pop::before {
+  content: ''; position: absolute; left: 50%; top: 42%; width: 360px; height: 360px; margin: -180px 0 0 -180px; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 230, 120, 0.09) 0 12deg, transparent 12deg 30deg);
+  border-radius: 50%; animation: purchase-rays 6s linear infinite, purchase-fade 0.6s ease-out;
+}
+.reward-panel.reward-pop > * { position: relative; }
+@keyframes purchase-rays { to { transform: rotate(360deg); } }
+@keyframes purchase-fade { from { opacity: 0; transform: scale(0.4); } }
+.reward-icon { display: inline-flex; animation: wobble 0.6s ease-in-out 2; }
+.reward-icon img { width: 44px; height: 44px; image-rendering: pixelated; }
+.reward-pop .reward-item { font-size: 18px; font-weight: 800; animation: pop 0.35s ease-out both; }
+.reward-pop .reward-item img { width: 40px; height: 40px; image-rendering: pixelated; }
+.reward-cosmetic { display: grid; justify-items: center; gap: 6px; animation: pop 0.35s ease-out both; }
 .ball-open {
   position: relative;
   display: flex;
