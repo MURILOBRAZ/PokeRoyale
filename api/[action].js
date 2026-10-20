@@ -276,11 +276,15 @@ const ACTIONS = {
       [userId],
     );
     if (recent.n >= R.MATCHES_PER_HOUR) fail(429, 'Muitas partidas na última hora. Descanse um pouco!');
-    const u = await one('SELECT arena, starter FROM users WHERE id = $1', [userId]);
+    const u = await one('SELECT arena, starter, deck FROM users WHERE id = $1', [userId]);
     if (!u.starter) fail(409, 'Escolha seu inicial primeiro.');
     const id = crypto.randomUUID();
-    await q('INSERT INTO matches (id, user_id, mode) VALUES ($1, $2, $3)', [id, userId, mode]);
-    return { matchId: id, bot: mode === 'bot' ? R.botProfile(u.arena) : null };
+    const bot = mode === 'bot' ? R.botProfile(u.arena) : null;
+    // Histórico: deck usado e arena; contra o bot, o adversário já é conhecido
+    const opponent = bot ? `Bot (${{ easy: 'fácil', normal: 'normal', hard: 'difícil' }[bot.difficulty]})` : null;
+    await q('INSERT INTO matches (id, user_id, mode, deck, arena, opponent) VALUES ($1, $2, $3, $4::jsonb, $5, $6)',
+      [id, userId, mode, JSON.stringify(u.deck), u.arena, opponent]);
+    return { matchId: id, bot };
   },
 
   async 'match-finish'({ req, body }) {
@@ -306,7 +310,14 @@ const ACTIONS = {
       `UPDATE users SET trophies = $2, best_trophies = GREATEST(best_trophies, $2), arena = $3 WHERE id = $1`,
       [userId, trophies, arena],
     );
-    await q('UPDATE matches SET trophies_delta = $2 WHERE id = $1', [body.matchId, delta]);
+    // Histórico: coroas (minhas, do adversário) e, no online, o nome do amigo (vem do cliente, só texto curto)
+    const crowns = Array.isArray(body.crowns) && body.crowns.length === 2
+      && body.crowns.every((n) => Number.isInteger(n) && n >= 0 && n <= 3) ? body.crowns : null;
+    const opponent = typeof body.opponent === 'string' ? body.opponent.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 16) : '';
+    await q(
+      `UPDATE matches SET trophies_delta = $2, crowns = $3::jsonb, opponent = COALESCE(opponent, NULLIF($4, '')) WHERE id = $1`,
+      [body.matchId, delta, JSON.stringify(crowns), opponent],
+    );
 
     // Fichas: arena nova, nível de treinador novo e primeira vitória do dia
     const levels = await grantXp(userId, result === 'win' ? 5 : 1);
@@ -337,6 +348,22 @@ const ACTIONS = {
     return {
       delta, trophies, arena, arenaUp: arena > u.arena, ball, slotsFull,
       fichas: fichasGained, firstWin, levelUp: levels > 0, state: await loadState(userId),
+    };
+  },
+
+  // Últimas 20 partidas que valeram troféus
+  async history({ req }) {
+    const userId = await requireUser(req);
+    const rows = await q(
+      `SELECT mode, result, trophies_delta, crowns, opponent, deck, arena, finished_at FROM matches
+       WHERE user_id = $1 AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 20`,
+      [userId],
+    );
+    return {
+      matches: rows.map((m) => ({
+        mode: m.mode, result: m.result, trophies: m.trophies_delta, crowns: m.crowns,
+        opponent: m.opponent, deck: m.deck, arena: m.arena, at: new Date(m.finished_at).toISOString(),
+      })),
     };
   },
 

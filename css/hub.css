@@ -638,3 +638,15 @@ button.link { font-family: inherit; }
 
 /* Presente de versão: subtítulo embaixo do título da recompensa */
 .reward-sub { display: block; font-size: 13px; font-weight: 600; opacity: 0.85; margin-top: 2px; }
+
+/* ---------- Histórico de partidas (Minha conta) ---------- */
+.history-list { display: grid; gap: 8px; max-height: 340px; overflow-y: auto; }
+.history-row { padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); border-left: 4px solid #8a93b8; }
+.history-row.win { border-left-color: #4ade80; }
+.history-row.loss { border-left-color: #f87171; }
+.history-top { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.history-top .history-delta { margin-left: auto; font-weight: 800; }
+.history-row.win .history-delta { color: #4ade80; }
+.history-row.loss .history-delta { color: #f87171; }
+.history-row small { opacity: 0.75; }
+.history-row .mini-deck { grid-template-columns: repeat(8, 1fr); margin-top: 6px; }

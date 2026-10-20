@@ -169,7 +169,8 @@ class Game {
       this._spawnBuilding(card, side, x, y, levelMultiplier(card, this.levels[side][cardId]));
     } else {
       const n = card.count || 1;
-      this._fx({ kind: 'spawn', dex: card.dex, x, y, side, n, ttl: 0.7, total: 0.7 });
+      this._fx({ kind: 'spawn', dex: card.dex, x, y, side, n, legendary: !!card.legendary, ttl: card.legendary ? 1.4 : 0.7, total: card.legendary ? 1.4 : 0.7, shake: card.legendary ? 0.2 : 0 });
+      if (card.legendary) this.events.push({ text: `✨ ${card.name} lendário entrou na batalha!`, side });
       const offsets = n === 1 ? [[0, 0]] : [[0, -0.5], [-0.6, 0.4], [0.6, 0.4]];
       for (let i = 0; i < n; i++) {
         const [ox, oy] = offsets[i % offsets.length];
@@ -370,9 +371,10 @@ class Game {
   _acquireTarget(u) {
     let best = null;
     let bestD = Infinity;
+    const ignored = u.ignore && this.time < u.ignore.until ? u.ignore.id : null;
     for (const list of [this.units, this.towers]) {
       for (const t of list) {
-        if (!this._canTarget(u, t)) continue;
+        if (!this._canTarget(u, t) || t.id === ignored) continue;
         const d = edgeDist(u, t);
         if (d <= MATCH.SIGHT && d < bestD) {
           best = t;
@@ -405,6 +407,7 @@ class Game {
 
   _updateUnit(u, dt) {
     if (u.isBuilding) return this._updateBuilding(u, dt);
+    if (u.slowT > 0) u.slowT -= dt;
     u.attackAnim = Math.max(0, u.attackAnim - dt);
     u.hitFlash = Math.max(0, (u.hitFlash || 0) - dt);
     u.moving = false;
@@ -447,6 +450,19 @@ class Game {
         else this._attack(u, t);
       }
     } else {
+      // Alvo inalcançável (ex.: atrás de um ginásio colado na parede): sem chegar mais perto em 2,5 s,
+      // desiste dele por um tempo e procura outro — senão o Pokémon fica parado para sempre
+      const dist = edgeDist(u, t);
+      if (!u.chase || u.chase.id !== t.id) u.chase = { id: t.id, best: dist, since: this.time };
+      else if (dist < u.chase.best - 0.25) {
+        u.chase.best = dist;
+        u.chase.since = this.time;
+      } else if (this.time - u.chase.since > 2.5) {
+        u.ignore = { id: t.id, until: this.time + 5 };
+        u.chase = null;
+        u.target = null;
+        return;
+      }
       const [wx, wy] = this._waypoint(u, t.x, t.y);
       this._moveToward(u, wx, wy, dt, t);
     }
@@ -458,7 +474,7 @@ class Game {
     let dx = (tx - u.x) / d;
     let dy = (ty - u.y) / d;
     if (!u.air) [dx, dy] = this._avoidTowers(u, dx, dy, target);
-    const step = Math.min(d, u.def.speed * dt);
+    const step = Math.min(d, u.def.speed * (u.slowT > 0 ? 0.55 : 1) * dt); // Nevasca: mais lento
     u.face = Math.atan2(dy, dx);
     u.moving = true;
     u.x += dx * step;
@@ -690,11 +706,24 @@ class Game {
   _resolveSpell(s) {
     const c = s.card;
     for (const e of [...this._enemiesOf(s.side)]) {
-      if (Math.hypot(e.x - s.x, e.y - s.y) > c.radius + e.radius) continue;
-      this._damage(e, c.dmg * (s.mult || 1) * (e.isTower ? c.towerMult : 1), c.type, null);
-      if (c.stun && !e.isTower) e.stun = Math.max(e.stun, c.stun);
+      const dist = Math.hypot(e.x - s.x, e.y - s.y);
+      if (dist > c.radius + e.radius) continue;
+      if (c.groundOnly && e.air) continue; // Terremoto não alcança quem voa
+      const mult = e.isTower ? c.towerMult : e.isBuilding ? c.buildingMult || 1 : 1;
+      this._damage(e, c.dmg * (s.mult || 1) * mult, c.type, null);
+      if (e.isTower || e.isBuilding || e.dead) continue;
+      if (c.stun) e.stun = Math.max(e.stun, c.stun);
+      if (c.slow) e.slowT = Math.max(e.slowT || 0, c.slowTime);
+      // Surf: a onda empurra para longe do centro (só quem está no chão)
+      if (c.knockback && !e.air) {
+        const ux = dist > 0.01 ? (e.x - s.x) / dist : 0;
+        const uy = dist > 0.01 ? (e.y - s.y) / dist : (e.side === 0 ? 1 : -1);
+        e.x = clamp(e.x + ux * c.knockback, 0.5, ARENA.W - 0.5);
+        e.y = clamp(e.y + uy * c.knockback, 0.5, ARENA.H - 0.5);
+      }
     }
-    this._fx({ kind: 'blast', type: c.type, x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl: 0.6, total: 0.6, spell: c.id, shake: c.id === 'fireblast' ? 0.3 : 0.15 });
+    const shake = { fireblast: 0.3, earthquake: 0.45, surf: 0.12 }[c.id] || 0.15;
+    this._fx({ kind: 'blast', type: c.type, x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl: c.id === 'earthquake' ? 0.9 : 0.6, total: c.id === 'earthquake' ? 0.9 : 0.6, spell: c.id, shake });
   }
 
   // ---------- Rede ----------
@@ -709,7 +738,7 @@ class Game {
       towers: this.towers.map((t) => ({ hp: Math.round(t.hp), mhp: t.maxHp, active: t.active, dead: t.dead, hf: r(t.hitFlash || 0) })),
       units: this.units.map((u) => ({
         id: u.id, c: u.card.id, s: u.side, x: r(u.x), y: r(u.y), hp: Math.round(u.hp), mhp: u.maxHp,
-        r: r(u.radius), d: r(u.deploy), st: r(u.stun), ev: u.evolved ? u.def.id : 0, air: u.air, fa: r(u.face), m: u.moving, at: r(u.attackT), a: r(u.attackAnim), hf: r(u.hitFlash || 0),
+        r: r(u.radius), d: r(u.deploy), st: r(u.stun), sl: r(u.slowT || 0), ev: u.evolved ? u.def.id : 0, air: u.air, fa: r(u.face), m: u.moving, at: r(u.attackT), a: r(u.attackAnim), hf: r(u.hitFlash || 0),
       })),
       projectiles: this.projectiles.map((p) => ({ x: r(p.x), y: r(p.y), type: p.type, tower: !!p.tower, a: r(p.a || 0) })),
       spells: this.spells.map((s) => ({ c: s.card.id, s: s.side, x: s.x, y: s.y, timer: r(s.timer), total: s.total })),
@@ -742,7 +771,7 @@ class Game {
       Object.assign(u, {
         tx: s.x, ty: s.y, hp: s.hp, maxHp: s.mhp, radius: s.r, deploy: s.d,
         face: s.fa, moving: s.m, attackT: s.at,
-        stun: s.st, evolved: !!s.ev, attackAnim: s.a, hitFlash: s.hf,
+        stun: s.st, slowT: s.sl, evolved: !!s.ev, attackAnim: s.a, hitFlash: s.hf,
       });
       return u;
     });

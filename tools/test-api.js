@@ -138,13 +138,24 @@ async function main() {
 
   // Vitória (finge que a partida durou 2 minutos)
   await pg.query(`UPDATE matches SET started_at = now() - interval '2 minutes' WHERE id = $1`, [m1]);
-  r = await a('match-finish', { matchId: m1, result: 'win' });
+  r = await a('match-finish', { matchId: m1, result: 'win', crowns: [2, 1], opponent: '<b>Gary</b>' });
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.equal(r.data.delta, 20);
   assert.equal(r.data.trophies, 20);
   assert.ok(r.data.ball && R.BALLS[r.data.ball.tier]);
   assert.equal((await a('match-finish', { matchId: m1, result: 'win' })).status, 409);
   ok('vitória contra o bot: +20 troféus e uma ball; não conta duas vezes');
+
+  // Histórico: a vitória aparece primeiro, com coroas, adversário (o bot, não o texto do cliente) e deck
+  r = await a('history', {});
+  assert.equal(r.status, 200);
+  const last = r.data.matches[0];
+  assert.equal(last.result, 'win');
+  assert.deepEqual(last.crowns, [2, 1]);
+  assert.equal(last.trophies, 20);
+  assert.ok(/^Bot/.test(last.opponent), last.opponent);
+  assert.equal(last.deck.length, 8);
+  ok('histórico de partidas com coroas, adversário e deck');
 
   // Derrota não cai abaixo de 0
   r = await a('match-start', { mode: 'bot' });

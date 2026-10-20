@@ -196,6 +196,22 @@ const SPELLS = {
     type: 'fire', radius: 3.0, dmg: 420, towerMult: 0.35, delay: 0.7,
     desc: 'Golpe: grande explosão em área, cai depois de um instante.',
   },
+  // v0.9
+  surf: {
+    id: 'surf', name: 'Surf', kind: 'spell', icon: itemIcon('mystic-water'), cost: 3,
+    type: 'water', radius: 2.8, dmg: 220, towerMult: 0.3, knockback: 1.8, delay: 0.3, arena: 2,
+    desc: 'Golpe: uma onda que molha a área e empurra os Pokémon no chão para trás.',
+  },
+  earthquake: {
+    id: 'earthquake', name: 'Terremoto', kind: 'spell', icon: itemIcon('soft-sand'), cost: 4,
+    type: 'ground', radius: 3.3, dmg: 340, towerMult: 0.45, buildingMult: 2, groundOnly: true, delay: 0.5, arena: 8,
+    desc: 'Golpe: a terra treme em área. Não acerta voadores, mas faz o dobro de dano em construções.',
+  },
+  blizzard: {
+    id: 'blizzard', name: 'Nevasca', kind: 'spell', icon: itemIcon('never-melt-ice'), cost: 4,
+    type: 'ice', radius: 3.0, dmg: 190, towerMult: 0.3, slow: 0.45, slowTime: 4, delay: 0.4, arena: 5,
+    desc: 'Golpe: neve em área que deixa os Pokémon 45% mais lentos por 4 s.',
+  },
 };
 
 // Construções (v0.8): ficam paradas no próprio lado, perdem vida com o tempo (life, em segundos)

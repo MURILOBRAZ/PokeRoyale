@@ -29,11 +29,14 @@ function arenaForTrophies(trophies) {
 
 const STARTER_IDS = ['bulbasaur', 'charmander', 'squirtle'];
 
-// Arena em que a carta aparece nas Premier Balls (pelo primeiro tipo; lendários na Liga)
+// Lendários: a partir de qual arena podem sair (bem raros: só em pilhas de 1 carta, ver rollBallContents)
+const LEGENDARY_ARENA = { articuno: 6, zapdos: 6, moltres: 7, mew: 8, mewtwo: 9 };
+
+// Arena em que a carta aparece nas Premier Balls (pelo primeiro tipo; golpes e construções têm a sua)
 function arenaOfCard(card) {
-  if (card.kind === 'building') return card.arena;
+  if (card.arena !== undefined) return card.arena;
   if (card.kind === 'spell' || STARTER_IDS.includes(card.id)) return 0;
-  if (card.legendary) return 9;
+  if (card.legendary) return LEGENDARY_ARENA[card.id] ?? 9;
   const arena = ARENAS.find((a) => a.types.includes(card.types[0]));
   return arena ? arena.id : 0;
 }
@@ -121,7 +124,7 @@ const FREE_BALL_MAX = 2;
 const BALLS = {
   premier: { name: 'Premier Ball', icon: 'premier-ball', chance: 0.7, seconds: 15 * 60, cards: 4, gold: [20, 40], weights: { common: 80, rare: 18, epic: 2, legendary: 0 } },
   great: { name: 'Great Ball', icon: 'great-ball', chance: 0.22, seconds: 3600, cards: 10, gold: [60, 100], weights: { common: 70, rare: 25, epic: 5, legendary: 0 }, guaranteed: ['rare'] },
-  ultra: { name: 'Ultra Ball', icon: 'ultra-ball', chance: 0.07, seconds: 3 * 3600, cards: 25, gold: [150, 250], weights: { common: 55, rare: 33, epic: 12, legendary: 0 }, guaranteed: ['epic'], itemChance: 0.3 },
+  ultra: { name: 'Ultra Ball', icon: 'ultra-ball', chance: 0.07, seconds: 3 * 3600, cards: 25, gold: [150, 250], weights: { common: 55, rare: 33, epic: 12, legendary: 0.6 }, guaranteed: ['epic'], itemChance: 0.3 },
   master: { name: 'Master Ball', icon: 'master-ball', chance: 0.01, seconds: 8 * 3600, cards: 40, gold: [400, 600], weights: { common: 45, rare: 35, epic: 18, legendary: 2 }, guaranteed: ['legendary'], itemChance: 1 },
   poke: { name: 'Poké Ball', icon: 'poke-ball', chance: 0, seconds: 0, cards: 2, gold: [10, 20], weights: { common: 85, rare: 15, epic: 0, legendary: 0 } },
 };
@@ -185,7 +188,7 @@ function rollBallContents(tier, arena, rand = Math.random) {
   const cards = {};
   const add = (id) => id && (cards[id] = (cards[id] || 0) + 1);
   for (const rarity of ball.guaranteed || []) {
-    if (rarity === 'legendary' && arena < 9) {
+    if (rarity === 'legendary' && !byRarity.legendary) {
       add(pickOf('epic'));
       add(pickOf('epic'));
     } else {
@@ -199,9 +202,16 @@ function rollBallContents(tier, arena, rand = Math.random) {
   let remaining = total - Object.values(cards).reduce((a, b) => a + b, 0);
   for (let i = 0; i < stackIds.length && remaining > 0; i++) {
     const share = i === stackIds.length - 1 ? remaining : Math.max(1, Math.round(remaining * (0.3 + rand() * 0.3)));
-    const n = Math.min(remaining, share);
+    // Lendário vem sempre sozinho (1 cópia): o resto da pilha vira outra carta
+    const legendary = stackIds[i] && CARDS[stackIds[i]].legendary;
+    const n = legendary ? 1 : Math.min(remaining, share);
     if (stackIds[i]) cards[stackIds[i]] = (cards[stackIds[i]] || 0) + n;
     remaining -= n;
+  }
+  // Sobrou carta (lendário na última pilha vem só com 1): completa com uma comum
+  if (remaining > 0) {
+    const id = pickOf('common');
+    if (id) cards[id] = (cards[id] || 0) + remaining;
   }
 
   const [gMin, gMax] = ball.gold;

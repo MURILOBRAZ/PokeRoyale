@@ -91,6 +91,11 @@ const SCHEMA = [
     trophies_delta INT
   )`,
   'CREATE INDEX IF NOT EXISTS matches_user_started ON matches (user_id, started_at)',
+  // Histórico de partidas (v0.9): adversário, coroas, deck usado e arena
+  'ALTER TABLE matches ADD COLUMN IF NOT EXISTS opponent TEXT',
+  'ALTER TABLE matches ADD COLUMN IF NOT EXISTS crowns JSONB',
+  'ALTER TABLE matches ADD COLUMN IF NOT EXISTS deck JSONB',
+  'ALTER TABLE matches ADD COLUMN IF NOT EXISTS arena INT',
   'CREATE INDEX IF NOT EXISTS balls_user ON balls (user_id)',
   'CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id)',
 ];

@@ -323,6 +323,7 @@ PokeRoyale/
 | **v0.6** | Cosméticos (avatar, títulos, skins de ginásio, emotes) e Zona Safári | ✅ Feito |
 | **v0.7** | Efeitos de golpe por tipo, som (efeitos, gritos, música), campo em tela cheia, invocação no ponto permitido mais próximo, vários decks com salvamento automático, arrastar cartas, várias balls abrindo juntas | ✅ Feito |
 | **v0.8** | Cartas de construção: Centro Pokémon, Torre Pokémon, Snorlax Dormindo, Caverna Zubat, Laboratório do Mewtwo (ver [18](#18-cartas-de-construção-v08)) | ✅ Feito |
+| **v0.9** | Golpes Surf, Terremoto e Nevasca; lendários raros com entrada especial; histórico de partidas; música do menu; correção de Pokémon parado (ver [19](#19-v09)) | ✅ Feito |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -527,7 +528,31 @@ Aprovado em 19/10/2026. Os números abaixo já passaram pela simulação de part
 
 **Presente para quem já joga:** cada conta recebe **uma construção aleatória**, uma vez só. Pode vir qualquer uma menos a lendária, mesmo que ainda não tenha chegado na arena dela. O presente abre sozinho, com a animação da ball, na primeira vez que o jogador entra depois da atualização. Contas novas recebem depois de escolher o inicial. Os presentes de versão ficam em `GIFTS` (`js/progression.js`), e os já recebidos na coluna `users.gifts`, o que permite dar presentes em versões futuras.
 
-## 19. Questões em aberto
+## 19. v0.9
+
+**Golpes novos** (liberados nas arenas, como os Pokémon)
+
+| Golpe | Custo | Dano | Raio | Efeito | Arena |
+|---|---|---|---|---|---|
+| 🌊 Surf | 3 | 220 | 2,8 | Empurra 1,8 tile para trás quem está no chão | Cerulean |
+| ❄️ Nevasca | 4 | 190 | 3,0 | Deixa 45% mais lento por 4 s (o Pokémon fica azulado) | Fuchsia |
+| 🌍 Terremoto | 4 | 340 | 3,3 | Não acerta voadores; dano dobrado em construções; treme a tela | Viridian |
+
+Nos ginásios, os golpes causam 30% a 45% do dano. O bot sabe que o Terremoto não pega voadores.
+
+**Lendários** (Articuno, Zapdos, Moltres, Mew, Mewtwo)
+- **Antes:** só saíam garantidos numa Master Ball depois de chegar na Liga, o que na prática era quase impossível.
+- **Agora:** aparecem a partir de Saffron (Articuno e Zapdos), Cinnabar (Moltres), Viridian (Mew) e Liga (Mewtwo), em `LEGENDARY_ARENA`.
+- **Raridade:** saem nas Ultra Balls (peso 0,6) e nas Master Balls (garantido), e sempre só 1 cópia. Na simulação, cerca de **1,3% das balls de vitória** trazem um lendário a partir de Saffron.
+- **Na batalha:** coluna de luz dourada, fanfarra, aviso "✨ lendário entrou na batalha!" e aura dourada embaixo dele.
+
+**Histórico de partidas:** em "Minha conta", "📜 Últimas partidas" mostra as 20 últimas partidas valendo troféus, com resultado, coroas, adversário (o nível do bot ou o nome do amigo), troféus ganhos ou perdidos, arena, quanto tempo faz e o deck usado. O servidor guarda isso na tabela `matches`.
+
+**Música do menu:** tema calmo em Dó maior, mais lento e sem bateria, que toca fora da partida. Começa no primeiro toque, quando o navegador libera o som. Na partida, volta o tema de batalha.
+
+**Correção:** se um Pokémon persegue um alvo por 2,5 s sem chegar mais perto (por exemplo, atrás de um ginásio colado na parede), ele desiste daquele alvo por 5 s e procura outro. Em 1.200 partidas simuladas, nenhum Pokémon ficou parado.
+
+## 20. Questões em aberto
 
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).

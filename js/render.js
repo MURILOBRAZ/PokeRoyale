@@ -516,6 +516,16 @@ class Renderer {
     const now = performance.now() / 1000;
     const lift = u.air ? s * 0.9 + Math.sin(now * 6 + u.id) * s * 0.1 : 0;
 
+    // Lendário: aura dourada pulsando embaixo
+    if (u.def.legendary) {
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.2 * Math.sin(now * 4 + u.id);
+      ctx.fillStyle = '#ffd75a';
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.5, r * 1.8, r * 0.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     // Anel do time no chão
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath();
@@ -529,6 +539,7 @@ class Renderer {
     if (u.deploy > 0) ctx.globalAlpha = 0.5;
     ctx.imageSmoothingEnabled = false;
     if (u.hitFlash > 0) ctx.filter = 'brightness(1.9)';
+    else if (u.slowT > 0) ctx.filter = 'saturate(0.6) hue-rotate(160deg) brightness(1.15)'; // congelando (Nevasca)
     const frame = this._unitFrame(u, game);
     const fallback = !frame && getImage(spriteFront(u.def.dex));
     let top;
@@ -883,6 +894,17 @@ class Renderer {
     ctx.stroke();
     ctx.setLineDash([]);
     // Bola de fogo caindo
+    if (sp.card.id === 'blizzard') {
+      // Nuvem de neve se formando em cima da área
+      ctx.globalAlpha = 0.5 + 0.4 * k;
+      ctx.fillStyle = '#e8f6ff';
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.arc(x + (i - 2) * this.scale * 0.6, y - this.scale * 3, this.scale * (0.6 + (i % 2) * 0.25), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
     if (sp.card.id === 'fireblast') {
       const fy = y - (1 - k) * this.scale * 8;
       ctx.fillStyle = '#ff7a1a';
@@ -1025,6 +1047,55 @@ class Renderer {
           ctx.arc(x + Math.cos(a) * d, py, s * 0.12 * (1 - k) + 1, 0, Math.PI * 2);
           ctx.fill();
         }
+        if (e.spell === 'surf') {
+          // Onda: anéis de água se abrindo, com espuma branca
+          for (let i = 0; i < 3; i++) {
+            const kk = Math.min(1, out + i * 0.12);
+            ctx.globalAlpha = (1 - k) * (0.9 - i * 0.25);
+            ctx.strokeStyle = i ? '#4f8cff' : '#e8f6ff';
+            ctx.lineWidth = s * (0.25 - i * 0.05);
+            ctx.beginPath();
+            ctx.ellipse(x, y, e.radius * this.sx * kk, e.radius * this.sy * kk * 0.8, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        if (e.spell === 'earthquake') {
+          // Rachaduras saindo do centro e pedrinhas pulando
+          ctx.globalAlpha = 1 - k;
+          ctx.strokeStyle = '#5a3d1e';
+          ctx.lineWidth = s * 0.1;
+          for (let i = 0; i < 7; i++) {
+            const a = (i / 7) * Math.PI * 2 + rnd(i);
+            let px = x;
+            let py = y;
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            for (let j = 1; j <= 3; j++) {
+              const d = (e.radius * s * Math.min(1, out * 1.3) * j) / 3;
+              px = x + Math.cos(a + (rnd(i * 3 + j) - 0.5) * 0.6) * d;
+              py = y + Math.sin(a + (rnd(i * 3 + j) - 0.5) * 0.6) * d * 0.75;
+              ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+          }
+          ctx.fillStyle = '#8b6a3e';
+          for (let i = 0; i < 10; i++) {
+            const a = rnd(i + 40) * Math.PI * 2;
+            const d = e.radius * s * rnd(i + 50);
+            const hop = Math.abs(Math.sin(k * Math.PI * 3 + i)) * s * 0.4 * (1 - k);
+            ctx.fillRect(x + Math.cos(a) * d - s * 0.08, y + Math.sin(a) * d * 0.75 - hop - s * 0.08, s * 0.16, s * 0.16);
+          }
+        }
+        if (e.spell === 'blizzard') {
+          // Flocos de neve girando e caindo
+          ctx.fillStyle = '#ffffff';
+          for (let i = 0; i < 18; i++) {
+            const a = rnd(i) * Math.PI * 2 + k * 2;
+            const d = e.radius * s * Math.sqrt(rnd(i + 20));
+            ctx.globalAlpha = (1 - k) * 0.9;
+            this._star(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.75 - (1 - k) * s * 0.8, s * 0.13);
+          }
+        }
         if (e.spell === 'thunderbolt' && k < 0.6) {
           ctx.globalAlpha = 1 - k / 0.6;
           ctx.strokeStyle = '#fff7a8';
@@ -1038,6 +1109,26 @@ class Renderer {
         break;
       }
       case 'spawn': {
+        // Lendário: coluna de luz dourada e brilhos subindo
+        if (e.legendary) {
+          ctx.save();
+          const t = Math.min(1, k * 1.4);
+          ctx.globalAlpha = 0.55 * (1 - k);
+          const grad = ctx.createLinearGradient(0, y - s * 9, 0, y);
+          grad.addColorStop(0, 'rgba(255,230,120,0)');
+          grad.addColorStop(1, 'rgba(255,215,90,1)');
+          ctx.fillStyle = grad;
+          const w = s * (1.6 + Math.sin(k * 20) * 0.15);
+          ctx.fillRect(x - w / 2, y - s * 9 * t, w, s * 9 * t);
+          ctx.globalAlpha = 1 - k;
+          ctx.fillStyle = '#fff3a0';
+          for (let i = 0; i < 10; i++) {
+            const a = (i / 10) * Math.PI * 2 + k * 4;
+            this._star(x + Math.cos(a) * s * 1.4 * out, y - k * s * 3 - rnd(i) * s * 1.5, s * 0.16);
+          }
+          ctx.restore();
+          if (k > 0.5) break;
+        }
         // Poké Ball abrindo: a bola pula e solta um clarão na cor do time
         // (construção: sem bola, só poeira e o anel do time)
         if (k < 0.35 && !e.building) {

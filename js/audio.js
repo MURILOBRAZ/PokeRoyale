@@ -174,6 +174,22 @@ const Sound = (() => {
       for (let i = 0; i < 6; i++) tone({ wave: 'square', f: 400 + Math.random() * 1400, t: i * 0.03, dur: 0.04, vol: 0.08 });
       return;
     }
+    if (spell === 'surf') {
+      noise({ dur: 0.8, vol: 0.4, type: 'bandpass', f: 500, f2: 1800, q: 0.6 });
+      noise({ t: 0.2, dur: 0.6, vol: 0.25, type: 'highpass', f: 3000 });
+      return;
+    }
+    if (spell === 'earthquake') {
+      noise({ dur: 1.2, vol: 0.6, type: 'lowpass', f: 300, f2: 60 });
+      tone({ wave: 'sine', f: 55, f2: 35, dur: 1.0, vol: 0.5 });
+      for (let i = 0; i < 5; i++) noise({ t: 0.1 + i * 0.15, dur: 0.08, vol: 0.2, type: 'bandpass', f: 400 + Math.random() * 400, q: 2 });
+      return;
+    }
+    if (spell === 'blizzard') {
+      noise({ dur: 1.0, vol: 0.3, type: 'highpass', f: 2500, f2: 6000 });
+      for (let i = 0; i < 6; i++) tone({ wave: 'triangle', f: 1800 + Math.random() * 1600, t: i * 0.08, dur: 0.1, vol: 0.05 });
+      return;
+    }
     const big = spell === 'fireblast';
     noise({ dur: big ? 0.9 : 0.5, vol: big ? 0.6 : 0.4, type: 'lowpass', f: big ? 1800 : 1400, f2: 120 });
     tone({ wave: 'sine', f: big ? 110 : 140, f2: 35, dur: big ? 0.6 : 0.35, vol: 0.45 });
@@ -308,6 +324,11 @@ const Sound = (() => {
           break;
         }
         if (allow('pop', 0.05)) pop();
+        if (e.legendary) {
+          // Fanfarra curta do lendário
+          [523, 659, 784, 1047].forEach((f, i) => tone({ wave: 'p25', f, t: i * 0.1, dur: 0.3, vol: 0.12 }));
+          tone({ wave: 'triangle', f: 1568, t: 0.4, dur: 0.7, vol: 0.12, vib: 15 });
+        }
         const now = ctx.currentTime;
         if (now - lastCryAt > 0.25) {
           lastCryAt = now;
@@ -382,7 +403,25 @@ const Sound = (() => {
     ['Dm', 'F5 . F5 . A5 . F5 .'],
     ['E', 'E5 - G#5 - B5 - - -'],
   ];
-  const SONG = [...SECTION_A, ...SECTION_A2, ...SECTION_B, ...SECTION_A2].map(([chord, mel]) => ({ chord: CHORDS[chord], mel: mel.split(' ') }));
+  const bars = (list) => list.map(([chord, mel]) => ({ chord: CHORDS[chord], mel: mel.split(' ') }));
+  const BATTLE = bars([...SECTION_A, ...SECTION_A2, ...SECTION_B, ...SECTION_A2]);
+  // Menu: tema calmo em Dó maior (I–vi–IV–V), sem caixa, com melodia em triângulo
+  const MENU = bars([
+    ['C', 'E5 . G5 . C6 - B5 .'],
+    ['Am', 'A5 - G5 . E5 - . .'],
+    ['F', 'F5 . A5 . C6 - A5 .'],
+    ['G', 'G5 - - - D5 - . .'],
+    ['C', 'C5 . E5 . G5 . E5 .'],
+    ['Am', 'A4 . C5 . E5 - D5 .'],
+    ['F', 'C5 - A4 - F4 - A4 .'],
+    ['G', 'B4 - D5 - G5 - - -'],
+  ]);
+  const SONGS = {
+    battle: { bars: BATTLE, bpm: 138, drums: true, lead: 'p25', leadVol: 0.11 },
+    menu: { bars: MENU, bpm: 96, drums: false, lead: 'triangle', leadVol: 0.16 },
+  };
+  let song = SONGS.battle;
+  let songName = null;
   const BPM_NORMAL = 138;
   const BPM_FAST = 158;
   const BPM_OVERTIME = 172;
@@ -406,12 +445,14 @@ const Sound = (() => {
   function scheduleStep(i, at) {
     const t = at - ctx.currentTime;
     const sixteenth = 60 / bpm / 4;
-    const bar = SONG[Math.floor(i / 16) % SONG.length];
+    const bar = song.bars[Math.floor(i / 16) % song.bars.length];
     const s = i % 16;
-    // Bateria
-    if (s % 8 === 0) drum('kick', t);
-    if (s % 8 === 4) drum('snare', t);
-    if (s % 2 === 0) drum('hat', t);
+    // Bateria (no menu, só um chimbal bem leve)
+    if (song.drums) {
+      if (s % 8 === 0) drum('kick', t);
+      if (s % 8 === 4) drum('snare', t);
+      if (s % 2 === 0) drum('hat', t);
+    } else if (s % 4 === 0) drum('hat', t);
     // Baixo em colcheias (tônica e oitava)
     if (s % 2 === 0) {
       const oct = (s / 2) % 2 ? 12 : 0;
@@ -426,7 +467,7 @@ const Sound = (() => {
       if (note && note !== '.' && note !== '-') {
         let len = 1;
         while (bar.mel[k + len] === '-') len++;
-        tone({ wave: 'p25', f: freq(note), t, dur: sixteenth * 2 * len * 0.92, vol: 0.11, bus: musicBus, attack: 0.004 });
+        tone({ wave: song.lead, f: freq(note), t, dur: sixteenth * 2 * len * 0.92, vol: song.leadVol, bus: musicBus, attack: 0.004 });
       }
     }
   }
@@ -441,9 +482,12 @@ const Sound = (() => {
     }
   }
 
-  function startMusic() {
+  // name: 'battle' (partida) ou 'menu'
+  function startMusic(name = 'battle') {
     if (!ensure()) return;
-    bpm = BPM_NORMAL;
+    song = SONGS[name] || SONGS.battle;
+    songName = name;
+    bpm = song.bpm;
     step = 0;
     nextTime = 0;
     playing = true;
@@ -455,6 +499,7 @@ const Sound = (() => {
 
   function stopMusic() {
     playing = false;
+    songName = null;
     clearInterval(timer);
     timer = null;
   }
@@ -502,6 +547,12 @@ const Sound = (() => {
     },
     get playing() {
       return playing;
+    },
+    get song() {
+      return songName;
+    },
+    get ready() {
+      return ready();
     },
   };
 })();

@@ -104,7 +104,8 @@ class Bot {
       const c = h.card;
       let score;
       if (c.kind === 'spell') {
-        const cluster = threats.filter((u) => Math.hypot(u.x - threat.x, u.y - threat.y) <= c.radius);
+        if (c.groundOnly && threat.air) continue; // Terremoto não pega voador
+        const cluster = threats.filter((u) => Math.hypot(u.x - threat.x, u.y - threat.y) <= c.radius && !(c.groundOnly && u.air));
         const total = cluster.reduce((s, u) => s + u.hp, 0);
         const m = typeMultiplier(c.type, threat.types);
         const kills = threat.hp <= c.dmg * m;

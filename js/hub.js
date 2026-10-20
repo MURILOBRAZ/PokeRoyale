@@ -457,6 +457,46 @@ function showSettings() {
   $('#msg-name').textContent = '';
   $('#msg-pass').textContent = '';
   openDropdown('#settings');
+  loadHistory();
+}
+
+// ---------- Histórico de partidas ----------
+
+function timeAgo(iso) {
+  const s = Math.max(0, (Account.now() - Date.parse(iso)) / 1000);
+  if (s < 60) return 'agora';
+  if (s < 3600) return `há ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `há ${Math.floor(s / 3600)} h`;
+  return `há ${Math.floor(s / 86400)} d`;
+}
+
+async function loadHistory() {
+  const list = $('#history-list');
+  list.innerHTML = '<p class="sub small">Carregando…</p>';
+  try {
+    const { matches } = await Account.api('history', {});
+    if (!matches.length) {
+      list.innerHTML = '<p class="sub small">Nenhuma partida valendo troféus ainda.</p>';
+      return;
+    }
+    const label = { win: 'Vitória', loss: 'Derrota', draw: 'Empate' };
+    list.innerHTML = matches.map((m) => {
+      const crowns = m.crowns ? `${m.crowns[0]} x ${m.crowns[1]}` : '';
+      const rival = m.opponent || (m.mode === 'online' ? 'Amigo' : 'Bot');
+      const delta = m.trophies == null ? '' : `${m.trophies > 0 ? '+' : ''}${m.trophies} 🏆`;
+      const deck = (m.deck || []).filter((id) => CARDS[id]).map((id) => `<span title="${CARDS[id].name}">${cardImgTag(CARDS[id])}</span>`).join('');
+      return `<div class="history-row ${m.result}">
+        <div class="history-top">
+          <b>${label[m.result] || '—'}</b> <span>${crowns ? `👑 ${crowns} · ` : ''}contra ${escapeHtml(rival)}</span>
+          <span class="history-delta">${delta}</span>
+        </div>
+        <small>${m.mode === 'online' ? '🌐 Online' : '🤖 Bot'} · ${ARENAS[m.arena] ? ARENAS[m.arena].short : ''} · ${timeAgo(m.at)}</small>
+        ${deck ? `<div class="mini-deck">${deck}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+  }
 }
 
 function ownsCosmetic(id) {
@@ -968,7 +1008,8 @@ async function finishRanked(result) {
   ranked = null;
   if (!r || !r.matchId) return null;
   try {
-    const out = await Account.api('match-finish', { matchId: r.matchId, result });
+    const crowns = game ? [game.crowns[mySide], game.crowns[1 - mySide]] : null;
+    const out = await Account.api('match-finish', { matchId: r.matchId, result, crowns, opponent: rivalName });
     const lines = [];
     const sign = out.delta > 0 ? '+' : '';
     lines.push(`<div class="trophy-delta ${out.delta >= 0 ? 'up' : 'down'}">🏆 ${sign}${out.delta} <small>(${fmtNum(out.trophies)})</small></div>`);

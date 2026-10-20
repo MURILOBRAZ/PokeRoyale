@@ -136,6 +136,12 @@ rows.slice(0, 12).forEach((r) => console.log(line(r)));
 console.log('\nMais fracas:');
 rows.slice(-12).forEach((r) => console.log(line(r)));
 if (process.argv.includes('--json')) fs.writeFileSync(path.join(root, 'tools', 'sim-report.json'), JSON.stringify(rows, null, 1));
+const spellRows = rows.filter((r) => CARDS[r.id].kind === 'spell');
+if (spellRows.length) {
+  console.log('');
+  console.log('Golpes:');
+  spellRows.forEach((r) => console.log(line(r)));
+}
 const buildingRows = rows.filter((r) => CARDS[r.id].kind === 'building');
 if (buildingRows.length) {
   console.log('');

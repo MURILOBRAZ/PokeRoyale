@@ -22,6 +22,7 @@ let level = 'normal';
 let endShown = false;
 let roomCode = '';
 let snapTimer = 0;
+let rivalName = ''; // nome do amigo no online (histórico de partidas)
 let guestInfo = null; // deck/níveis que o convidado mandou (anfitrião guarda para a revanche)
 let ranked = null; // { matchId, mode } quando a partida vale troféus (ver hub.js)
 let lastRankedMode = null; // para o "Jogar de novo"
@@ -302,6 +303,7 @@ function netHandlers() {
           trainer: Account.loggedIn ? Account.user.level : 1,
           account: Account.loggedIn,
           look: validLook(myLook()),
+          name: Account.loggedIn ? Account.user.name : '',
         });
         setLobbyStatus('Conectado! Iniciando', true);
       }
@@ -323,6 +325,7 @@ function netHandlers() {
       if (msg.t === 'start') {
         const skins = Array.isArray(msg.skins) ? msg.skins.map((id) => (SKIN_IDS.includes(id) ? id : 'skin:classico')) : undefined;
         const packs = Array.isArray(msg.packs) ? msg.packs.map((id) => (EMOTE_PACKS.includes(id) ? id : 'emotes:pikachu')) : undefined;
+        rivalName = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
         beginMatch('guest', 1, undefined, { arena: msg.arena, ranked: msg.ranked && Account.loggedIn ? { mode: 'online' } : null, skins, packs });
         registerOnlineMatch();
       }
@@ -403,7 +406,8 @@ function sanitizeGuest(msg) {
     if (Number.isInteger(lvl) && lvl >= startLevel(CARDS[id]) && lvl <= MAX_CARD_LEVEL) levels[id] = lvl;
   }
   const trainer = Number.isInteger(msg.trainer) ? Math.min(MAX_TRAINER_LEVEL, Math.max(1, msg.trainer)) : 1;
-  return { deck, levels, trainer, account: !!msg.account, look: validLook(msg.look) };
+  const name = typeof msg.name === 'string' ? msg.name.slice(0, 16) : '';
+  return { deck, levels, trainer, account: !!msg.account, look: validLook(msg.look), name };
 }
 
 function startOnlineAsHost() {
@@ -418,7 +422,8 @@ function startOnlineAsHost() {
   beginMatch('host', 0, [deck, g.deck], isRanked
     ? { levels: [Account.levelsFor(deck), g.levels], trainers: [Account.user.level, g.trainer], ranked: { mode: 'online' }, arena, skins, packs }
     : { arena, skins, packs });
-  net.send({ t: 'start', ranked: isRanked, arena, skins, packs });
+  net.send({ t: 'start', ranked: isRanked, arena, skins, packs, name: Account.loggedIn ? Account.user.name : '' });
+  rivalName = g.name || '';
   registerOnlineMatch();
 }
 
@@ -685,7 +690,8 @@ function frame() {
   $('#leave-btn').classList.toggle('hidden', !game || game.over);
   $('#sound-btn').classList.toggle('hidden', !game || game.over);
   if (game) Sound.watch(game, mySide);
-  else if (Sound.playing) Sound.stopMusic();
+  // Fora da partida: tema do menu (começa depois do primeiro toque, quando o navegador libera o som)
+  else if (Sound.ready && Sound.song !== 'menu') Sound.startMusic('menu');
   // Um erro de desenho não pode parar o laço (senão a tela congela inteira)
   try {
     renderer.draw(game || demoGame, game ? { ...ui, bubbles: battleLook.bubbles } : {});
