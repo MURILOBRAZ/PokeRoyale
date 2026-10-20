@@ -2,6 +2,8 @@
 
 Uso: python tools/build-icons.py [--preview pasta]
 
+Também gera o ícone do site (favicon.ico, favicon-32.png, apple-touch-icon.png, icon-192.png e icon-512.png).
+
 Substituem os emojis em todo o jogo (ver js/icons.js). Mesmo estilo das construções:
 cores chapadas, brilho em cima/esquerda, sombra embaixo/direita e contorno escuro de 1 px,
 desenhado sem suavizar (o navegador amplia "pixelado").
@@ -476,10 +478,60 @@ ICONS = {
     'anger': anger, 'pokedex': pokedex, 'back': back, 'rock': rock, 'run': run, 'tag': tag, 'party': party, 'star': star, 'berry': berry,
 }
 
+# ---------- Ícone do site (aba do navegador e atalho no celular) ----------
+
+def site_icon():
+    """Poké Ball com uma coroa dourada em cima (o "Royale"), em 32 x 32."""
+    img = Image.new('RGBA', (32, 32), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    # Bola pixel a pixel: metade de cima vermelha, de baixo branca, faixa escura; luz em cima/esquerda
+    cx, cy, r = 15.5, 18.5, 11.6
+    for y in range(32):
+        for x in range(32):
+            dx, dy = x - cx, y - cy
+            if dx * dx + dy * dy > r * r:
+                continue
+            lit = (dx + 2.2) ** 2 + (dy + 2.2) ** 2 < (r * 0.92) ** 2  # fora disso, a borda de baixo/direita fica na sombra
+            if 17 <= y <= 19:
+                c = K
+            elif y < 17:
+                c = R if lit else RD
+            else:
+                c = W if lit else WS
+            d.point((x, y), fill=c)
+    px(d, [(9, 11), (10, 10), (11, 10), (8, 12), (8, 13), (9, 12)], RL)  # brilho
+    d.ellipse([11, 14, 20, 23], fill=K)
+    d.ellipse([13, 16, 18, 21], fill=W)
+    px(d, [(17, 20), (18, 19)], WS)
+    # Coroa por cima da bola
+    d.polygon([(8, 9), (8, 3), (11, 6), (15.5, 1), (20, 6), (23, 3), (23, 9)], fill=Y)
+    d.rectangle([8, 8, 23, 10], fill=YD)
+    px(d, [(9, 4), (9, 5), (15, 2), (15, 3)], YL)
+    px(d, [(15, 9), (16, 9)], R)  # pedra vermelha na base da coroa
+    px(d, [(11, 9), (20, 9)], B)
+    return outline(img)
+
+
+def build_site_icons():
+    """favicon.ico (16, 32 e 48), favicon-32.png e os ícones grandes (celular e atalho), ampliados sem suavizar."""
+    icon = site_icon()
+    icon.save(ROOT / 'favicon-32.png')
+    sizes = [(16, 16), (32, 32), (48, 48)]
+    icon.resize((48, 48), Image.NEAREST).save(ROOT / 'favicon.ico', sizes=sizes)
+    for size, name in ((180, 'apple-touch-icon.png'), (192, 'icon-192.png'), (512, 'icon-512.png')):
+        # Fundo escuro da interface com margem, para o ícone não encostar na borda no celular
+        big = Image.new('RGBA', (size, size), (24, 30, 58, 255))
+        inner = int(size * 0.78) // 32 * 32 or 32
+        art = icon.resize((inner, inner), Image.NEAREST)
+        big.alpha_composite(art, ((size - inner) // 2, (size - inner) // 2))
+        big.save(ROOT / name)
+
+
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     for name, fn in ICONS.items():
         fn().save(OUT / f'{name}.png')
+    build_site_icons()
     print(f'{len(ICONS)} ícones em {OUT}')
     if '--preview' in sys.argv:
         folder = Path(sys.argv[sys.argv.index('--preview') + 1])
