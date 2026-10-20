@@ -37,6 +37,10 @@ const canSwim = (u) => !u.air && !u.isBuilding && !!u.types && u.types.includes(
 const SWIM_SPEED = 1.2; // nadando é um pouco mais rápido que andando
 const inWater = (x, y) => y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM && !ARENA.BRIDGES.some((b) => Math.abs(x - b) < ARENA.BRIDGE_HALF);
 
+// Centro exato da arena: quem é invocado ali (sem pender para nenhuma pista) vai ao ginásio lateral que
+// ainda está de pé; fora dele, vale a metade em que caiu
+const CENTER_HALF = 0.5;
+
 function edgeDist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y) - a.radius - b.radius;
 }
@@ -388,38 +392,42 @@ class Game {
   }
 
   _acquireTarget(u) {
+    const ignored = u.ignore && this.time < u.ignore.until ? u.ignore.id : null;
+    const tower = this._laneTower(u, ignored);
+    // À vista (5,5 tiles): o Pokémon ou construção inimiga mais perto. Entre os ginásios, só o da pista
+    // dele — passar perto do Líder a caminho do lateral não faz ele mudar de alvo
     let best = null;
     let bestD = Infinity;
-    const ignored = u.ignore && this.time < u.ignore.until ? u.ignore.id : null;
-    for (const list of [this.units, this.towers]) {
-      for (const t of list) {
-        if (!this._canTarget(u, t) || t.id === ignored) continue;
-        const d = edgeDist(u, t);
-        if (d <= MATCH.SIGHT && d < bestD) {
-          best = t;
-          bestD = d;
-        }
-      }
-    }
-    if (best) return best;
-    // Nada por perto. Do próprio lado do rio: segue a pista (como no Clash Royale) — o ginásio lateral
-    // dela e, se ele já caiu, o Líder; não atravessa o mapa para o ginásio da outra pista.
-    // Já no lado do adversário: vai para o ginásio mais próximo (abaixo).
-    const onEnemySide = u.side === 0 ? u.y < ARENA.RIVER_TOP : u.y > ARENA.RIVER_BOTTOM;
-    if (!onEnemySide) {
-      const lane = u.x < ARENA.W / 2 ? 0 : 1;
-      const laneTower = this.towers.find((t) => t.kind === 'princess' && t.lane === lane && this._canTarget(u, t));
-      if (laneTower) return laneTower;
-      const king = this.towers.find((t) => t.kind === 'king' && this._canTarget(u, t));
-      if (king) return king;
-    }
-    for (const t of this.towers) {
-      if (!this._canTarget(u, t)) continue;
+    for (const t of [...this.units, tower]) {
+      if (!t || !this._canTarget(u, t) || t.id === ignored) continue;
       const d = edgeDist(u, t);
-      if (d < bestD) {
+      if (d <= MATCH.SIGHT && d < bestD) {
         best = t;
         bestD = d;
       }
+    }
+    return best || tower;
+  }
+
+  // Ginásio que o Pokémon persegue: o da pista da metade da arena em que está, dos dois lados do rio —
+  // o lateral dela e, se ele já caiu, o Líder; não atravessa o mapa para o lateral da outra pista.
+  // No centro exato, vai ao lateral de pé mais próximo. Se desistiu desse (preso atrás de algo), o mais perto.
+  _laneTower(u, ignored) {
+    const middle = Math.abs(u.x - ARENA.W / 2) < CENTER_HALF;
+    const lane = u.x < ARENA.W / 2 ? 0 : 1;
+    const ok = (t) => this._canTarget(u, t) && t.id !== ignored;
+    // No meio, empate na distância fica com a pista do lado em que ele está
+    const cost = (t) => edgeDist(u, t) + (t.lane === lane ? 0 : 0.01);
+    let best = null;
+    for (const t of this.towers) {
+      if (t.kind !== 'princess' || !ok(t) || (!middle && t.lane !== lane)) continue;
+      if (!best || cost(t) < cost(best)) best = t;
+    }
+    if (best) return best;
+    const king = this.towers.find((t) => t.kind === 'king' && ok(t));
+    if (king) return king;
+    for (const t of this.towers) {
+      if (ok(t) && (!best || edgeDist(u, t) < edgeDist(u, best))) best = t;
     }
     return best;
   }
