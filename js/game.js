@@ -98,6 +98,18 @@ class Game {
     for (const t of this.towers) {
       if (!t.dead && Math.hypot(t.x - x, t.y - y) < t.radius + 0.3) return false;
     }
+    // Construção não pode trancar a saída de uma ponte
+    if (card.kind === 'building') {
+      // Nem no corredor das pistas (entre a ponte e o ginásio lateral), por onde todos passam
+      if (ARENA.BRIDGES.some((bx) => Math.abs(x - bx) < ARENA.BRIDGE_HALF + card.radius + 0.6)) return false;
+      for (const u of this.units) {
+        if (u.isBuilding && !u.dead && Math.hypot(u.x - x, u.y - y) < u.radius + card.radius) return false;
+      }
+      // Nem colada num ginásio (deixaria um vão onde os Pokémon ficam presos)
+      for (const t of this.towers) {
+        if (!t.dead && Math.hypot(t.x - x, t.y - y) < t.radius + card.radius + 2.0) return false;
+      }
+    }
     const own = side === 0 ? y >= ARENA.RIVER_BOTTOM : y <= ARENA.RIVER_TOP;
     if (own) return true;
     // Bolsão: ginásio lateral inimigo derrubado libera a metade inimiga daquela pista
@@ -152,6 +164,9 @@ class Game {
       this._fx({ kind: 'cast', spell: card.id, type: card.type, x, y, side, ttl: 0.3, total: 0.3 });
       const mult = levelMultiplier(card, this.levels[side][cardId]);
       this.spells.push({ card, side, x, y, timer: card.delay, total: card.delay, mult });
+    } else if (card.kind === 'building') {
+      this._fx({ kind: 'spawn', building: true, x, y, side, n: 1, ttl: 0.7, total: 0.7 });
+      this._spawnBuilding(card, side, x, y, levelMultiplier(card, this.levels[side][cardId]));
     } else {
       const n = card.count || 1;
       this._fx({ kind: 'spawn', dex: card.dex, x, y, side, n, ttl: 0.7, total: 0.7 });
@@ -183,6 +198,99 @@ class Game {
     };
     this.units.push(u);
     return u;
+  }
+
+  // Construção: fica parada, perde vida com o tempo (some no fim da duração)
+  _spawnBuilding(card, side, x, y, mult = 1) {
+    const hp = Math.round(card.hp * mult);
+    const b = {
+      id: this.nextId++, side, card, isBuilding: true,
+      def: { ...card, hp, dmg: Math.round((card.dmg || 0) * mult), heal: Math.round((card.heal || 0) * mult) },
+      mult,
+      x: clamp(x, 0.5, ARENA.W - 0.5), y: clamp(y, 0.5, ARENA.H - 0.5),
+      radius: card.radius, hp, maxHp: hp, decay: hp / card.life,
+      types: card.types, air: false,
+      deploy: MATCH.DEPLOY_TIME, cooldown: 0, stun: 0, target: null,
+      kills: 0, evolved: false, dead: false, attackAnim: 0, attackT: -99,
+      pulse: 1, spawnTimer: card.spawnEvery ? card.spawnEvery * 0.4 : 0,
+      face: side === 0 ? -Math.PI / 2 : Math.PI / 2, moving: false,
+    };
+    this.units.push(b);
+    return b;
+  }
+
+  _updateBuilding(b, dt) {
+    b.hitFlash = Math.max(0, (b.hitFlash || 0) - dt);
+    if (b.deploy > 0) {
+      b.deploy -= dt;
+      return;
+    }
+    // Perde vida sozinha até sumir
+    b.hp -= b.decay * dt;
+    if (b.hp <= 0) {
+      b.hp = 0;
+      b.dead = true;
+      this._fx({ kind: 'crash', x: b.x, y: b.y, radius: b.radius, ttl: 0.9, total: 0.9, shake: 0.1 });
+      return;
+    }
+    if (b.stun > 0) {
+      b.stun -= dt;
+      return;
+    }
+    const d = b.def;
+    // Centro Pokémon: cura os aliados por perto a cada segundo
+    if (d.heal) {
+      b.pulse -= dt;
+      if (b.pulse <= 0) {
+        b.pulse = 1;
+        let healed = false;
+        for (const u of this.units) {
+          if (u.dead || u.isBuilding || u.side !== b.side || u.deploy > 0 || u.hp >= u.maxHp) continue;
+          if (Math.hypot(u.x - b.x, u.y - b.y) > d.healRadius + u.radius) continue;
+          u.hp = Math.min(u.maxHp, u.hp + d.heal);
+          healed = true;
+        }
+        this._fx({ kind: 'heal', x: b.x, y: b.y, radius: d.healRadius, active: healed, ttl: 0.7, total: 0.7 });
+      }
+    }
+    // Caverna Zubat: solta um Zubat de tempos em tempos, na frente da caverna
+    if (d.spawn) {
+      b.spawnTimer -= dt;
+      if (b.spawnTimer <= 0) {
+        b.spawnTimer = d.spawnEvery;
+        const z = this._spawnUnit(CARDS[d.spawn], b.side, b.x, b.y + (b.side === 0 ? -1.3 : 1.3), b.mult);
+        z.deploy = 0.4;
+        z.from = b.card.id; // estatística: o dano desse Zubat conta para a Caverna
+        this._fx({ kind: 'cast', type: 'poison', x: b.x, y: b.y - 0.4, side: b.side, ttl: 0.3, total: 0.3 });
+      }
+    }
+    // Torre Pokémon e Laboratório do Mewtwo: atiram no Pokémon inimigo mais próximo ao alcance
+    if (d.dmg) {
+      b.cooldown = Math.max(0, b.cooldown - dt);
+      const inRange = (u) => !u.isBuilding && this._canTarget(b, u) && edgeDist(b, u) <= d.range;
+      if (!b.target || !inRange(b.target)) {
+        b.target = null;
+        let best = Infinity;
+        for (const u of this.units) {
+          if (!inRange(u)) continue;
+          const dist = edgeDist(b, u);
+          if (dist < best) {
+            best = dist;
+            b.target = u;
+          }
+        }
+      }
+      if (b.target && b.cooldown <= 0) {
+        b.cooldown = d.hitSpeed;
+        b.attackT = this.time;
+        const t = b.target;
+        this._fx({ kind: 'cast', type: d.type, x: b.x, y: b.y - b.radius, side: b.side, ttl: 0.25, total: 0.25 });
+        this.projectiles.push({
+          x: b.x, y: b.y - b.radius, target: t, speed: 11,
+          dmg: d.dmg, type: d.type, splash: d.splash || 0, source: b, side: b.side,
+        });
+      }
+    }
   }
 
   // ---------- Loop ----------
@@ -254,7 +362,7 @@ class Game {
   _canTarget(u, t) {
     if (!t || t.dead || t.deploy > 0) return false;
     if (t.side === u.side) return false;
-    if (u.def.targets === 'buildings') return !!t.isTower;
+    if (u.def.targets === 'buildings') return !!(t.isTower || t.isBuilding);
     if (t.air && u.def.targets === 'ground') return false;
     return true;
   }
@@ -296,6 +404,7 @@ class Game {
   }
 
   _updateUnit(u, dt) {
+    if (u.isBuilding) return this._updateBuilding(u, dt);
     u.attackAnim = Math.max(0, u.attackAnim - dt);
     u.hitFlash = Math.max(0, (u.hitFlash || 0) - dt);
     u.moving = false;
@@ -358,7 +467,7 @@ class Game {
 
   // Ginásio no caminho (que não seja o alvo): contorna pela tangente mais próxima da direção desejada
   _avoidTowers(u, dx, dy, target) {
-    for (const t of this.towers) {
+    for (const t of [...this.towers, ...this.units.filter((b) => b.isBuilding)]) {
       if (t.dead || t === target) continue;
       const ox = t.x - u.x;
       const oy = t.y - u.y;
@@ -473,7 +582,9 @@ class Game {
     if (e.hp <= 0) {
       e.hp = 0;
       e.dead = true;
-      if (e.isTower) {
+      if (e.isBuilding) {
+        this._fx({ kind: 'crash', x: e.x, y: e.y, radius: e.radius, ttl: 0.9, total: 0.9, shake: 0.15 });
+      } else if (e.isTower) {
         this._fx({ kind: 'crash', x: e.x, y: e.y, radius: e.radius, king: e.kind === 'king', ttl: 1.2, total: 1.2, shake: e.kind === 'king' ? 0.5 : 0.35 });
       } else {
         this._fx({ kind: 'faint', dex: e.def.dex, x: e.x, y: e.y, face: e.face, air: e.air, radius: e.radius, ttl: 0.7, total: 0.7 });
@@ -625,6 +736,7 @@ class Game {
         u = { id: s.id, side: s.s, card, x: s.x, y: s.y };
       }
       u.def = s.ev ? CARDS[s.ev] : card;
+      u.isBuilding = card.kind === 'building';
       u.types = u.def.types;
       u.air = s.air;
       Object.assign(u, {
@@ -673,14 +785,18 @@ class Game {
           d = Math.hypot(dx, dy);
         }
         const overlap = min - d;
+        if (a.isBuilding && b.isBuilding) continue;
         const ma = a.def.mass || 1;
         const mb = b.def.mass || 1;
+        // Construção não sai do lugar: quem esbarra nela é que se afasta
+        const sa = a.isBuilding ? 0 : b.isBuilding ? 1 : mb / (ma + mb);
+        const sb = b.isBuilding ? 0 : a.isBuilding ? 1 : ma / (ma + mb);
         const nx = dx / d;
         const ny = dy / d;
-        a.x -= nx * overlap * (mb / (ma + mb));
-        a.y -= ny * overlap * (mb / (ma + mb));
-        b.x += nx * overlap * (ma / (ma + mb));
-        b.y += ny * overlap * (ma / (ma + mb));
+        a.x -= nx * overlap * sa;
+        a.y -= ny * overlap * sa;
+        b.x += nx * overlap * sb;
+        b.y += ny * overlap * sb;
       }
     }
     for (const u of us) {

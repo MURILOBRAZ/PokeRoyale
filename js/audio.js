@@ -301,6 +301,12 @@ const Sound = (() => {
     const type = e.type || 'normal';
     switch (e.kind) {
       case 'spawn': {
+        if (e.building) {
+          // Construção: batida de martelo, sem grito
+          noise({ dur: 0.12, vol: 0.3, type: 'lowpass', f: 700 });
+          tone({ wave: 'square', f: 180, f2: 90, t: 0.1, dur: 0.1, vol: 0.12 });
+          break;
+        }
         if (allow('pop', 0.05)) pop();
         const now = ctx.currentTime;
         if (now - lastCryAt > 0.25) {
@@ -322,6 +328,12 @@ const Sound = (() => {
         break;
       case 'blast':
         if (allow('blast', 0.08)) blast(type, e.spell);
+        break;
+      case 'heal':
+        if (e.active && allow('heal', 0.5)) {
+          tone({ wave: 'triangle', f: 880, dur: 0.12, vol: 0.08 });
+          tone({ wave: 'triangle', f: 1175, t: 0.1, dur: 0.18, vol: 0.08 });
+        }
         break;
       case 'faint':
         if (allow('faint', 0.12)) faint();

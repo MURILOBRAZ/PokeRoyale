@@ -448,3 +448,6 @@ body.in-battle #app { max-width: min(540px, calc((100dvh - 200px) * 0.62)); }
 #deck-slots.drop-zone { outline: 2px dashed #ffcb05; outline-offset: 4px; border-radius: 10px; }
 #deck-slots > .drop-target { transform: scale(1.08); box-shadow: 0 0 0 3px #ffcb05; border-radius: 8px; }
 body.dragging-card, body.dragging-card * { cursor: grabbing !important; }
+
+/* Construções: pixel art sem suavizar, como os sprites */
+img[src*="assets/construcoes/"] { image-rendering: pixelated; object-fit: contain; }

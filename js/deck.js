@@ -108,7 +108,8 @@ class DeckEditor {
     typeSel.innerHTML = (account ? '<option value="owned">Minhas cartas</option>' : '')
       + '<option value="">Todos os tipos</option>'
       + Object.keys(TYPE_NAMES).map((t) => `<option value="${t}">${TYPE_NAMES[t]}</option>`).join('')
-      + '<option value="spell">Golpes</option>';
+      + '<option value="spell">Golpes</option>'
+      + '<option value="building">Construções</option>';
     this.el('#deck-title').textContent = account ? 'Coleção' : 'Deck de treino';
     // Sub-abas (só com conta): Cartas | Ginásios
     this.el('#deck-subtabs').classList.toggle('hidden', !account);
@@ -541,7 +542,8 @@ class DeckEditor {
     const list = Object.values(CARDS).filter((c) => {
       if (type === 'owned' && !Account.owns(c.id)) return false;
       if (type === 'spell' && c.kind !== 'spell') return false;
-      if (type && type !== 'spell' && type !== 'owned' && !(c.types || [c.type]).includes(type)) return false;
+      if (type === 'building' && c.kind !== 'building') return false;
+      if (type && !['spell', 'building', 'owned'].includes(type) && !(c.types || [c.type]).includes(type)) return false;
       if (!q) return true;
       return c.name.toLowerCase().includes(q) || String(c.dex || '') === q.replace('#', '');
     });
@@ -598,6 +600,12 @@ class DeckEditor {
     let stats;
     if (c.kind === 'spell') {
       stats = `💥 ${Math.round(c.dmg * mult)} de dano · raio ${fmt(c.radius)} · ${Math.round(c.towerMult * 100)}% nos ginásios`;
+    } else if (c.kind === 'building') {
+      const parts = [`❤️ ${Math.round(c.hp * mult)}`, `⏳ ${c.life} s`];
+      if (c.dmg) parts.push(`⚔️ ${Math.round(c.dmg * mult)} a cada ${fmt(c.hitSpeed)} s`, `🎯 ${fmt(c.range)}`);
+      if (c.heal) parts.push(`💚 +${Math.round(c.heal * mult)}/s · raio ${fmt(c.healRadius)}`);
+      if (c.spawn) parts.push(`🦇 1 ${CARDS[c.spawn].name} a cada ${c.spawnEvery} s`);
+      stats = parts.join(' · ');
     } else {
       const each = c.count ? ` (×${c.count})` : '';
       stats = `❤️ ${Math.round(c.hp * mult)}${each} · ⚔️ ${Math.round(c.dmg * mult)} a cada ${fmt(c.hitSpeed)} s · 🎯 ${c.range > 1.5 ? fmt(c.range) : 'corpo a corpo'} · 👟 ${speedLabel(c.speed)}`;

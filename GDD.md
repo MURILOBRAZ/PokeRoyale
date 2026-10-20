@@ -180,7 +180,8 @@ Três dificuldades: **Fácil**, **Normal** e **Difícil**. Elas mudam o tempo de
 
 - **Deck:** a cada partida o bot recebe um **deck aleatório** (mesmas regras do botão "Aleatório"). Isso também ajuda a testar todas as cartas.
 - **Defesa:** quando um Pokémon seu entra no lado dele, o bot escolhe a carta com melhor vantagem de tipo que consiga atacar aquele alvo. Se houver grupos de inimigos, usa golpes em área.
-- **Ataque:** com energia acumulada, manda um tanque na pista do ginásio mais fraco e depois coloca suporte atrás.
+- **Ataque:** com energia acumulada, manda um tanque na pista do ginásio mais fraco e depois coloca suporte atrás. A energia para atacar é sorteada a cada ataque (de 3 a menos que o máximo do nível até o máximo), para não ficar previsível.
+- **Abertura:** o bot não espera o jogador. Em parte das partidas (40% no fácil, 55% no normal, 65% no difícil) ele abre sozinho, num momento sorteado. Joga uma carta lá atrás, que vira o começo de um ataque, ou às vezes direto na ponte. Nas outras partidas ele espera, mas ataca sozinho quando junta a energia sorteada.
 - **Finalização:** se um ginásio seu estiver com pouca vida, usa um golpe direto nele.
 
 ### 11.1 Testes automáticos
@@ -321,7 +322,7 @@ PokeRoyale/
 | **v0.5** | Ranking global, Minha conta, nome único, PokéMart e Fichas do Game Corner | ✅ Feito |
 | **v0.6** | Cosméticos (avatar, títulos, skins de ginásio, emotes) e Zona Safári | ✅ Feito |
 | **v0.7** | Efeitos de golpe por tipo, som (efeitos, gritos, música), campo em tela cheia, invocação no ponto permitido mais próximo, vários decks com salvamento automático, arrastar cartas, várias balls abrindo juntas | ✅ Feito |
-| v0.8 | Cartas de construção (ver [18](#18-cartas-de-construção-v08-proposta)) | 📝 Proposta |
+| **v0.8** | Cartas de construção: Centro Pokémon, Torre Pokémon, Snorlax Dormindo, Caverna Zubat, Laboratório do Mewtwo (ver [18](#18-cartas-de-construção-v08)) | ✅ Feito |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -496,36 +497,35 @@ Depois de cada ação o Pokémon pode fugir (comum 10%, rara 18%, épica 28%, co
 - Os números de troféus por arena (300 a 4000) estão bons, ou mais rápido no começo?
 - Nível de treinador deve fortalecer os ginásios, como no Clash Royale, ou ser só visual?
 
-## 18. Cartas de construção (v0.8, proposta)
+## 18. Cartas de construção (v0.8)
 
-Proposta para aprovar. Os números são o ponto de partida e serão ajustados com a simulação de partidas.
+Aprovado em 19/10/2026. Os números abaixo já passaram pela simulação de partidas.
 
 **Regras gerais (como no Clash Royale)**
 - **Onde:** só no próprio lado do rio (ou no bolsão), sem andar.
-- **Vida:** a construção perde vida sozinha com o tempo e some quando a duração acaba.
-- **Alvo:** quem ataca "só ginásios" (Graveler, Onix...) também ataca construções. Assim, elas servem para **puxar** o inimigo para longe dos ginásios.
+- **Lugares proibidos:** não podem ficar coladas na saída de uma ponte, num ginásio ou em outra construção. Isso evita trancar o caminho.
+- **Vida:** a construção perde vida sozinha com o tempo (barra com ⏳) e desaba quando a duração acaba.
+- **Alvo:** quem "só ataca ginásios" (Graveler, Onix...) também ataca construções. Assim, elas servem para **puxar** o inimigo para longe dos ginásios.
+- **Atiradoras:** a Torre e o Laboratório miram o Pokémon inimigo mais próximo ao alcance, e não os ginásios.
 - **Tipo:** cada construção tem um tipo, e a tabela de tipos vale para ela.
-- **Visual:** com sprite próprio, desenhado no chão.
+- **Visual:** pixel art no estilo dos sprites, gerada por `tools/build-construcoes.py` em `assets/construcoes/*.png` e desenhada sem suavizar, na escala dos Pokémon. Cada construção tem um Pokémon animado do SpriteCollab: Chansey na porta do Centro, Gastly rondando a Torre, Zubat voando na boca da Caverna e Mewtwo dentro da cápsula do Laboratório. O Snorlax é o próprio sprite, dormindo com "z".
+- **Código:** `BUILDINGS` em `js/data.js`; `_spawnBuilding` e `_updateBuilding` em `js/game.js`; `_drawBuilding` em `js/render.js`.
 
-**Cartas propostas**
+**Cartas**
 
-| Carta | Custo | Vida | Dura | O que faz | Tipo |
-|---|---|---|---|---|---|
-| 🏥 Centro Pokémon | 4 | 900 | 40 s | Cura 50 de vida por segundo dos aliados num raio de 3 tiles | Normal |
-| 👻 Torre Pokémon | 4 | 1000 | 35 s | A torre assombrada de Lavender: atira Bolas Sombrias, dano 90 a cada 1,1 s, alcance 5,5, acerta voadores | Fantasma |
-| 🦇 Caverna Zubat | 5 | 800 | 40 s | Solta um Zubat a cada 7 s | Veneno |
-| 😴 Snorlax Dormindo | 4 | 2200 | 30 s | Não ataca: só bloqueia o caminho e atrai os inimigos | Normal |
-| 🧬 Laboratório do Mewtwo | 6 | 1300 | 40 s | Canhão psíquico em área: dano 160 a cada 2 s, alcance 6, só alvos no chão | Psíquico |
+| Carta | Custo | Vida | Dura | O que faz | Tipo | Raridade | Arena |
+|---|---|---|---|---|---|---|---|
+| 🏥 Centro Pokémon | 4 | 1000 | 40 s | Cura 70 de vida por segundo dos aliados num raio de 3 | Normal | Rara | Rota 1 |
+| 👻 Torre Pokémon | 4 | 1000 | 35 s | Bolas Sombrias: dano 110 a cada 1,1 s, alcance 5,5, acerta voadores | Fantasma | Rara | Pewter |
+| 😴 Snorlax Dormindo | 3 | 2800 | 30 s | Não ataca: bloqueia o caminho e atrai os inimigos | Normal | Rara | Pewter |
+| 🦇 Caverna Zubat | 5 | 800 | 40 s | Solta um Zubat a cada 7 s | Veneno | Épica | Celadon |
+| 🧬 Laboratório do Mewtwo | 6 | 1300 | 40 s | Canhão psíquico em área: dano 160 a cada 2 s, alcance 6, só alvos no chão | Psíquico | Lendária | Liga |
 
-**Como se ganha**
-- **Centro Pokémon, Torre Pokémon e Snorlax:** saem nas balls a partir da Rota 1 / Pewter.
-- **Caverna Zubat:** sai a partir de Celadon.
-- **Laboratório do Mewtwo:** lendária. Sai a partir de Saffron ou só na Liga (a decidir).
+**Bot:** usa a Torre, o Laboratório e o Snorlax na defesa, no meio do próprio campo. O Centro Pokémon vai atrás de um ataque, e a Caverna fica no fundo da pista do ataque.
 
-**A decidir**
-1. Quais dessas cartas entram (dá para começar com 3).
-2. Se o Mewtwo é uma construção ou fica para uma futura carta lendária de Pokémon.
-3. Se o bot usa construções (proposta: sim, para defender).
+**Filtro:** a Coleção tem o filtro "Construções".
+
+**Presente para quem já joga:** cada conta recebe **uma construção aleatória**, uma vez só. Pode vir qualquer uma menos a lendária, mesmo que ainda não tenha chegado na arena dela. O presente abre sozinho, com a animação da ball, na primeira vez que o jogador entra depois da atualização. Contas novas recebem depois de escolher o inicial. Os presentes de versão ficam em `GIFTS` (`js/progression.js`), e os já recebidos na coluna `users.gifts`, o que permite dar presentes em versões futuras.
 
 ## 19. Questões em aberto
 

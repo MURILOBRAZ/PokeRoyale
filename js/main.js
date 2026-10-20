@@ -674,6 +674,7 @@ function simulate() {
 setInterval(simulate, 1000 / 60);
 
 function frame() {
+  requestAnimationFrame(frame); // pede o próximo quadro antes: um erro aqui não congela a tela
   if (!game && document.body.classList.contains('in-battle')) document.body.classList.remove('in-battle');
   if (game) {
     if (ui.selectedIndex !== null) ui.selected = game.players[mySide].hand[ui.selectedIndex];
@@ -685,8 +686,12 @@ function frame() {
   $('#sound-btn').classList.toggle('hidden', !game || game.over);
   if (game) Sound.watch(game, mySide);
   else if (Sound.playing) Sound.stopMusic();
-  renderer.draw(game || demoGame, game ? { ...ui, bubbles: battleLook.bubbles } : {});
-  requestAnimationFrame(frame);
+  // Um erro de desenho não pode parar o laço (senão a tela congela inteira)
+  try {
+    renderer.draw(game || demoGame, game ? { ...ui, bubbles: battleLook.bubbles } : {});
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // Arena vazia de fundo no menu (a tela inicial é escolhida em hub.js, depois de checar a conta)

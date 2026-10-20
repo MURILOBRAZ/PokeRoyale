@@ -69,6 +69,8 @@ async function loadState(userId) {
       fichas: u.fichas,
       deck: u.deck,
       decks: decksOf(u),
+      // Presente esperando (só depois de escolher o inicial)
+      pendingGift: u.starter ? Object.keys(R.GIFTS).find((g) => !(u.gifts || []).includes(g)) || null : null,
       deckIndex: u.deck_index,
       look: lookOf(u),
       freeBall: freeBallInfo(u.free_ball_at, u.server_now),
@@ -362,6 +364,22 @@ const ACTIONS = {
     const contents = R.rollBallContents(b.tier, b.arena);
     const newCards = await applyRewards(userId, contents);
     return { tier: b.tier, contents, newCards, state: await loadState(userId) };
+  },
+
+  // Abre o presente de versão (uma vez por conta: o UPDATE só passa se ainda não recebeu)
+  async gift({ req, body }) {
+    const userId = await requireUser(req);
+    const gift = R.GIFTS[body.id];
+    if (!gift) fail(404, 'Presente não encontrado.');
+    const row = await one(
+      `UPDATE users SET gifts = gifts || $2::jsonb
+       WHERE id = $1 AND starter IS NOT NULL AND NOT (gifts ? $3) RETURNING id`,
+      [userId, JSON.stringify([body.id]), body.id],
+    );
+    if (!row) fail(409, 'Você já recebeu esse presente.');
+    const contents = gift.roll();
+    const newCards = await applyRewards(userId, contents);
+    return { gift: body.id, title: gift.title, text: gift.text, contents, newCards, state: await loadState(userId) };
   },
 
   async 'free-ball'({ req }) {

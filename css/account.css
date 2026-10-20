@@ -103,10 +103,12 @@ button.link:active { transform: none; }
 .road-you { font-weight: 900; color: #f8d030; font-size: 12px; }
 
 /* Recompensas */
-.reward-title { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; }
+.reward-title { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; text-align: center; }
 .reward-ball { width: 48px; height: 48px; image-rendering: pixelated; animation: wobble 0.6s ease-in-out 2; }
 @keyframes wobble { 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
-#reward-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; margin: 14px 0; align-items: start; }
+/* Cartas centralizadas, mesmo quando são poucas (presente, Poké Ball com 2 cartas...) */
+#reward-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 14px 0; align-items: flex-start; }
+#reward-cards .reward-card { width: 76px; flex: 0 0 76px; }
 .reward-card { animation: pop 0.35s ease-out both; }
 @keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .reward-card .count { position: absolute; top: 2px; right: 4px; font-weight: 900; font-size: 13px; text-shadow: 0 1px 2px #000; }

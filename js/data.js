@@ -198,9 +198,46 @@ const SPELLS = {
   },
 };
 
+// Construções (v0.8): ficam paradas no próprio lado, perdem vida com o tempo (life, em segundos)
+// e somem no fim. Quem "só ataca ginásios" também ataca construções — servem para puxar o inimigo.
+// arena: a partir de qual arena aparecem nas balls; rarity: raridade fixa.
+const BUILDINGS = {
+  pokecenter: {
+    id: 'pokecenter', name: 'Centro Pokémon', kind: 'building', icon: 'assets/construcoes/pokecenter.png', cost: 4,
+    type: 'normal', types: ['normal'], hp: 1000, life: 40, radius: 0.95, mass: 1000,
+    heal: 70, healRadius: 3, arena: 0, rarity: 'rare',
+    desc: 'Construção: cura 70 de vida por segundo dos seus Pokémon num raio de 3. Dura 40 s.',
+  },
+  pokemontower: {
+    id: 'pokemontower', name: 'Torre Pokémon', kind: 'building', icon: 'assets/construcoes/pokemontower.png', cost: 4,
+    type: 'ghost', types: ['ghost'], hp: 1000, life: 35, radius: 0.85, mass: 1000,
+    dmg: 110, hitSpeed: 1.1, range: 5.5, targets: 'all', arena: 1, rarity: 'rare',
+    desc: 'Construção: a torre assombrada de Lavender atira Bolas Sombrias. Acerta voadores. Dura 35 s.',
+  },
+  zubatcave: {
+    id: 'zubatcave', name: 'Caverna Zubat', kind: 'building', icon: 'assets/construcoes/zubatcave.png', cost: 5,
+    type: 'poison', types: ['rock'], hp: 800, life: 40, radius: 1.0, mass: 1000,
+    spawn: 'zubat', spawnEvery: 7, arena: 4, rarity: 'epic',
+    desc: 'Construção: solta um Zubat a cada 7 s. Dura 40 s.',
+  },
+  sleepingsnorlax: {
+    id: 'sleepingsnorlax', name: 'Snorlax Dormindo', kind: 'building', dex: 143, cost: 3,
+    type: 'normal', types: ['normal'], hp: 2800, life: 30, radius: 1.0, mass: 1000,
+    arena: 1, rarity: 'rare',
+    desc: 'Construção: não ataca. Bloqueia o caminho e atrai os inimigos enquanto dorme. Dura 30 s.',
+  },
+  mewtwolab: {
+    id: 'mewtwolab', name: 'Laboratório do Mewtwo', kind: 'building', icon: 'assets/construcoes/mewtwolab.png', cost: 6,
+    type: 'psychic', types: ['psychic'], hp: 1300, life: 40, radius: 1.0, mass: 1000,
+    dmg: 160, hitSpeed: 2.0, range: 6, splash: 1.2, targets: 'ground', arena: 9, rarity: 'legendary', legendary: true,
+    desc: 'Construção lendária: canhão psíquico com dano em área. Só alvos no chão. Dura 40 s.',
+  },
+};
+BUILDINGS.sleepingsnorlax.icon = `${SPRITE_COLLAB}/portrait/0143/Normal.png`;
+
 const CARDS = {};
 for (const p of POKEDEX) CARDS[p.id] = makePokemonCard(p);
-Object.assign(CARDS, SPELLS);
+Object.assign(CARDS, SPELLS, BUILDINGS);
 
 const DEFAULT_DECK = ['pikachu', 'charmander', 'squirtle', 'bulbasaur', 'onix', 'zubat', 'thunderbolt', 'fireblast'];
 const DECK_SIZE = 8;
@@ -218,12 +255,15 @@ function deckAverageCost(deck) {
 function randomDeck(pool = Object.keys(CARDS)) {
   const units = pool.filter((id) => CARDS[id].kind === 'unit');
   const spells = pool.filter((id) => CARDS[id].kind === 'spell');
+  const buildings = pool.filter((id) => CARDS[id].kind === 'building');
   for (let attempt = 0; attempt < 500; attempt++) {
     const nSpells = Math.min(spells.length, Math.random() < 0.5 ? 1 : 2);
     const pickSpells = [...spells].sort(() => Math.random() - 0.5).slice(0, nSpells);
+    // Às vezes uma construção (no lugar de um Pokémon)
+    if (buildings.length && Math.random() < 0.45) pickSpells.push(buildings[Math.floor(Math.random() * buildings.length)]);
     const pool = [...units];
     const pickUnits = [];
-    while (pickUnits.length < DECK_SIZE - nSpells) {
+    while (pickUnits.length < DECK_SIZE - pickSpells.length) {
       pickUnits.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     }
     const deck = [...pickUnits, ...pickSpells];
@@ -239,7 +279,7 @@ const dexPad = (dex) => String(dex).padStart(4, '0');
 
 // Arte da carta: retrato do SpriteCollab; sprite da PokéAPI se não houver
 function cardImage(card) {
-  if (card.kind === 'spell') return card.icon;
+  if (card.kind !== 'unit') return card.icon;
   const sp = SPRITES[card.dex];
   return sp && sp.portrait ? `${SPRITE_COLLAB}/portrait/${dexPad(card.dex)}/Normal.png` : spriteFront(card.dex);
 }

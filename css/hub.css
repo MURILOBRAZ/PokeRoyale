@@ -635,3 +635,6 @@ button.link { font-family: inherit; }
 .deck-tabs button.active { background: linear-gradient(180deg, #2f6fdb, #1f4fb0); border-color: #7fb0ff; opacity: 1; }
 .deck-tabs button.in-use { border-color: #ffcb05; }
 .deck-panel.sub-skins #deck-tabs { display: none; }
+
+/* Presente de versão: subtítulo embaixo do título da recompensa */
+.reward-sub { display: block; font-size: 13px; font-weight: 600; opacity: 0.85; margin-top: 2px; }

@@ -29,6 +29,8 @@ const SCHEMA = [
   // deck_index = qual está em uso. A coluna deck continua sendo o deck em uso (é o que as partidas usam).
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS decks JSONB',
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS deck_index INT NOT NULL DEFAULT 0',
+  // Presentes de versão já recebidos (ids de GIFTS)
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS gifts JSONB NOT NULL DEFAULT '[]'`,
   // Fichas do Game Corner: moeda rara, ganha só por conquistas
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS fichas INT NOT NULL DEFAULT 0',
   // Cosméticos: o que está equipado (look) e o que foi comprado

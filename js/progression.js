@@ -31,6 +31,7 @@ const STARTER_IDS = ['bulbasaur', 'charmander', 'squirtle'];
 
 // Arena em que a carta aparece nas Premier Balls (pelo primeiro tipo; lendários na Liga)
 function arenaOfCard(card) {
+  if (card.kind === 'building') return card.arena;
   if (card.kind === 'spell' || STARTER_IDS.includes(card.id)) return 0;
   if (card.legendary) return 9;
   const arena = ARENAS.find((a) => a.types.includes(card.types[0]));
@@ -51,6 +52,7 @@ const UPGRADE_XP = { 2: 4, 3: 5, 4: 6, 5: 10, 6: 25, 7: 50, 8: 100, 9: 200, 10: 
 
 function rarityOf(card) {
   if (card.kind === 'spell') return 'rare';
+  if (card.kind === 'building') return card.rarity;
   if (card.legendary) return 'legendary';
   const p = POKEDEX.find((x) => x.id === card.id);
   const bst = Object.values(p.stats).reduce((a, b) => a + b, 0);
@@ -236,6 +238,21 @@ function botProfile(arena) {
 }
 
 const TRAINER_NAME_RE = /^[\p{L}\p{N} _.-]{3,16}$/u;
+
+// ---------- Presentes de versão ----------
+// Cada conta recebe uma vez (ao entrar no jogo depois da atualização). O servidor guarda quais já recebeu.
+
+const GIFTS = {
+  'v08-construcao': {
+    title: 'Presente da v0.8',
+    text: 'Chegaram as construções! Você ganhou uma:',
+    // Uma construção aleatória (menos a lendária), mesmo que ainda não tenha chegado na arena dela
+    roll: (rand = Math.random) => {
+      const pool = Object.values(CARDS).filter((c) => c.kind === 'building' && !c.legendary).map((c) => c.id);
+      return { cards: { [pool[Math.floor(rand() * pool.length)]]: 1 }, gold: 0, items: {} };
+    },
+  },
+};
 
 // ---------- PokéMart (loja) e Fichas do Game Corner ----------
 // Tudo com Pokédólares (ganhos jogando) ou Fichas (só por conquistas). Sem dinheiro de verdade.

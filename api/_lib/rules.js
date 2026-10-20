@@ -13,7 +13,7 @@ const EXPORTS = [
   'FREE_BALL_MAX', 'BALLS', 'ITEMS', 'itemFitsCard', 'rollBallTier', 'rollBallContents', 'botProfile',
   'TRAINER_NAME_RE', 'FICHAS', 'SHOP', 'shopDayKey', 'shopWeekRange', 'shopNextRefresh', 'shopPrice',
   'generateShopOffers', 'COSMETICS', 'DEFAULT_LOOK', 'hasCosmetic', 'EMOTE_MOODS', 'SAFARI', 'newSafariRun',
-  'safariStep',
+  'safariStep', 'GIFTS',
 ];
 
 const ctx = vm.createContext({});

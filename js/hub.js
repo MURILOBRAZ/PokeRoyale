@@ -32,7 +32,10 @@ function showHome(error = '') {
     showScreen('#hub');
     // Atualiza em segundo plano (troféus/balls podem ter mudado em outra aba)
     Account.refresh().then(() => {
-      if (!$('#hub').classList.contains('hidden') && Account.loggedIn) renderHub();
+      if (!$('#hub').classList.contains('hidden') && Account.loggedIn) {
+        renderHub();
+        openPendingGift();
+      }
     });
     return;
   }
@@ -561,9 +564,26 @@ $('#road-close').addEventListener('click', () => showHome());
 
 // ---------- Recompensas ----------
 
+// Presente de versão (ex.: uma construção na v0.8): abre sozinho ao entrar, uma vez por conta
+async function openPendingGift() {
+  const id = Account.loggedIn && Account.user.pendingGift;
+  if (!id || hubBusy) return;
+  hubBusy = true;
+  try {
+    const r = await Account.api('gift', { id });
+    showReward({ tier: 'premier', contents: r.contents, newCards: r.newCards, title: `🎁 ${r.title}`, text: r.text });
+  } catch {
+    // já recebido (outra aba) ou sem conexão: tenta de novo na próxima vez
+  } finally {
+    hubBusy = false;
+  }
+}
+
 function showReward(result) {
   const { tier, contents, newCards } = result;
-  $('#reward-title').innerHTML = `${ballImg(tier, 'reward-ball')}<span>${BALLS[tier].name}</span>`;
+  $('#reward-title').innerHTML = result.title
+    ? `${ballImg(tier, 'reward-ball')}<span>${result.title}${result.text ? `<small class="reward-sub">${result.text}</small>` : ''}</span>`
+    : `${ballImg(tier, 'reward-ball')}<span>${BALLS[tier].name}</span>`;
   const cards = Object.entries(contents.cards).sort((a, b) => {
     const order = ['legendary', 'epic', 'rare', 'common'];
     return order.indexOf(rarityOf(CARDS[a[0]])) - order.indexOf(rarityOf(CARDS[b[0]]));
@@ -575,7 +595,7 @@ function showReward(result) {
       ${cardImgTag(c)}<div class="count">×${n}</div>${isNew ? '<div class="new">Novo!</div>' : ''}<div class="name">${c.name}</div></div>`;
   }).join('');
   const items = Object.entries(contents.items || {}).map(([id, n]) => `<span class="reward-item">${itemImg(id)} ${ITEMS[id].name} ×${n}</span>`).join('');
-  $('#reward-extra').innerHTML = `<span class="reward-gold">💰 +${fmtNum(contents.gold)}</span>${items}`;
+  $('#reward-extra').innerHTML = `${contents.gold ? `<span class="reward-gold">💰 +${fmtNum(contents.gold)}</span>` : ''}${items}`;
   playBallOpening(tier);
   showScreen('#reward');
 }

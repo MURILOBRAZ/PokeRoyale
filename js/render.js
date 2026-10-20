@@ -358,7 +358,156 @@ class Renderer {
     }
   }
 
+  // Construção: arte própria (assets/construcoes) ou, no Snorlax, o sprite dormindo
+  _drawBuilding(b, game) {
+    const ctx = this.ctx;
+    const s = this.scale;
+    const [x, y] = this.w2s(b.x, b.y);
+    const r = b.radius * s;
+    const color = this.teamColor(b.side);
+    const now = performance.now() / 1000;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.45, r * 1.25, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(2, s * 0.09);
+    ctx.stroke();
+
+    ctx.save();
+    if (b.deploy > 0) ctx.globalAlpha = 0.5;
+    if (b.hitFlash > 0) ctx.filter = 'brightness(1.9)';
+    // Pulinho ao atirar
+    const kick = Math.max(0, 1 - (game.time - (b.attackT ?? -99)) / 0.18);
+    let top;
+    if (b.card.id === 'sleepingsnorlax') {
+      const sp = SPRITES[143];
+      const f = sp && this._sheetFrame(143, sp.idle, 0, this.viewSide === 0 ? Math.PI / 2 : -Math.PI / 2, sp.walk.h);
+      if (f) {
+        const k = f.k * 1.25;
+        const breathe = 1 + Math.sin(now * 2) * 0.03;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(f.img, f.sx, f.sy, f.w, f.h, x - (f.w * k) / 2, y - (f.h * k) / 2 - (f.h * k) * (breathe - 1), f.w * k, f.h * k * breathe);
+        top = y - (f.walkH * k) / 2;
+      } else {
+        // Sprite ainda carregando: o retrato da carta
+        const img = getImage(b.card.icon);
+        const size = r * 2.6;
+        if (img) ctx.drawImage(img, x - size / 2, y - size * 0.85, size, size);
+        top = y - size * 0.85;
+      }
+      // Zzz
+      ctx.filter = 'none';
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 2;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i < 3; i++) {
+        const p = (now * 0.5 + i / 3) % 1;
+        ctx.globalAlpha = Math.sin(p * Math.PI) * (b.deploy > 0 ? 0.5 : 1);
+        ctx.font = `bold ${s * (0.35 + i * 0.12)}px sans-serif`;
+        const zx = x + r * 0.6 + p * s * 0.8;
+        const zy = top - p * s * 1.2;
+        ctx.strokeText('z', zx, zy);
+        ctx.fillText('z', zx, zy);
+      }
+    } else {
+      // Pixel art (tools/build-construcoes.py) na mesma escala dos sprites, sem suavizar
+      const img = getImage(b.card.icon);
+      if (img) {
+        const k = s / PMD_PIXELS_PER_TILE;
+        const sq = 1 + kick * 0.06;
+        const w = img.naturalWidth * k * sq;
+        const h = img.naturalHeight * k * (2 - sq);
+        const left = x - w / 2;
+        const tp = y + r * 0.5 - h;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, left, tp, w, h);
+        this._buildingPokemon(b, img, left, tp, k, now);
+        top = tp;
+      } else {
+        ctx.fillStyle = TYPE_COLORS[b.card.type];
+        ctx.fillRect(x - r, y - r * 1.5, r * 2, r * 2);
+        top = y - r * 1.5;
+      }
+    }
+    ctx.restore();
+
+    if (b.deploy > 0) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = Math.max(2, s * 0.08);
+      ctx.beginPath();
+      ctx.arc(x, y + r * 0.45, r * 0.9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - b.deploy / MATCH.DEPLOY_TIME));
+      ctx.stroke();
+    }
+    const barY = top - s * 0.25;
+    this._bar(x, barY, Math.max(s * 1.2, r * 2), b.hp / b.maxHp, color);
+    // Ampulheta: a construção está acabando sozinha
+    ctx.font = `${s * 0.32}px serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⏳', x - Math.max(s * 1.2, r * 2) / 2 - 2, barY + s * 0.08);
+    if (b.stun > 0) {
+      ctx.font = `${s * 0.5}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('💫', x + r, top + s * 0.4);
+    }
+  }
+
+  // Quadro animado de um Pokémon (idle) para enfeitar as construções
+  _idleFrame(dex, angle, phase, now) {
+    const sp = SPRITES[dex];
+    if (!sp) return null;
+    let tick = (now * 60 + phase) % animLength(sp.idle);
+    let i = 0;
+    while (i < sp.idle.d.length - 1 && tick >= sp.idle.d[i]) {
+      tick -= sp.idle.d[i];
+      i++;
+    }
+    return this._sheetFrame(dex, sp.idle, i, angle, sp.walk.h);
+  }
+
+  // Pokémon de verdade em cada construção: Chansey no Centro, Gastly rondando a Torre,
+  // Zubat na boca da Caverna e Mewtwo dentro da cápsula do Laboratório.
+  // (px, py) = ponto na pixel art onde fica o pé/centro do Pokémon.
+  _buildingPokemon(b, img, left, top, k, now) {
+    const ctx = this.ctx;
+    const down = Math.PI / 2;
+    const at = (px, py) => [left + px * k, top + py * k];
+    const draw = (f, cx, cy, scale = 1, alpha = 1) => {
+      if (!f) return;
+      const w = f.w * f.k * scale;
+      const h = f.h * f.k * scale;
+      ctx.globalAlpha = alpha * (b.deploy > 0 ? 0.5 : 1);
+      ctx.drawImage(f.img, f.sx, f.sy, f.w, f.h, cx - w / 2, cy - h / 2, w, h);
+      ctx.globalAlpha = b.deploy > 0 ? 0.5 : 1;
+    };
+    const id = b.card.id;
+    if (id === 'pokecenter') {
+      const [cx, cy] = at(42, 40);
+      draw(this._idleFrame(113, down, b.id * 7, now), cx, cy, 0.8);
+    } else if (id === 'pokemontower') {
+      const t = now * 1.6 + b.id;
+      const [cx, cy] = at(20 + Math.cos(t) * 15, 16 + Math.sin(t) * 5);
+      draw(this._idleFrame(92, down, b.id * 7, now), cx, cy, 0.75, 0.9);
+    } else if (id === 'zubatcave') {
+      const t = now * 1.3 + b.id;
+      const [cx, cy] = at(28 + Math.sin(t) * 9, 16 + Math.sin(t * 2) * 3);
+      draw(this._idleFrame(41, down, b.id * 7, now), cx, cy, 0.7);
+    } else if (id === 'mewtwolab') {
+      const [cx, cy] = at(27.5, 16 + Math.sin(now * 2) * 1.2);
+      const f = this._idleFrame(150, down, b.id * 7, now);
+      if (f) draw(f, cx, cy, Math.min(1, (24 * k) / (f.walkH * f.k)), 0.9);
+      // Vidro por cima do Mewtwo
+      ctx.globalAlpha = 0.45 * (b.deploy > 0 ? 0.5 : 1);
+      ctx.drawImage(img, 18, 2, 20, 28, left + 18 * k, top + 2 * k, 20 * k, 28 * k);
+      ctx.globalAlpha = 1;
+    }
+  }
+
   _drawUnit(u, game) {
+    if (u.isBuilding) return this._drawBuilding(u, game);
     const ctx = this.ctx;
     const s = this.scale;
     const [x, y] = this.w2s(u.x, u.y);
@@ -890,7 +1039,8 @@ class Renderer {
       }
       case 'spawn': {
         // Poké Ball abrindo: a bola pula e solta um clarão na cor do time
-        if (k < 0.35) {
+        // (construção: sem bola, só poeira e o anel do time)
+        if (k < 0.35 && !e.building) {
           const t = k / 0.35;
           const r = s * 0.3;
           const by = y - s * 0.6 - Math.sin(t * Math.PI) * s * 0.5;
@@ -917,7 +1067,8 @@ class Renderer {
           ctx.fill();
           ctx.stroke();
         } else {
-          const t = (k - 0.35) / 0.65;
+          // Construção não tem a bola: o clarão começa já no início
+          const t = e.building ? k : Math.max(0, (k - 0.35) / 0.65);
           ctx.globalAlpha = 1 - t;
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
@@ -1025,6 +1176,26 @@ class Renderer {
         }
         break;
       }
+      case 'heal': {
+        // Onda verde do Centro Pokémon (mais forte quando curou alguém)
+        ctx.globalAlpha = (e.active ? 0.75 : 0.3) * (1 - k);
+        ctx.strokeStyle = '#6dff9a';
+        ctx.lineWidth = s * 0.1;
+        ctx.beginPath();
+        ctx.ellipse(x, y, e.radius * this.sx * out, e.radius * this.sy * out * 0.75, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        if (e.active) {
+          ctx.fillStyle = '#6dff9a';
+          ctx.font = `bold ${s * 0.45}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2 + rnd(i);
+            ctx.fillText('+', x + Math.cos(a) * s * 1.2, y + Math.sin(a) * s * 0.7 - k * s * 1.2);
+          }
+        }
+        break;
+      }
       case 'poof':
         ctx.globalAlpha = 0.7 * (1 - k);
         ctx.fillStyle = '#ffffff';
@@ -1082,8 +1253,23 @@ class Renderer {
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      const sp = SPRITES[card.dex];
-      const f = sp && this._sheetFrame(card.dex, sp.idle, 0, this.viewSide === 0 ? -Math.PI / 2 : Math.PI / 2, sp.walk.h);
+      if (card.healRadius) {
+        ctx.strokeStyle = 'rgba(109,255,154,0.8)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.ellipse(x, y, card.healRadius * this.sx, card.healRadius * this.sy, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      const art = card.kind === 'building' && card.id !== 'sleepingsnorlax' && getImage(card.icon);
+      if (art) {
+        const k = s / PMD_PIXELS_PER_TILE;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(art, x - (art.naturalWidth * k) / 2, y + card.radius * s * 0.5 - art.naturalHeight * k, art.naturalWidth * k, art.naturalHeight * k);
+      }
+      const dex = card.kind === 'building' ? (card.id === 'sleepingsnorlax' ? 143 : null) : card.dex;
+      const sp = SPRITES[dex];
+      const f = sp && this._sheetFrame(dex, sp.idle, 0, this.viewSide === 0 ? -Math.PI / 2 : Math.PI / 2, sp.walk.h);
       if (f) {
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(f.img, f.sx, f.sy, f.w, f.h, x - (f.w * f.k) / 2, y - (f.h * f.k) / 2, f.w * f.k, f.h * f.k);

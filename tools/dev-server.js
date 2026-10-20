@@ -57,6 +57,39 @@ async function main() {
       await pg.query('UPDATE users SET fichas = fichas + $2, gold = gold + $3 WHERE id = $1', [userId, fichas, gold]);
       return res.end(JSON.stringify({ ok: true, fichas, gold }));
     }
+    // Só no desenvolvimento: dá cartas à conta logada (/__dev/cartas?ids=pokecenter,mewtwolab ou ?ids=construcoes)
+    if (url.pathname === '/__dev/cartas') {
+      const userId = await require('../api/_lib/auth').currentUserId(req);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (!userId) {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ error: 'Entre na conta primeiro.' }));
+      }
+      const R = require('../api/_lib/rules');
+      const asked = (url.searchParams.get('ids') || 'construcoes').split(',');
+      const ids = asked.flatMap((id) => (id === 'construcoes'
+        ? Object.keys(R.CARDS).filter((c) => R.CARDS[c].kind === 'building')
+        : R.CARDS[id] ? [id] : []));
+      for (const id of ids) {
+        await pg.query(
+          `INSERT INTO collection (user_id, card_id, level, copies) VALUES ($1, $2, $3, 0)
+           ON CONFLICT (user_id, card_id) DO NOTHING`,
+          [userId, id, R.startLevel(R.CARDS[id])],
+        );
+      }
+      return res.end(JSON.stringify({ ok: true, ids }));
+    }
+    // Só no desenvolvimento: esquece os presentes de versão da conta logada, para ver de novo (/__dev/presente)
+    if (url.pathname === '/__dev/presente') {
+      const userId = await require('../api/_lib/auth').currentUserId(req);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (!userId) {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ error: 'Entre na conta primeiro.' }));
+      }
+      await pg.query(`UPDATE users SET gifts = '[]' WHERE id = $1`, [userId]);
+      return res.end(JSON.stringify({ ok: true }));
+    }
     // Só no desenvolvimento: cria treinadores de mentira para testar o ranking (/__dev/treinadores?n=15)
     if (url.pathname === '/__dev/treinadores') {
       const n = Math.min(200, Number(url.searchParams.get('n')) || 15);

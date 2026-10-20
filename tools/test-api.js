@@ -105,6 +105,20 @@ async function main() {
   assert.equal(r.data.user.deckIndex, 0);
   ok('vários decks salvos e troca do deck em uso');
 
+  // Presente de versão: uma construção aleatória, uma vez só
+  r = (await a('me')).data;
+  assert.equal(r.user.pendingGift, 'v08-construcao');
+  r = await a('gift', { id: 'v08-construcao' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const [giftCard] = Object.keys(r.data.contents.cards);
+  assert.equal(R.CARDS[giftCard].kind, 'building');
+  assert.ok(!R.CARDS[giftCard].legendary);
+  assert.ok(r.data.state.collection[giftCard]);
+  assert.equal(r.data.state.user.pendingGift, null);
+  assert.equal((await a('gift', { id: 'v08-construcao' })).status, 409);
+  assert.equal((await a('gift', { id: 'nada' })).status, 404);
+  ok('presente da v0.8: uma construção, uma vez só');
+
   // Partida: curta demais não vale
   r = await a('match-start', { mode: 'bot' });
   assert.equal(r.status, 200);

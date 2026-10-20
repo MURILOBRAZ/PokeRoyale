@@ -30,7 +30,8 @@ for (let m = 0; m < MATCHES; m++) {
   g._damage = (e, amount, type, source) => {
     const before = e.hp;
     damage(e, amount, type, source);
-    const card = source && source.card ? source.card.id : null;
+    // Zubats da Caverna contam para a Caverna
+    const card = source && (source.from || (source.card ? source.card.id : null));
     if (card) {
       stat(card).dmg += before - Math.max(0, e.hp);
       if (e.dead && before > 0) stat(card).kills++;
@@ -77,6 +78,7 @@ for (let m = 0; m < MATCHES; m++) {
           u.dead = true;
           continue;
         }
+        if (u.isBuilding) continue; // construções ficam paradas de propósito
         const t = track.get(u.id);
         const moved = t && Math.hypot(u.x - t.x, u.y - t.y) > 0.3;
         const attacked = g.time - u.attackT < 3;
@@ -84,7 +86,10 @@ for (let m = 0; m < MATCHES; m++) {
           track.set(u.id, { x: u.x, y: u.y, since: g.time });
         } else if (g.time - t.since > 12 && !t.reported) {
           t.reported = true;
-          problems.push(`${u.def.id} parado em (${u.x.toFixed(1)}, ${u.y.toFixed(1)}) por 12 s (partida ${m})`);
+          const tg = u.target ? (u.target.isTower ? `ginásio ${u.target.kind}` : u.target.def.id) : 'nenhum';
+          const near = g.units.filter((b) => b.isBuilding && Math.hypot(b.x - u.x, b.y - u.y) < 3)
+            .map((b) => `${b.card.id}@${b.x.toFixed(1)},${b.y.toFixed(1)}`).join(' ');
+          problems.push(`${u.def.id} parado em (${u.x.toFixed(1)}, ${u.y.toFixed(1)}) por 12 s, alvo ${tg}${near ? `, perto de ${near}` : ''} (partida ${m})`);
         }
         if (u.y > ARENA.RIVER_TOP + 0.2 && u.y < ARENA.RIVER_BOTTOM - 0.2 && !u.air) {
           const onBridge = ARENA.BRIDGES.some((b) => Math.abs(u.x - b) <= ARENA.BRIDGE_HALF + 0.05);
@@ -109,7 +114,9 @@ for (let m = 0; m < MATCHES; m++) {
 // ---------- Relatório ----------
 const ids = Object.keys(CARDS);
 const never = ids.filter((id) => !stats[id] || stats[id].played === 0);
-const noDamage = ids.filter((id) => stats[id] && stats[id].played >= 5 && stats[id].dmg === 0);
+// Centro Pokémon e Snorlax não causam dano de propósito
+const noDamage = ids.filter((id) => stats[id] && stats[id].played >= 5 && stats[id].dmg === 0
+  && !(CARDS[id].kind === 'building' && !CARDS[id].dmg && !CARDS[id].spawn));
 const rows = ids.filter((id) => stats[id] && stats[id].decks >= 8).map((id) => {
   const s = stats[id];
   return { id, cost: CARDS[id].cost, decks: s.decks, win: s.wins / s.decks, dmgPerPlay: s.played ? s.dmg / s.played : 0, played: s.played, evolved: s.evolved };
@@ -129,3 +136,9 @@ rows.slice(0, 12).forEach((r) => console.log(line(r)));
 console.log('\nMais fracas:');
 rows.slice(-12).forEach((r) => console.log(line(r)));
 if (process.argv.includes('--json')) fs.writeFileSync(path.join(root, 'tools', 'sim-report.json'), JSON.stringify(rows, null, 1));
+const buildingRows = rows.filter((r) => CARDS[r.id].kind === 'building');
+if (buildingRows.length) {
+  console.log('');
+  console.log('Construções:');
+  buildingRows.forEach((r) => console.log(line(r)));
+}
