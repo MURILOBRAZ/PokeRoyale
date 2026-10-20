@@ -102,6 +102,8 @@ class Game {
     if (card.kind === 'building') {
       // Nem no corredor das pistas (entre a ponte e o ginásio lateral), por onde todos passam
       if (ARENA.BRIDGES.some((bx) => Math.abs(x - bx) < ARENA.BRIDGE_HALF + card.radius + 0.6)) return false;
+      // Nem no rio ou colada nele (o bolsão chega até a margem)
+      if (y > ARENA.RIVER_TOP - card.radius - 0.3 && y < ARENA.RIVER_BOTTOM + card.radius + 0.3) return false;
       for (const u of this.units) {
         if (u.isBuilding && !u.dead && Math.hypot(u.x - x, u.y - y) < u.radius + card.radius) return false;
       }
@@ -639,6 +641,13 @@ class Game {
   _towerDestroyed(t) {
     const attacker = 1 - t.side;
     if (t.kind === 'king') {
+      // Líder caiu: os laterais que sobraram desabam juntos (como no Clash Royale)
+      for (const o of this.towers) {
+        if (o.side !== t.side || o.dead) continue;
+        o.hp = 0;
+        o.dead = true;
+        this._fx({ kind: 'crash', x: o.x, y: o.y, radius: o.radius, ttl: 1.2, total: 1.2, shake: 0.35 });
+      }
       this.crowns[attacker] = 3;
       this._end(attacker);
       return;
@@ -829,7 +838,7 @@ class Game {
       }
     }
     for (const u of us) {
-      if (u.dead) continue;
+      if (u.dead || u.isBuilding) continue; // construção nunca sai do lugar
       if (!u.air) {
         for (const t of this.towers) {
           if (t.dead) continue;

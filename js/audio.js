@@ -285,6 +285,8 @@ const Sound = (() => {
   let lastCryAt = 0;
   let wasDouble = false;
   let wasOvertime = false;
+  let wasFinal = false;
+  let lastTick = 0;
 
   function watch(game, mySide) {
     if (!ready() || !game) return;
@@ -293,6 +295,8 @@ const Sound = (() => {
       lastFx = 0;
       wasDouble = false;
       wasOvertime = false;
+      wasFinal = false;
+      lastTick = 0;
     }
     let maxId = lastFx;
     for (const e of game.effects) {
@@ -310,6 +314,24 @@ const Sound = (() => {
       wasOvertime = true;
       sting();
       setTempo(BPM_OVERTIME);
+    }
+    // Últimos 10 s: "tic" a cada segundo (mais agudo nos 3 últimos) e música no máximo
+    const left = game.timeLeft;
+    if (!game.over && left > 0 && left <= 10) {
+      const sec = Math.ceil(left);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        tickSound(sec);
+      }
+      if (!wasFinal) {
+        wasFinal = true;
+        setTempo(BPM_FINAL);
+      }
+    } else if (left > 10 && wasFinal) {
+      // Começou a morte súbita: volta ao ritmo dela
+      wasFinal = false;
+      lastTick = 0;
+      setTempo(game.overtime ? BPM_OVERTIME : game.doubleEnergy ? BPM_FAST : BPM_NORMAL);
     }
   }
 
@@ -425,6 +447,7 @@ const Sound = (() => {
   const BPM_NORMAL = 138;
   const BPM_FAST = 158;
   const BPM_OVERTIME = 172;
+  const BPM_FINAL = 190;
 
   let bpm = BPM_NORMAL;
   let playing = false;
@@ -502,6 +525,12 @@ const Sound = (() => {
     songName = null;
     clearInterval(timer);
     timer = null;
+  }
+
+  function tickSound(sec) {
+    const high = sec <= 3;
+    tone({ wave: 'square', f: high ? 1320 : 880, dur: high ? 0.12 : 0.07, vol: high ? 0.16 : 0.1 });
+    if (high) tone({ wave: 'square', f: 1760, t: 0.06, dur: 0.08, vol: 0.08 });
   }
 
   function sting() {

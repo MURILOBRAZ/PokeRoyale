@@ -504,6 +504,29 @@ function renderCrowns(el, n) {
   el.innerHTML = [0, 1, 2].map((i) => `<span class="${i < n ? 'on' : ''}">👑</span>`).join('');
 }
 
+// Últimos 10 s (do tempo normal ou da morte súbita): número grande no meio, relógio e bordas pulsando
+let countdownShown = 0;
+function updateCountdown() {
+  const left = game.timeLeft;
+  const final = !game.over && left > 0 && left <= 10;
+  $('#timer-box').classList.toggle('final', final);
+  $('#final-vignette').classList.toggle('hidden', !final);
+  const el = $('#countdown');
+  if (!final) {
+    el.classList.add('hidden');
+    countdownShown = 0;
+    return;
+  }
+  const n = Math.ceil(left);
+  if (n !== countdownShown) {
+    countdownShown = n;
+    el.textContent = n;
+    el.classList.remove('hidden', 'pop');
+    void el.offsetWidth; // reinicia a animação a cada número
+    el.classList.add('pop');
+  }
+}
+
 function updateHud() {
   const p = game.players[mySide];
   const sig = p.hand.join(',') + '|' + game.nextCard(mySide);
@@ -527,6 +550,7 @@ function updateHud() {
   box.classList.toggle('double', game.doubleEnergy);
   box.classList.toggle('overtime', game.overtime);
   $('#timer-label').textContent = game.overtime ? 'Morte súbita' : game.doubleEnergy ? 'Energia x2' : 'Tempo';
+  updateCountdown();
 
   renderCrowns($('#crowns-me'), game.crowns[mySide]);
   renderCrowns($('#crowns-enemy'), game.crowns[1 - mySide]);

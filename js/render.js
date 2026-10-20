@@ -63,8 +63,10 @@ class Renderer {
     this.canvas.style.height = h + 'px';
     this.dpr = dpr;
     // O campo ocupa a tela inteira (sem bordas): escala horizontal e vertical independentes,
-    // com no máximo 15% de diferença entre elas para não deformar. Sprites usam a menor (this.scale).
-    const MAX_STRETCH = 1.15;
+    // com diferença limitada entre elas (MAX_STRETCH). Sprites usam a menor (this.scale).
+    // Celular com barras do navegador deixa a área mais "alta" que o campo: até 30% de esticada
+    // (só o mapa estica; os sprites usam a menor escala e não deformam)
+    const MAX_STRETCH = 1.3;
     let sx = w / ARENA.W;
     let sy = h / ARENA.H;
     if (sx > sy * MAX_STRETCH) sx = sy * MAX_STRETCH;
@@ -351,10 +353,7 @@ class Renderer {
     ctx.fill();
     ctx.stroke();
     if (t.kind === 'king') {
-      ctx.font = `${r * 0.9}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('👑', x, y - r * 1.15);
+      this._icon('crown', x, y - r * 1.15, r * 0.9);
     }
   }
 
@@ -444,15 +443,8 @@ class Renderer {
     const barY = top - s * 0.25;
     this._bar(x, barY, Math.max(s * 1.2, r * 2), b.hp / b.maxHp, color);
     // Ampulheta: a construção está acabando sozinha
-    ctx.font = `${s * 0.32}px serif`;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('⏳', x - Math.max(s * 1.2, r * 2) / 2 - 2, barY + s * 0.08);
-    if (b.stun > 0) {
-      ctx.font = `${s * 0.5}px serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText('💫', x + r, top + s * 0.4);
-    }
+    this._icon('hourglass', x - Math.max(s * 1.2, r * 2) / 2 - s * 0.2, barY + s * 0.08, s * 0.34);
+    if (b.stun > 0) this._icon('dizzy', x + r, top + s * 0.4, s * 0.5);
   }
 
   // Quadro animado de um Pokémon (idle) para enfeitar as construções
@@ -504,6 +496,17 @@ class Renderer {
       ctx.drawImage(img, 18, 2, 20, 28, left + 18 * k, top + 2 * k, 20 * k, 28 * k);
       ctx.globalAlpha = 1;
     }
+  }
+
+  // Ícone em pixel art (assets/icones) centrado em (cx, cy), com `size` px de lado
+  _icon(name, cx, cy, size) {
+    const img = getImage(iconUrl(name));
+    if (!img) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+    ctx.restore();
   }
 
   _drawUnit(u, game) {
@@ -579,18 +582,8 @@ class Renderer {
 
     const barY = top - s * 0.25;
     this._bar(x, barY, Math.max(s * 0.9, r * 1.8), u.hp / u.maxHp, color);
-    if (u.evolved) {
-      ctx.font = `${s * 0.35}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('⭐', x, barY);
-    }
-    if (u.stun > 0) {
-      ctx.font = `${s * 0.5}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('💫', x + r, top + s * 0.4);
-    }
+    if (u.evolved) this._icon('star', x, barY - s * 0.2, s * 0.36);
+    if (u.stun > 0) this._icon('dizzy', x + r, top + s * 0.4, s * 0.5);
   }
 
   // Quadro atual da animação: ataque (logo após atacar), andar (em movimento) ou parado
@@ -604,6 +597,10 @@ class Renderer {
     if (!(u.deploy > 0) && since >= 0 && since < animLength(atk)) {
       anim = atk;
       tick = since;
+    } else if (u.air) {
+      // Voador não "anda" no ar: usa a animação de voo (Hover/FlapAround/Float) ou, sem ela, a parada
+      anim = sp.fly || sp.idle;
+      tick = ((performance.now() / 1000) * 60 + u.id * 13) % animLength(anim);
     } else {
       anim = u.moving && !(u.deploy > 0) && !(u.stun > 0) ? sp.walk : sp.idle;
       tick = ((performance.now() / 1000) * 60 + u.id * 13) % animLength(anim);

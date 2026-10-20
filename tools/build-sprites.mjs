@@ -7,7 +7,8 @@ import { writeFile } from 'node:fs/promises';
 const RAW = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master';
 const LAST_DEX = 151;
 // Animações usadas no jogo (nome no jogo -> nomes no SpriteCollab, em ordem de preferência)
-const WANTED = { idle: ['Idle', 'Walk'], walk: ['Walk'], attack: ['Attack'], shoot: ['Shoot', 'Charge', 'Attack'] };
+// fly: voo (só alguns voadores têm); sem ela, o voador usa a animação parada no ar em vez de "andar"
+const WANTED = { idle: ['Idle', 'Walk'], walk: ['Walk'], attack: ['Attack'], shoot: ['Shoot', 'Charge', 'Attack'], fly: ['Hover', 'FlapAround', 'Float'] };
 
 async function get(url, as = 'text') {
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -49,6 +50,8 @@ function parseAnimData(xml) {
   const out = {};
   for (const [key, names] of Object.entries(WANTED)) {
     for (const n of names) {
+      // Voo só vale se for uma animação própria (no Zubat, "Hover" é cópia da de atirar)
+      if (key === 'fly' && anims[n] && anims[n].copyOf) continue;
       const r = resolve(n);
       if (r && r.d.length) {
         out[key] = r;

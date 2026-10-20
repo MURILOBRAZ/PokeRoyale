@@ -52,7 +52,9 @@ Energia enche ──► Escolhe carta da mão (4 de 8) ──► Posiciona na ar
 | Desempate final | Vence quem tiver o ginásio mais fraco com mais vida; se ainda empatar, empate |
 | Vitória imediata | Derrubar o Ginásio Líder (vale 3 coroas) |
 
-**Coroas:** cada Ginásio lateral derrubado vale 1 coroa. Derrubar o Líder dá 3 coroas e encerra a partida.
+**Coroas:** cada Ginásio lateral derrubado vale 1 coroa. Derrubar o Líder dá 3 coroas e encerra a partida, e os ginásios laterais que ainda estavam de pé desabam junto, como no Clash Royale.
+
+**Fim chegando:** nos últimos 10 s (do tempo normal e da morte súbita), aparece um número grande no meio da tela a cada segundo, o relógio fica vermelho e pulsando, as bordas pulsam em vermelho e toca um "tic" por segundo, mais agudo nos 3 últimos. A música acelera para 190 BPM.
 
 ## 5. Arena
 
@@ -236,7 +238,7 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 
 - **Invocar:** arraste a carta até a arena, ou toque na carta e depois no local. Teclas **1–4** selecionam cartas no PC.
 - Com uma carta selecionada, a área proibida fica **vermelha**; a prévia mostra o Pokémon ou o raio do golpe.
-- **HUD:** coroas (inimigo / você) e cronômetro no topo; mão de 4 cartas + "Próxima" embaixo; barra de energia com 10 segmentos.
+- **HUD:** coroas (inimigo / você) e cronômetro no topo (vermelho e pulsando nos últimos 10 s); mão de 4 cartas + "Próxima" embaixo; barra de energia com 10 segmentos.
 - **Cores dos times:** azul = você, vermelho = oponente (anel embaixo do Pokémon e barra de vida). Seus Pokémon aparecem de costas, os do oponente de frente.
 
 ## 14. Arte e som
@@ -246,7 +248,9 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - **Reserva:** enquanto a folha animada carrega, o jogo usa o sprite estático da PokéAPI; sem nenhum dos dois, um círculo da cor do tipo com a inicial.
 - **Mapas das arenas** (arte do autor): um para cada uma das 10 arenas — Rota 1, os 8 ginásios de Kanto e a Liga Pokémon. Na partida que vale troféus aparece o mapa da sua arena; no Treino o mapa é sorteado. As miniaturas aparecem no início e no caminho dos troféus.
 - **Ginásios** (arte do autor): lateral e Líder, em azul (você) e vermelho (oponente). Enquanto a imagem carrega, o jogo desenha uma Pokébola na cor do time.
-- **Tela inteira, sem borda:** o campo ocupa toda a área da batalha. A escala horizontal e a vertical são independentes (o campo estica até 15% para encaixar; os sprites mantêm a forma). No PC, durante a partida, a coluna do jogo fica com proporção de celular. Se ainda sobrar espaço, aparece a decoração do mapa completo (`<mapa>-full.webp`, posição em `js/arena-art.js`) e, depois dela, o mapa desfocado.
+- **Voadores:** no ar usam a animação de voo do SpriteCollab (Hover, FlapAround ou Float, que 39 Pokémon têm). Os que não têm usam a animação parada, que bate as asas, em vez da de andar, para não parecer que estão "andando" no ar.
+- **Ícones em pixel art (no lugar dos emojis):** 46 ícones de 16 × 16 (troféu, Fichas, Pokédólares, cadeado, espadas, coroa, Pokédex, barra de navegação, botões da partida, atributos...), gerados por `tools/build-icons.py` em `assets/icones/`, no mesmo estilo dos sprites: contorno escuro, brilho em cima e sem suavizar. Os textos continuam escritos com emojis, e `js/icons.js` troca cada emoji pelo ícone sozinho, em qualquer lugar da página, inclusive no que aparece depois, como banners e listas. Dentro de opções de select e campos de texto o emoji fica, porque ali não dá para pôr imagem. Na arena, o `render.js` desenha os ícones (`_icon`). Os símbolos ✕, ✓ e ✔ continuam como texto.
+- **Tela inteira, sem borda:** o campo ocupa toda a área da batalha. A escala horizontal e a vertical são independentes (o campo estica até 30% para encaixar, por exemplo num celular com as barras do navegador; os sprites mantêm a forma). No celular, a partida ocupa a largura toda. No PC (tela de 700 px ou mais), a coluna do jogo fica com proporção de celular. Se ainda sobrar espaço, aparece a decoração do mapa completo (`<mapa>-full.webp`, posição em `js/arena-art.js`) e, depois dela, o mapa desfocado.
 - **Conversão:** `python tools/build-arenas.py` recorta os originais (`assets/originais/`, fora do git) para a grade 18×32, alinhando pontes e rio às regras do jogo, e gera WebP (~130 KB por mapa) + miniaturas; também separa os 4 ginásios da folha. `--debug pasta` salva os mapas com as linhas do jogo por cima para conferir.
 - **Som (futuro):** efeitos de ataque, grito do Pokémon ao entrar em campo e trilha de batalha 8-bit.
 
