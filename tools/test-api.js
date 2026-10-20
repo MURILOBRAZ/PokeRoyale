@@ -85,6 +85,26 @@ async function main() {
   assert.equal((await a('deck', { deck: swapped })).status, 200);
   ok('deck aceita só cartas próprias');
 
+  // Vários decks: salvar no espaço 3 passa a usar ele; trocar volta para o 1; espaço vazio não pode ser escolhido
+  r = (await a('me')).data;
+  assert.equal(r.user.decks.length, R.DECK_SLOTS);
+  assert.deepEqual(r.user.decks[0], swapped);
+  assert.equal(r.user.decks[1], null);
+  const third = [...swapped].reverse();
+  r = await a('deck', { deck: third, slot: 2 });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.user.deckIndex, 2);
+  assert.deepEqual(r.data.user.deck, third);
+  assert.deepEqual(r.data.user.decks[0], swapped);
+  assert.equal((await a('deck-select', { slot: 1 })).status, 400);
+  assert.equal((await a('deck-select', { slot: 9 })).status, 400);
+  assert.equal((await a('deck', { deck: third, slot: 5 })).status, 400);
+  r = await a('deck-select', { slot: 0 });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.data.user.deck, swapped);
+  assert.equal(r.data.user.deckIndex, 0);
+  ok('vários decks salvos e troca do deck em uso');
+
   // Partida: curta demais não vale
   r = await a('match-start', { mode: 'bot' });
   assert.equal(r.status, 200);
@@ -139,13 +159,14 @@ async function main() {
   assert.equal(r.data.trophies, 300);
   ok('online +30/−20, sobe para o Ginásio de Pewter e não cai abaixo de 300');
 
-  // Balls: só uma abrindo por vez, só abre quando pronta
+  // Balls: várias abrindo ao mesmo tempo, só abre quando pronta
   let st = (await a('me')).data;
   const balls = st.balls;
   assert.ok(balls.length >= 2, 'precisa de pelo menos 2 balls');
   assert.equal((await a('ball-open', { id: balls[0].id })).status, 409);
   assert.equal((await a('ball-unlock', { id: balls[0].id })).status, 200);
-  assert.equal((await a('ball-unlock', { id: balls[1].id })).status, 409);
+  assert.equal((await a('ball-unlock', { id: balls[1].id })).status, 200); // a segunda também começa
+  assert.equal((await a('ball-unlock', { id: balls[1].id })).status, 409); // mas não duas vezes
   assert.equal((await a('ball-open', { id: balls[0].id })).status, 409);
   await pg.query('UPDATE balls SET unlock_at = now() - interval \'1 second\' WHERE id = $1', [balls[0].id]);
   const goldBefore = (await a('me')).data.user.gold;

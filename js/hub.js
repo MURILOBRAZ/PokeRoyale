@@ -265,7 +265,6 @@ function renderBalls() {
   if (!Account.loggedIn) return;
   const now = Account.now();
   const balls = Account.state.balls;
-  const anyUnlocking = balls.some((b) => b.unlockAt && Date.parse(b.unlockAt) > now);
   const slots = [];
   const keys = [];
   const texts = [];
@@ -281,8 +280,8 @@ function renderBalls() {
     let status;
     let cls;
     if (left === null) {
-      cls = anyUnlocking ? 'locked wait' : 'locked';
-      status = anyUnlocking ? `🔒 ${fmtDuration(BALLS[b.tier].seconds)}` : `Abrir em ${fmtDuration(BALLS[b.tier].seconds)}`;
+      cls = 'locked';
+      status = `Abrir em ${fmtDuration(BALLS[b.tier].seconds)}`;
     } else if (left > 0) {
       cls = 'unlocking';
       status = `⏳ ${fmtDuration(left)}`;
@@ -339,8 +338,6 @@ $('#hub-balls').addEventListener('click', async (e) => {
     else if (state === 'locked') {
       await Account.api('ball-unlock', { id });
       renderBalls();
-    } else {
-      $('#hub-error').textContent = 'Já tem uma ball abrindo. Espere ela terminar.';
     }
   } catch (err) {
     $('#hub-error').textContent = err.message;

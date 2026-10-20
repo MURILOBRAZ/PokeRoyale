@@ -74,7 +74,6 @@ button.link:active { transform: none; }
 .ball-slot.empty { justify-content: center; border-style: dashed; opacity: 0.6; }
 .ball-slot.empty small { font-size: 9px; }
 .ball-slot.unlocking { border-color: #8fb0ff; }
-.ball-slot.locked.wait { opacity: 0.75; }
 .ball-slot.ready { border-color: #f8d030; background: #3b3416; animation: glow 1.2s ease-in-out infinite; }
 @keyframes glow { 50% { box-shadow: 0 0 14px #f8d030; } }
 .free-ball { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }

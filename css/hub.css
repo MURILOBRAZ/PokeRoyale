@@ -621,3 +621,17 @@ button.link { font-family: inherit; }
   .skin-stage { min-height: 150px; }
   .skin-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ---------- Vários decks (abas 1–5 na Coleção) ---------- */
+.deck-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.deck-tabs button {
+  padding: 6px 0;
+  font-size: 14px;
+  background: var(--panel-2, #1a2649);
+  box-shadow: none;
+  border: 2px solid var(--line, #2f4a8a);
+}
+.deck-tabs button.empty { opacity: 0.55; border-style: dashed; }
+.deck-tabs button.active { background: linear-gradient(180deg, #2f6fdb, #1f4fb0); border-color: #7fb0ff; opacity: 1; }
+.deck-tabs button.in-use { border-color: #ffcb05; }
+.deck-panel.sub-skins #deck-tabs { display: none; }

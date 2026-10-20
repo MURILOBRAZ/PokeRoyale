@@ -25,6 +25,10 @@ const SCHEMA = [
   `UPDATE users u SET name = left(u.name, 16 - length('_' || u.id)) || '_' || u.id
    WHERE EXISTS (SELECT 1 FROM users o WHERE lower(o.name) = lower(u.name) AND o.id < u.id)`,
   'CREATE UNIQUE INDEX IF NOT EXISTS users_name_unique ON users (lower(name))',
+  // Vários decks salvos (como no Clash Royale): decks = lista de DECK_SLOTS (cada um, lista de cartas ou null);
+  // deck_index = qual está em uso. A coluna deck continua sendo o deck em uso (é o que as partidas usam).
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS decks JSONB',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS deck_index INT NOT NULL DEFAULT 0',
   // Fichas do Game Corner: moeda rara, ganha só por conquistas
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS fichas INT NOT NULL DEFAULT 0',
   // Cosméticos: o que está equipado (look) e o que foi comprado

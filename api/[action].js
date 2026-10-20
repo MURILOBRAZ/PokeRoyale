@@ -38,6 +38,12 @@ function freeBallInfo(readyAt, now) {
   return { available, nextAt };
 }
 
+// Decks salvos, sempre com DECK_SLOTS posições (contas antigas: o deck atual fica no espaço 1)
+function decksOf(u) {
+  const list = Array.isArray(u.decks) ? u.decks : [u.deck];
+  return Array.from({ length: R.DECK_SLOTS }, (_, i) => (R.isValidDeck(list[i]) ? list[i] : null));
+}
+
 async function loadState(userId) {
   const u = await one('SELECT *, now() AS server_now FROM users WHERE id = $1', [userId]);
   if (!u) fail(401, 'Sessão inválida. Entre de novo.');
@@ -62,6 +68,8 @@ async function loadState(userId) {
       gold: u.gold,
       fichas: u.fichas,
       deck: u.deck,
+      decks: decksOf(u),
+      deckIndex: u.deck_index,
       look: lookOf(u),
       freeBall: freeBallInfo(u.free_ball_at, u.server_now),
     },
@@ -229,13 +237,32 @@ const ACTIONS = {
     return loadState(userId);
   },
 
+  // Salva um deck num dos espaços e passa a usar ele
   async deck({ req, body }) {
     const userId = await requireUser(req);
     const deck = body.deck;
     if (!R.isValidDeck(deck)) fail(400, 'O deck precisa ter 8 cartas diferentes.');
     const owned = await q('SELECT card_id FROM collection WHERE user_id = $1 AND card_id = ANY($2)', [userId, deck]);
     if (owned.length !== R.DECK_SIZE) fail(400, 'Você só pode usar cartas da sua coleção.');
-    await q('UPDATE users SET deck = $2::jsonb WHERE id = $1', [userId, JSON.stringify(deck)]);
+    const u = await one('SELECT deck, decks, deck_index FROM users WHERE id = $1', [userId]);
+    const slot = body.slot === undefined ? u.deck_index : body.slot;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= R.DECK_SLOTS) fail(400, 'Espaço de deck inválido.');
+    const decks = decksOf(u);
+    decks[slot] = deck;
+    await q('UPDATE users SET deck = $2::jsonb, decks = $3::jsonb, deck_index = $4 WHERE id = $1',
+      [userId, JSON.stringify(deck), JSON.stringify(decks), slot]);
+    return loadState(userId);
+  },
+
+  // Troca o deck em uso por outro já salvo
+  async 'deck-select'({ req, body }) {
+    const userId = await requireUser(req);
+    const slot = body.slot;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= R.DECK_SLOTS) fail(400, 'Espaço de deck inválido.');
+    const u = await one('SELECT deck, decks, deck_index FROM users WHERE id = $1', [userId]);
+    const deck = decksOf(u)[slot];
+    if (!deck) fail(400, 'Esse espaço ainda não tem deck salvo.');
+    await q('UPDATE users SET deck = $2::jsonb, deck_index = $3 WHERE id = $1', [userId, JSON.stringify(deck), slot]);
     return loadState(userId);
   },
 
@@ -318,11 +345,10 @@ const ACTIONS = {
     const row = await one(
       `UPDATE balls SET unlock_at = now() + make_interval(secs => $3)
        WHERE id = $1 AND user_id = $2 AND unlock_at IS NULL
-         AND NOT EXISTS (SELECT 1 FROM balls o WHERE o.user_id = $2 AND o.unlock_at > now())
-       RETURNING id`,
+       RETURNING id`, // várias balls podem abrir ao mesmo tempo, cada uma com seu cronômetro
       [body.id, userId, R.BALLS[b.tier].seconds],
     );
-    if (!row) fail(409, 'Já tem uma ball abrindo. Espere ela terminar.');
+    if (!row) fail(409, 'Essa ball já está abrindo.');
     return loadState(userId);
   },
 

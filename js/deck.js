@@ -80,6 +80,11 @@ class DeckEditor {
       if (e.target.closest('#skin-action')) this.skinAction();
     });
     this.el('#deck-slots').addEventListener('click', (e) => this._pick(e));
+    this.el('#deck-tabs').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-slot]');
+      if (b) this.selectSlot(Number(b.dataset.slot));
+    });
+    this._initDrag();
     this.el('#deck-info').addEventListener('click', (e) => {
       const btn = e.target.closest('button');
       if (!btn) return;
@@ -107,7 +112,58 @@ class DeckEditor {
     this.setSub(sub);
     this.el('#deck-default').textContent = account ? 'Inicial' : 'Padrão';
     this.focused = null;
-    this.setDraft(account ? [...Account.user.deck] : loadDeck());
+    this.slot = account ? Account.user.deckIndex || 0 : 0;
+    this.el('#deck-tabs').classList.toggle('hidden', !account);
+    this.setDraft(account ? [...(this.savedDeck() || Account.user.deck)] : loadDeck());
+  }
+
+  // ---------- Vários decks (só com conta) ----------
+
+  savedDeck(slot = this.slot) {
+    const decks = Account.user.decks || [Account.user.deck];
+    return decks[slot] || null;
+  }
+
+  isDirty() {
+    return JSON.stringify(this.draft) !== JSON.stringify(this.savedDeck() || []);
+  }
+
+  renderTabs() {
+    if (!this.account) return;
+    const decks = Account.user.decks || [Account.user.deck];
+    const inUse = Account.user.deckIndex || 0;
+    const tabs = [];
+    for (let i = 0; i < DECK_SLOTS; i++) {
+      const cls = [i === this.slot ? 'active' : '', i === inUse ? 'in-use' : '', decks[i] ? '' : 'empty'].join(' ');
+      const title = decks[i] ? (i === inUse ? 'Deck em uso' : 'Usar este deck') : 'Espaço vazio';
+      tabs.push(`<button data-slot="${i}" class="${cls}" title="${title}">${i === inUse ? '⚔️ ' : ''}${i + 1}</button>`);
+    }
+    this.el('#deck-tabs').innerHTML = tabs.join('');
+  }
+
+  // Tocar num deck salvo passa a usar ele; num espaço vazio, começa um deck novo (cópia do atual)
+  async selectSlot(i) {
+    if (this.busy || i === this.slot) return;
+    if (this.isDirty() && !confirm(`Descartar as mudanças do deck ${this.slot + 1}?`)) return;
+    const saved = this.savedDeck(i);
+    this.slot = i;
+    this.focused = null;
+    if (!saved) {
+      this.setDraft([...this.draft]);
+      this.flash(`Deck ${i + 1} vazio: monte e toque em Salvar para usar ele.`, true);
+      return;
+    }
+    this.setDraft([...saved]);
+    this.busy = true;
+    try {
+      await Account.api('deck-select', { slot: i });
+      this.flash(`Agora você batalha com o deck ${i + 1}.`, true);
+      this.renderTabs();
+    } catch (err) {
+      this.flash(err.message);
+    } finally {
+      this.busy = false;
+    }
   }
 
   setSub(sub) {
@@ -199,8 +255,8 @@ class DeckEditor {
     }
     this.busy = true;
     try {
-      await Account.api('deck', { deck: this.draft });
-      this.flash('Deck salvo! É com ele que você batalha.', true);
+      await Account.api('deck', { deck: this.draft, slot: this.slot });
+      this.flash(`Deck ${this.slot + 1} salvo! É com ele que você batalha.`, true);
       this.renderAll();
     } catch (err) {
       this.flash(err.message);
@@ -245,6 +301,141 @@ class DeckEditor {
     this._msgTimer = setTimeout(() => (box.textContent = ''), 3500);
   }
 
+  // ---------- Arrastar cartas (como no Clash Royale) ----------
+  // Coleção -> espaço do deck: entra (ou substitui a carta daquele espaço).
+  // Deck -> outro espaço: troca de lugar. Deck -> fora do deck: sai.
+  // No celular o arraste começa ao segurar a carta (assim a lista continua rolando normalmente).
+  _initDrag() {
+    const panel = this.el('.deck-panel');
+    const slotsBox = this.el('#deck-slots');
+    let press = null;
+    let drag = null;
+
+    const cancelPress = () => {
+      if (press) clearTimeout(press.timer);
+      press = null;
+    };
+    const slotAt = (x, y) => {
+      const hit = document.elementFromPoint(x, y);
+      const slot = hit && hit.closest('#deck-slots > *');
+      return slot ? [...slotsBox.children].indexOf(slot) : -1;
+    };
+    const overSlots = (x, y) => {
+      const r = slotsBox.getBoundingClientRect();
+      return x >= r.left - 12 && x <= r.right + 12 && y >= r.top - 16 && y <= r.bottom + 16;
+    };
+    const place = (x, y) => {
+      drag.ghost.style.left = `${x}px`;
+      drag.ghost.style.top = `${y}px`;
+      const i = slotAt(x, y);
+      [...slotsBox.children].forEach((el, k) => el.classList.toggle('drop-target', k === i));
+      slotsBox.classList.toggle('drop-zone', overSlots(x, y));
+    };
+    const begin = (x, y) => {
+      const { el } = press;
+      const r = el.getBoundingClientRect();
+      const ghost = el.cloneNode(true);
+      ghost.classList.add('drag-ghost');
+      ghost.classList.remove('focused');
+      ghost.style.width = `${r.width}px`;
+      ghost.style.height = `${r.height}px`;
+      document.body.appendChild(ghost);
+      el.classList.add('drag-source');
+      drag = { ...press, ghost };
+      cancelPress();
+      document.body.classList.add('dragging-card');
+      if (navigator.vibrate) navigator.vibrate(12);
+      place(x, y);
+    };
+    const end = (drop, x, y) => {
+      if (!drag) return;
+      const d = drag;
+      drag = null;
+      d.ghost.remove();
+      d.el.classList.remove('drag-source');
+      document.body.classList.remove('dragging-card');
+      slotsBox.classList.remove('drop-zone');
+      [...slotsBox.children].forEach((el) => el.classList.remove('drop-target'));
+      this._swallowClick = true; // o toque que terminou o arraste não abre os detalhes
+      setTimeout(() => (this._swallowClick = false), 50);
+      if (drop) this._drop(d, slotAt(x, y), overSlots(x, y));
+    };
+
+    panel.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || drag) return;
+      const el = e.target.closest('#deck-grid [data-card], #deck-slots [data-card]');
+      if (!el) return;
+      const from = el.closest('#deck-slots') ? 'slot' : 'grid';
+      const id = el.dataset.card;
+      if (from === 'grid' && !this.canUse(id)) return;
+      const index = from === 'slot' ? [...slotsBox.children].indexOf(el) : -1;
+      press = { el, id, from, index, x: e.clientX, y: e.clientY, pointerId: e.pointerId, touch: e.pointerType !== 'mouse' };
+      if (press.touch) {
+        const p = press;
+        p.timer = setTimeout(() => press === p && begin(p.x, p.y), 260);
+      }
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (drag) {
+        if (e.pointerId === drag.pointerId) place(e.clientX, e.clientY);
+        return;
+      }
+      if (!press || e.pointerId !== press.pointerId) return;
+      const moved = Math.hypot(e.clientX - press.x, e.clientY - press.y);
+      if (press.touch) {
+        if (moved > 10) cancelPress(); // está rolando a lista
+      } else if (moved > 6) begin(e.clientX, e.clientY);
+    });
+    window.addEventListener('pointerup', (e) => {
+      if (drag && e.pointerId === drag.pointerId) end(true, e.clientX, e.clientY);
+      cancelPress();
+    });
+    window.addEventListener('pointercancel', () => {
+      end(false);
+      cancelPress();
+    });
+    // Arrastando: o dedo não rola a página nem abre o menu de "salvar imagem"
+    document.addEventListener('touchmove', (e) => {
+      if (drag) e.preventDefault();
+    }, { passive: false });
+    panel.addEventListener('contextmenu', (e) => {
+      if (drag || press) e.preventDefault();
+    });
+    panel.addEventListener('click', (e) => {
+      if (!this._swallowClick) return;
+      this._swallowClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+  }
+
+  _drop(d, slot, overSlots) {
+    const draft = this.draft;
+    const name = (id) => CARDS[id].name;
+    if (d.from === 'grid') {
+      const target = slot >= 0 ? draft[slot] : undefined;
+      if (draft.includes(d.id)) {
+        // Já está no deck: soltar em outro espaço só troca de lugar
+        const at = draft.indexOf(d.id);
+        if (slot >= 0 && slot < draft.length && slot !== at) [draft[at], draft[slot]] = [draft[slot], draft[at]];
+      } else if (target) {
+        draft[slot] = d.id;
+        this.flash(`${name(d.id)} entrou no lugar de ${name(target)}.`, true);
+      } else if ((slot >= 0 || overSlots) && draft.length < DECK_SIZE) {
+        draft.push(d.id);
+      } else if (slot >= 0 || overSlots) {
+        this.flash('Deck cheio: solte em cima de uma carta para trocar.');
+      }
+    } else if (slot >= 0) {
+      const to = Math.min(slot, draft.length - 1);
+      [draft[d.index], draft[to]] = [draft[to], draft[d.index]];
+    } else if (!overSlots) {
+      draft.splice(d.index, 1);
+      if (this.focused === d.id) this.focused = null;
+    }
+    this.renderAll();
+  }
+
   _pick(e) {
     const el = e.target.closest('[data-card]');
     if (!el) return;
@@ -260,6 +451,7 @@ class DeckEditor {
   }
 
   renderAll() {
+    this.renderTabs();
     this.renderSlots();
     this.renderGrid();
     this.renderInfo();
@@ -341,7 +533,7 @@ class DeckEditor {
     const box = this.el('#deck-info');
     const c = CARDS[this.focused];
     if (!c) {
-      box.innerHTML = '<p class="hint">Toque numa carta para ver os detalhes.</p>';
+      box.innerHTML = '<p class="hint">Toque numa carta para ver os detalhes, ou segure e arraste para o deck.</p>';
       return;
     }
     const own = this.account ? Account.card(c.id) : null;
