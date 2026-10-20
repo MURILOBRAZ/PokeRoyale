@@ -86,8 +86,25 @@ function showEnd(title) {
   const w = game.winner;
   const rival = mode === 'bot' ? 'Bot' : 'Amigo';
   $('#end-title').textContent = title || (w === mySide ? 'Vitória! 🏆' : w === -1 ? 'Empate' : 'Derrota');
-  const crown = (n) => '👑'.repeat(n) || '—';
+  // Cada coroa entra com um atraso, primeiro as suas e depois as do rival
+  let delay = 0;
+  const crown = (n) => (n ? Array.from({ length: n }, () => `<span class="crown" style="animation-delay:${(delay++ * 0.25 + 0.15).toFixed(2)}s">👑</span>`).join('') : '—');
   $('#end-crowns').innerHTML = `<span title="Você">${crown(game.crowns[mySide])}</span><span class="vs">x</span><span title="${rival}">${crown(game.crowns[1 - mySide])}</span>`;
+  const won = !title && w === mySide;
+  $('#end').classList.toggle('win', won);
+  $('#end').querySelectorAll('.confetti').forEach((c) => c.remove());
+  if (won) {
+    const colors = ['#ffd84a', '#3b82f6', '#ef4444', '#4ade80', '#e9a6ff', '#ffffff'];
+    for (let i = 0; i < 40; i++) {
+      const c = document.createElement('i');
+      c.className = 'confetti';
+      c.style.left = `${Math.random() * 100}%`;
+      c.style.background = colors[i % colors.length];
+      c.style.animationDuration = `${2.2 + Math.random() * 1.8}s`;
+      c.style.animationDelay = `${Math.random() * 0.8}s`;
+      $('#end').appendChild(c);
+    }
+  }
   const again = $('#btn-again');
   const connected = net && net.conn;
   again.disabled = mode === 'guest' || ((mode === 'host') && !connected);
@@ -245,7 +262,7 @@ function beginMatch(newMode, side, decks, opts = {}) {
   battleLook.bubbles = [];
   battleLook.crowns = [0, 0];
   pendingInvite = null;
-  game = new Game({ decks, levels: opts.levels, trainers: opts.trainers, skins });
+  game = new Game({ decks, levels: opts.levels, trainers: opts.trainers, skins, arena: opts.arena || 0 });
   document.body.classList.add('in-battle');
   // Gritos das cartas em jogo já começam a carregar; a música começa com a partida
   Sound.preloadCries(game.players.flatMap((p) => [...p.hand, ...p.queue]).map((id) => CARDS[id] && CARDS[id].dex));
@@ -538,10 +555,20 @@ function updateHud() {
     const c = CARDS[p.hand[i]];
     const missing = Math.max(0, 1 - p.energy / c.cost);
     el.querySelector('.lock').style.height = `${missing * 100}%`;
+    // Pulinho quando a carta passa a caber na energia
+    const affordable = missing === 0;
+    if (affordable && el.dataset.affordable === '0') {
+      el.classList.remove('ready');
+      void el.offsetWidth;
+      el.classList.add('ready');
+    }
+    el.dataset.affordable = affordable ? '1' : '0';
     el.classList.toggle('selected', ui.selectedIndex === i);
   });
 
   $('#energy-fill').style.width = `${(p.energy / MATCH.ENERGY_MAX) * 100}%`;
+  $('#energy').classList.toggle('full', p.energy >= MATCH.ENERGY_MAX);
+  $('#energy').classList.toggle('double', game.doubleEnergy);
   $('#energy-num').textContent = Math.floor(p.energy);
 
   const t = Math.ceil(game.timeLeft);
@@ -598,12 +625,13 @@ function tryDeploy() {
     clearSelection();
     return;
   }
-  // Falhou: falta energia ou local inválido
+  // Falhou: sem energia, a carta pisca em vermelho; local inválido, só treme
   const el = document.querySelectorAll('#hand .card')[i];
   if (el) {
-    el.classList.remove('shake');
+    const noEnergy = game.players[mySide].energy < CARDS[game.players[mySide].hand[i]].cost;
+    el.classList.remove('shake', 'denied');
     void el.offsetWidth;
-    el.classList.add('shake');
+    el.classList.add(noEnergy ? 'denied' : 'shake');
   }
 }
 

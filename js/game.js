@@ -12,16 +12,30 @@ function shuffle(arr) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+// Animação de ataque: normal ou, com alt, o golpe próprio do Pokémon (strike/special), se ele tiver
+function unitAttackAnim(def, alt) {
+  const sp = typeof SPRITES !== 'undefined' ? SPRITES[def.dex] : null;
+  if (!sp) return null;
+  const ranged = def.range > 1.6;
+  const sig = ranged ? sp.special : sp.strike;
+  if (alt && sig) return sig;
+  return ranged ? sp.shoot || sp.attack : sp.attack;
+}
+
 // Tempo do começo da animação de ataque até o quadro em que o golpe acerta (campo hit do SpriteCollab).
 // O dano sai nesse momento, sincronizado com o desenho. Limitado para não pesar no balanceamento.
-function hitDelay(def) {
-  const sp = typeof SPRITES !== 'undefined' ? SPRITES[def.dex] : null;
-  if (!sp) return 0;
-  const anim = def.range > 1.6 ? sp.shoot || sp.attack : sp.attack;
+function hitDelay(def, alt) {
+  const anim = unitAttackAnim(def, alt);
   if (!anim || !(anim.hit > 0)) return 0;
   const frames = anim.d.slice(0, anim.hit).reduce((a, b) => a + b, 0);
   return Math.min(frames / 60, 0.35, def.hitSpeed * 0.5);
 }
+
+// Pokémon de água (terrestre) atravessa o rio nadando, sem precisar da ponte — só nas arenas em que
+// o rio é de água (em Cinnabar é lava, em Viridian um cânion...)
+const canSwim = (u) => !u.air && !u.isBuilding && !!u.types && u.types.includes('water');
+const SWIM_SPEED = 1.2; // nadando é um pouco mais rápido que andando
+const inWater = (x, y) => y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM && !ARENA.BRIDGES.some((b) => Math.abs(x - b) < ARENA.BRIDGE_HALF);
 
 function edgeDist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y) - a.radius - b.radius;
@@ -31,8 +45,9 @@ class Game {
   // levels: nível de cada carta por lado ({id: nível}); trainers: nível de treinador por lado (ginásios).
   // Sem eles, tudo joga com os stats base (treino e amistosos).
   // skins: visual dos ginásios de cada lado (cosmético, não muda nada na simulação)
-  constructor({ decks = [DEFAULT_DECK, DEFAULT_DECK], levels = [{}, {}], trainers = [1, 1], skins = ['skin:classico', 'skin:classico'] } = {}) {
+  constructor({ decks = [DEFAULT_DECK, DEFAULT_DECK], levels = [{}, {}], trainers = [1, 1], skins = ['skin:classico', 'skin:classico'], arena = 0 } = {}) {
     this.skins = skins;
+    this.swimRiver = (ARENAS[arena] || ARENAS[0]).river === 'water';
     this.levels = levels;
     this.trainers = trainers;
     this.nextId = 1;
@@ -171,7 +186,9 @@ class Game {
       this._spawnBuilding(card, side, x, y, levelMultiplier(card, this.levels[side][cardId]));
     } else {
       const n = card.count || 1;
-      this._fx({ kind: 'spawn', dex: card.dex, x, y, side, n, legendary: !!card.legendary, ttl: card.legendary ? 1.4 : 0.7, total: card.legendary ? 1.4 : 0.7, shake: card.legendary ? 0.2 : 0 });
+      // A Poké Ball sai voando do Líder de quem jogou até o ponto escolhido
+      const king = this.towers.find((t) => t.side === side && t.kind === 'king');
+      this._fx({ kind: 'spawn', dex: card.dex, x, y, bx: king.x, by: king.y - king.radius, side, n, legendary: !!card.legendary, ttl: card.legendary ? 1.4 : 0.7, total: card.legendary ? 1.4 : 0.7, shake: card.legendary ? 0.2 : 0 });
       if (card.legendary) this.events.push({ text: `✨ ${card.name} lendário entrou na batalha!`, side });
       const offsets = n === 1 ? [[0, 0]] : [[0, -0.5], [-0.6, 0.4], [0.6, 0.4]];
       for (let i = 0; i < n; i++) {
@@ -289,7 +306,7 @@ class Game {
         const t = b.target;
         this._fx({ kind: 'cast', type: d.type, x: b.x, y: b.y - b.radius, side: b.side, ttl: 0.25, total: 0.25 });
         this.projectiles.push({
-          x: b.x, y: b.y - b.radius, target: t, speed: 11,
+          id: this.nextId++, x: b.x, y: b.y - b.radius, sx: b.x, sy: b.y - b.radius, target: t, speed: 11,
           dmg: d.dmg, type: d.type, splash: d.splash || 0, source: b, side: b.side,
         });
       }
@@ -446,8 +463,11 @@ class Game {
         u.cooldown = u.def.hitSpeed;
         u.attackAnim = 0.2;
         u.attackT = this.time;
+        // A cada 3 ataques, usa o golpe próprio (Shock do Pikachu, Kick do Hitmonlee...)
+        u.attackN = (u.attackN || 0) + 1;
+        u.attackAlt = u.attackN % 3 === 0;
         u.face = Math.atan2(t.y - u.y, t.x - u.x);
-        const delay = hitDelay(u.def);
+        const delay = hitDelay(u.def, u.attackAlt);
         if (delay > 0) u.windup = { t: delay, target: t };
         else this._attack(u, t);
       }
@@ -476,7 +496,8 @@ class Game {
     let dx = (tx - u.x) / d;
     let dy = (ty - u.y) / d;
     if (!u.air) [dx, dy] = this._avoidTowers(u, dx, dy, target);
-    const step = Math.min(d, u.def.speed * (u.slowT > 0 ? 0.55 : 1) * dt); // Nevasca: mais lento
+    const swim = u.swimming ? SWIM_SPEED : 1;
+    const step = Math.min(d, u.def.speed * swim * (u.slowT > 0 ? 0.55 : 1) * dt); // Nevasca: mais lento
     u.face = Math.atan2(dy, dx);
     u.moving = true;
     u.x += dx * step;
@@ -511,7 +532,7 @@ class Game {
 
   // Terrestres só cruzam o rio pelas pontes
   _waypoint(u, tx, ty) {
-    if (u.air) return [tx, ty];
+    if (u.air || this._swims(u)) return [tx, ty];
     const RT = ARENA.RIVER_TOP;
     const RB = ARENA.RIVER_BOTTOM;
     const [b1, b2] = ARENA.BRIDGES;
@@ -531,6 +552,10 @@ class Game {
     const laneX = clamp(u.x, bx - half, bx + half);
     if (Math.abs(u.x - laneX) > 0.3) return [laneX, goingUp ? RB + 0.2 : RT - 0.2];
     return [laneX, goingUp ? RT - 0.5 : RB + 0.5];
+  }
+
+  _swims(u) {
+    return this.swimRiver && canSwim(u);
   }
 
   _nearestBridge(x) {
@@ -553,7 +578,7 @@ class Game {
     if (d.range > 1.6) {
       this._fx({ kind: 'cast', type: d.type, x: u.x, y: u.y - (u.air ? 0.8 : 0.3), side: u.side, ttl: 0.25, total: 0.25 });
       this.projectiles.push({
-        x: u.x, y: u.y - (u.air ? 0.8 : 0.3), target: t, speed: 11,
+        id: this.nextId++, x: u.x, y: u.y - (u.air ? 0.8 : 0.3), sx: u.x, sy: u.y - (u.air ? 0.8 : 0.3), target: t, speed: 11,
         dmg: d.dmg, type: d.type, splash: d.splash || 0, source: u, side: u.side,
       });
     } else {
@@ -587,6 +612,8 @@ class Game {
     const v = Math.round(amount * m);
     e.hp -= v;
     e.hitFlash = 0.12;
+    // Pokémon reage ao golpe (animação Hurt), no máximo uma vez por segundo para não travar o andar
+    if (!e.isTower && !e.isBuilding && this.time - (e.hurtT ?? -99) > 1) e.hurtT = this.time;
     this._fx({
       kind: 'text', x: e.x + (Math.random() - 0.5) * 0.4, y: e.y - e.radius - 0.4,
       text: String(v), color: m > 1 ? '#ffe14d' : m < 1 ? '#c8c8c8' : '#ffffff',
@@ -605,7 +632,10 @@ class Game {
       } else if (e.isTower) {
         this._fx({ kind: 'crash', x: e.x, y: e.y, radius: e.radius, king: e.kind === 'king', ttl: 1.2, total: 1.2, shake: e.kind === 'king' ? 0.5 : 0.35 });
       } else {
-        this._fx({ kind: 'faint', dex: e.def.dex, x: e.x, y: e.y, face: e.face, air: e.air, radius: e.radius, ttl: 0.7, total: 0.7 });
+        // Com a animação Faint do SpriteCollab, dá tempo de ela tocar antes de sumir
+        const faint = typeof SPRITES !== 'undefined' && SPRITES[e.def.dex] && SPRITES[e.def.dex].faint;
+        const ttl = faint ? 0.95 : 0.7;
+        this._fx({ kind: 'faint', dex: e.def.dex, x: e.x, y: e.y, face: e.face, air: e.air, radius: e.radius, ttl, total: ttl });
       }
       if (e.isTower) this._towerDestroyed(e);
       if (source && !source.dead && !source.isTower) this._creditKill(source);
@@ -633,6 +663,7 @@ class Game {
     u.air = !!into.air;
     u.kills = 0;
     u.evolved = true;
+    u.poseT = this.time; // comemora a evolução (animação Pose)
     u.target = null;
     this._fx({ kind: 'evolve', dex: into.dex, x: u.x, y: u.y, radius: u.radius, ttl: 1.1, total: 1.1 });
     this.events.push({ text: `${before} evoluiu para ${into.name}!`, side: u.side });
@@ -679,9 +710,12 @@ class Game {
     }
     if (t.target && t.cooldown <= 0) {
       t.cooldown = t.stats.hitSpeed;
+      t.attackT = this.time; // recuo e clarão no desenho
+      // Ginásios atiram Meteoro (estrelas); o do Líder é maior
+      const y = t.y - t.radius * 0.6;
       this.projectiles.push({
-        x: t.x, y: t.y - t.radius * 0.6, target: t.target, speed: 13,
-        dmg: t.stats.dmg, type: 'normal', splash: 0, source: t, side: t.side, tower: true,
+        id: this.nextId++, x: t.x, y, sx: t.x, sy: y, target: t.target, speed: 13,
+        dmg: t.stats.dmg, type: 'normal', splash: 0, source: t, side: t.side, tower: true, king: t.kind === 'king',
       });
     }
   }
@@ -744,12 +778,13 @@ class Game {
       time: r(this.time), endTime: this.endTime, overtime: this.overtime,
       over: this.over, winner: this.winner, crowns: this.crowns,
       players: this.players.map((p) => ({ energy: r(p.energy), hand: p.hand, next: p.queue[0] })),
-      towers: this.towers.map((t) => ({ hp: Math.round(t.hp), mhp: t.maxHp, active: t.active, dead: t.dead, hf: r(t.hitFlash || 0) })),
+      towers: this.towers.map((t) => ({ hp: Math.round(t.hp), mhp: t.maxHp, active: t.active, dead: t.dead, hf: r(t.hitFlash || 0), at: r(t.attackT ?? -99) })),
       units: this.units.map((u) => ({
         id: u.id, c: u.card.id, s: u.side, x: r(u.x), y: r(u.y), hp: Math.round(u.hp), mhp: u.maxHp,
         r: r(u.radius), d: r(u.deploy), st: r(u.stun), sl: r(u.slowT || 0), ev: u.evolved ? u.def.id : 0, air: u.air, fa: r(u.face), m: u.moving, at: r(u.attackT), a: r(u.attackAnim), hf: r(u.hitFlash || 0),
+        aa: !!u.attackAlt, sw: !!u.swimming, ht: r(u.hurtT ?? -99), pt: r(u.poseT ?? -99),
       })),
-      projectiles: this.projectiles.map((p) => ({ x: r(p.x), y: r(p.y), type: p.type, tower: !!p.tower, a: r(p.a || 0) })),
+      projectiles: this.projectiles.map((p) => ({ id: p.id, x: r(p.x), y: r(p.y), sx: r(p.sx ?? p.x), sy: r(p.sy ?? p.y), type: p.type, tower: !!p.tower, king: !!p.king, a: r(p.a || 0) })),
       spells: this.spells.map((s) => ({ c: s.card.id, s: s.side, x: s.x, y: s.y, timer: r(s.timer), total: s.total })),
       effects: this.effects.map((e) => ({ ...e, x: r(e.x), y: r(e.y) })),
     };
@@ -764,7 +799,7 @@ class Game {
       Object.assign(this.players[i], { energy: p.energy, hand: p.hand, queue: [p.next] });
     });
     snap.towers.forEach((t, i) => {
-      Object.assign(this.towers[i], { hp: t.hp, maxHp: t.mhp, active: t.active, dead: t.dead, hitFlash: t.hf });
+      Object.assign(this.towers[i], { hp: t.hp, maxHp: t.mhp, active: t.active, dead: t.dead, hitFlash: t.hf, attackT: t.at });
     });
     const old = new Map(this.units.map((u) => [u.id, u]));
     this.units = snap.units.map((s) => {
@@ -781,6 +816,7 @@ class Game {
         tx: s.x, ty: s.y, hp: s.hp, maxHp: s.mhp, radius: s.r, deploy: s.d,
         face: s.fa, moving: s.m, attackT: s.at,
         stun: s.st, slowT: s.sl, evolved: !!s.ev, attackAnim: s.a, hitFlash: s.hf,
+        attackAlt: s.aa, swimming: s.sw, hurtT: s.ht, poseT: s.pt,
       });
       return u;
     });
@@ -851,8 +887,8 @@ class Game {
             u.y = t.y + (dy / d) * min;
           }
         }
-        // No rio, fica preso à ponte
-        if (u.y > ARENA.RIVER_TOP && u.y < ARENA.RIVER_BOTTOM) {
+        // No rio, fica preso à ponte (quem é de água nada)
+        if (u.y > ARENA.RIVER_TOP && u.y < ARENA.RIVER_BOTTOM && !this._swims(u)) {
           const b = this._nearestBridge(u.x);
           const h = ARENA.BRIDGE_HALF - u.radius * 0.5;
           u.x = clamp(u.x, b - h, b + h);
@@ -860,6 +896,12 @@ class Game {
       }
       u.x = clamp(u.x, 0.4, ARENA.W - 0.4);
       u.y = clamp(u.y, 0.4, ARENA.H - 0.4);
+      // Entrou ou saiu da água: espirro
+      const swimming = this._swims(u) && inWater(u.x, u.y);
+      if (swimming !== !!u.swimming && !(u.deploy > 0)) {
+        this._fx({ kind: 'splash', x: u.x, y: u.y, radius: u.radius, ttl: 0.5, total: 0.5 });
+      }
+      u.swimming = swimming;
     }
   }
 }

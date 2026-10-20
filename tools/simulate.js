@@ -9,8 +9,8 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const files = ['pokedex', 'sprites', 'data', 'progression', 'game', 'bot'];
 vm.runInThisContext(files.map((f) => fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8')).join('\n;\n') + `
-;globalThis.__api = { CARDS, Game, Bot, randomDeck, MATCH, ARENA };`);
-const { CARDS, Game, Bot, randomDeck, ARENA } = globalThis.__api;
+;globalThis.__api = { CARDS, Game, Bot, randomDeck, MATCH, ARENA, ARENAS };`);
+const { CARDS, Game, Bot, randomDeck, ARENA, ARENAS } = globalThis.__api;
 
 const MATCHES = Number(process.argv[2]) || 300;
 const DT = 1 / 30;
@@ -22,7 +22,7 @@ let totalTime = 0;
 
 for (let m = 0; m < MATCHES; m++) {
   const decks = [randomDeck(), randomDeck()];
-  const g = new Game({ decks });
+  const g = new Game({ decks, arena: m % ARENAS.length }); // passa por todas as arenas (rio de água ou não)
   const bots = [new Bot(g, 0, 'normal'), new Bot(g, 1, 'normal')];
 
   // Instrumentação: dano e abates por carta, e cartas jogadas
@@ -91,7 +91,8 @@ for (let m = 0; m < MATCHES; m++) {
             .map((b) => `${b.card.id}@${b.x.toFixed(1)},${b.y.toFixed(1)}`).join(' ');
           problems.push(`${u.def.id} parado em (${u.x.toFixed(1)}, ${u.y.toFixed(1)}) por 12 s, alvo ${tg}${near ? `, perto de ${near}` : ''} (partida ${m})`);
         }
-        if (u.y > ARENA.RIVER_TOP + 0.2 && u.y < ARENA.RIVER_BOTTOM - 0.2 && !u.air) {
+        // Quem é de água pode nadar; os outros terrestres só cruzam pela ponte
+        if (u.y > ARENA.RIVER_TOP + 0.2 && u.y < ARENA.RIVER_BOTTOM - 0.2 && !u.air && !(g.swimRiver && u.types.includes('water'))) {
           const onBridge = ARENA.BRIDGES.some((b) => Math.abs(u.x - b) <= ARENA.BRIDGE_HALF + 0.05);
           if (!onBridge) problems.push(`${u.def.id} andando no rio fora da ponte (partida ${m})`);
         }

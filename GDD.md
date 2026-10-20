@@ -60,6 +60,7 @@ Energia enche ──► Escolhe carta da mão (4 de 8) ──► Posiciona na ar
 
 - Grade lógica de **18 × 32 tiles**, em retrato. O jogador fica embaixo e o oponente em cima.
 - Um **rio** atravessa o meio (linhas 14,7–17,3) com **2 pontes** (colunas 2,35 e 15,65, largura 2,3). Pokémon terrestres só cruzam pelas pontes; voadores passam por cima. As medidas seguem os mapas desenhados das arenas: cada pista sai de um ginásio lateral e passa por uma ponte.
+- **Nadar (v0.9.2):** Pokémon terrestres do tipo Água atravessam o rio nadando, fora das pontes, 20% mais rápido que andando (`SWIM_SPEED`). Só nas arenas em que o rio é de água: Rota 1, Cerulean, Celadon e Liga (`river: 'water'` em `ARENAS`). Nas outras, o meio é lava (Cinnabar), pântano venenoso (Fuchsia), abismo, cristais ou cânion, e todos usam a ponte. Nadando, o Pokémon afunda até a cintura e deixa ondas na cor do time e um rastro em V. Entrar e sair da água faz um espirro com som. Não dá para invocar dentro do rio.
 - Cada lado tem:
   - 2 **Ginásios laterais** (um por pista)
   - 1 **Ginásio Líder** no centro, que fica *dormindo* até levar dano ou até um ginásio lateral cair
@@ -243,7 +244,7 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 
 ## 14. Arte e som
 
-- **Sprites:** [SpriteCollab](https://github.com/PMDCollab/SpriteCollab) (estilo *Pokémon Mystery Dungeon*), licença CC BY-NC 4.0, créditos em `CREDITS.md`. Animações de parado, andar e atacar (corpo a corpo ou à distância), em **8 direções**: seus Pokémon andam de costas para você, os do oponente de frente.
+- **Sprites:** [SpriteCollab](https://github.com/PMDCollab/SpriteCollab) (estilo *Pokémon Mystery Dungeon*), licença CC BY-NC 4.0, créditos em `CREDITS.md`. Animações de parado, andar e atacar (corpo a corpo ou à distância), em **8 direções**: seus Pokémon andam de costas para você, os do oponente de frente. Também usa as animações de levar golpe, golpe próprio, surgir, desmaiar e comemorar (ver 14.1).
 - **Arte das cartas:** retratos do SpriteCollab.
 - **Reserva:** enquanto a folha animada carrega, o jogo usa o sprite estático da PokéAPI; sem nenhum dos dois, um círculo da cor do tipo com a inicial.
 - **Mapas das arenas** (arte do autor): um para cada uma das 10 arenas — Rota 1, os 8 ginásios de Kanto e a Liga Pokémon. Na partida que vale troféus aparece o mapa da sua arena; no Treino o mapa é sorteado. As miniaturas aparecem no início e no caminho dos troféus.
@@ -277,13 +278,32 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
 - [x] **Sprites animados**: SpriteCollab, feito na v0.3
 - [x] **Dano no quadro do golpe** (v0.7, `hitDelay` em `js/game.js`): o dano sai no quadro em que o golpe acerta (`hit` em `js/sprites.js`), em média 0,13 s depois do início da animação, no máximo 0,35 s. Nesse meio-tempo o Pokémon fica parado. Se for atordoado, perde o golpe. Se o alvo sumir, procura outro logo.
 - [x] **Desmaio** (v0.7): o Pokémon derrotado fica cinza, achata e some (voadores caem). Feito no desenho, sem depender da animação `Faint`, que nem todo Pokémon tem
+- [x] **Mais animações do SpriteCollab** (v0.9.2, `tools/build-sprites.mjs`, `_unitFrame` em `js/render.js`):
+  - **Golpe próprio:** a cada 3 ataques, o Pokémon usa uma animação só dele, se tiver: corpo a corpo (`strike`: Kick, Punch, Slam, MultiScratch...) ou à distância (`special`: Shock, Emit, SpAttack...). 91 dos 151 têm. O dano sai no quadro de acerto dessa animação.
+  - **Levou golpe:** animação `Hurt` (todos têm), no máximo uma vez por segundo para não travar o andar.
+  - **Surgindo em campo:** animação `Charge` (todos têm); os lendários fazem `Pose`.
+  - **Comemorar:** `Pose` logo depois de evoluir e, no fim da partida, em loop para quem venceu. Sem `Pose` (só 30 têm), usa `Hop`.
+  - **Desmaio:** com a animação `Faint` (28 têm), ela toca inteira e o Pokémon some aos poucos; sem ela, continua o desmaio desenhado.
+  - As folhas de um Pokémon começam a baixar quando ele aparece. Se uma ainda não chegou, ele segue com a animação de andar ou parado.
+- [x] **Tiro dos ginásios** (v0.9.2, `_drawSwift`): em vez de bala de canhão, os ginásios atiram **Meteoro** (Swift), uma estrela dourada girando com rastro de brilhos. O Líder solta uma estrela maior, com duas estrelinhas em órbita. A cada tiro, o ginásio dá um pequeno recuo e solta um clarão de estrelas.
+- [x] **Ruínas** (v0.9.2, `_drawRuins`): o ginásio destruído deixa a base do desenho, quebrada e escurecida, com pedras em volta e fumaça subindo até o fim da partida.
+- [x] **Poké Ball arremessada** (v0.9.2): ao invocar, a bola sai do seu Líder em arco, com sombra no chão, quica e abre. O Pokémon só aparece quando ela chega. O tempo para surgir continua o mesmo.
+- [x] **Arena com vida** (v0.9.2, `_drawAmbient`): reflexos correndo no rio de água e bolhas estourando na lava e no veneno (`river` em `ARENAS`). Partículas do tema passam pela arena (`AMBIENT`, pelo tipo do ginásio): folhas na Rota 1, poeira em Pewter e Viridian, bolhas em Cerulean, faíscas em Vermilion, pétalas em Celadon, esporos em Fuchsia, brilhos em Saffron, brasas em Cinnabar e neve na Liga.
+- [x] **Interface da partida** (v0.9.2): a carta treme e pisca em vermelho ao tentar usar sem energia, e dá um pulinho quando passa a caber na energia. A barra de energia brilha quando está cheia e tem um brilho correndo na energia dupla. Na vitória, as coroas entram uma de cada vez, o título pulsa e cai confete.
+- [x] **Golpes à distância redesenhados** (v0.9.2, `_drawProjectile` em `js/render.js`): 60% maiores e com rastro que sai do atacante (o golpe leva `id` e o ponto de saída `sx`/`sy`, também no snapshot):
+  - Elétrico: raio em zigue-zague inteiro, do atacante até a ponta, com galhos e clarão
+  - Fogo/Dragão: rajada de chamas que esfriam para trás, com fagulhas
+  - Água: jato contínuo com brilho e bolhas · Planta: três folhas girando em volta da trajetória
+  - Gelo: cristal com rastro de flocos · Pedra/Terra: rocha girando com poeira e pedrinhas
+  - Psíquico/Fada: ondas em anel · Voador: lâmina de ar com vento · Veneno: gosma pingando
+  - Fantasma/Sombrio: bola sombria com fiapos · Inseto/Aço: ferrão com linhas de velocidade · Normal/Lutador: esfera de energia
 - [x] **Animação de evolução** (v0.7): silhueta branca piscando, brilhos subindo, anel e o grito da nova forma
 - [x] **Som** (v0.7, `js/audio.js`, tudo pela Web Audio API):
   - Efeitos sintetizados na hora, um timbre por tipo de golpe, mais explosões, desabamento, Poké Ball e evolução. Há um limite de sons por instante para não virar barulheira.
   - Gritos originais ao entrar em campo, carregados do repositório público da PokéAPI (`PokeAPI/cries`), sem guardar no projeto. Se o navegador não tocar .ogg, toca um "piu" sintetizado.
   - Música chiptune original (pulso, triângulo e ruído), que acelera na energia dupla e de novo na morte súbita, e vinheta de vitória, derrota ou empate.
   - Botão 🔊/🔇 na partida e volumes de música e efeitos em "Minha conta", guardados no aparelho.
-- [x] **Mapas das arenas e ginásios** (arte do autor): as 10 arenas e os ginásios lateral/Líder, no jogo desde a v0.4.1.
+- [x] **Mapas das arenas e ginásios** (arte do autor): as 10 arenas e os ginásios lateral/Líder, no jogo desde a v0.4.1. Na v0.9.2, o canhão do lateral azul passou a mirar o adversário: `tools/build-arenas.py` troca a boca do canhão pela traseira (o ginásio em si continua de frente para a câmera, nos dois lados, como no Clash Royale).
 - [x] **Multiplayer** (v0.7): todo efeito tem um número crescente (`id`) e vai no snapshot; o convidado desenha e toca só os novos
 
 ## 15. Arquitetura técnica
@@ -329,6 +349,7 @@ PokeRoyale/
 | **v0.8** | Cartas de construção: Centro Pokémon, Torre Pokémon, Snorlax Dormindo, Caverna Zubat, Laboratório do Mewtwo (ver [18](#18-cartas-de-construção-v08)) | ✅ Feito |
 | **v0.9** | Golpes Surf, Terremoto e Nevasca; lendários raros com entrada especial; histórico de partidas; música do menu; correção de Pokémon parado (ver [19](#19-v09)) | ✅ Feito |
 | **v0.9.1** | Amigos: adicionar pelo nome, ver quem está online e desafiar direto para um X1, sem código (ver [20](#20-amigos-e-convite-para-x1-v091)) | ✅ Feito |
+| v0.9.2 | Mais animações do SpriteCollab (golpe próprio, levar golpe, surgir, desmaiar e comemorar), golpes à distância redesenhados por tipo, Meteoro dos ginásios, ruínas, Poké Ball arremessada, arena com vida, animações da interface e Pokémon de água nadando no rio (ver [5](#5-arena) e [14.1](#141-backlog-visual-para-a-v05)) | ✅ Feito |
 
 ## 17. Contas e progressão (v0.4)
 

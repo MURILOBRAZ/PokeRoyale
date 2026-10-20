@@ -6,6 +6,8 @@ Uso: python tools/build-arenas.py [--debug pasta]
   pontes do desenho com as posições usadas pelo jogo (ARENA em js/data.js), e salva em WebP.
   Também gera miniaturas para as telas de menu.
 - Ginásios: separa os 4 desenhos (lateral e Líder, azul e vermelho) e salva cada um recortado.
+  No lateral azul, a boca do canhão vira a traseira (culatra), para ele apontar para o adversário.
+- --gyms: refaz só os ginásios.
 - --debug: salva os mapas com as linhas do jogo desenhadas por cima, para conferir o alinhamento.
 """
 
@@ -80,10 +82,50 @@ def draw_debug(img):
     return img
 
 
+def cannon_breech(sheet):
+    """Canhão do lateral azul: no desenho original a boca aponta para quem olha a tela (certo para o
+    vermelho, que fica em cima). Troca a boca pela culatra, com placa e pino, para o azul mirar para cima."""
+    px = sheet.load()
+    # Boca do canhão: mancha escura ligada ao centro dela na folha original
+    stack, bore = [(336, 860)], set()
+    while stack:
+        x, y = stack.pop()
+        if (x, y) in bore or not (300 < x < 376 and 830 < y < 892) or max(px[x, y][:3]) >= 80:
+            continue
+        bore.add((x, y))
+        stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    xs = [x for x, _ in bore]
+    ys = [y for _, y in bore]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    R = (max(xs) - min(xs)) / 2
+    # Disco de metal com luz de cima à esquerda, como no resto do canhão
+    for (x, y) in bore:
+        t = max(-1, min(1, ((x - cx) * 0.6 + (y - cy) * 0.8) / R))
+        v = int(118 - 30 * t)
+        px[x, y] = (v, v, v + 7, 255)
+    # Emenda da placa e pino (cascabel), desenhados em 4x e reduzidos para ficarem suaves
+    K = 4
+    x0, y0 = int(cx - R - 4), int(cy - R - 4)
+    size = int(2 * R + 9)
+    ov = Image.new('RGBA', (size * K, size * K), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+
+    def circle(ox, oy, r, **kw):
+        d.ellipse([(ox - r + 0.5 - x0) * K, (oy - r + 0.5 - y0) * K, (ox + r + 0.5 - x0) * K, (oy + r + 0.5 - y0) * K], **kw)
+
+    circle(cx, cy, R, outline=(55, 55, 62, 255), width=K)
+    r = R * 0.42
+    circle(cx, cy, r, fill=(96, 96, 104, 255), outline=(30, 30, 36, 255), width=int(K * 1.5))
+    circle(cx - r * 0.15, cy - r * 0.15, r * 0.62, fill=(150, 150, 158, 255))
+    circle(cx - r * 0.35, cy - r * 0.35, r * 0.25, fill=(215, 215, 222, 255))
+    sheet.alpha_composite(ov.resize((size, size), Image.LANCZOS), (x0, y0))
+
+
 def build_gyms():
     """Separa os 4 ginásios da folha pelos pedaços não transparentes de cada quadrante."""
     OUT_GYMS.mkdir(parents=True, exist_ok=True)
     sheet = Image.open(SRC / 'ginasios.png').convert('RGBA')
+    cannon_breech(sheet)
     w, h = sheet.size
     # Quadrantes da folha: lateral à esquerda, Líder à direita; vermelho em cima, azul embaixo
     parts = {
@@ -105,7 +147,8 @@ def build_gyms():
 
 if __name__ == '__main__':
     debug = sys.argv[sys.argv.index('--debug') + 1] if '--debug' in sys.argv else None
-    print('Mapas:')
-    build_maps(debug)
+    if '--gyms' not in sys.argv:
+        print('Mapas:')
+        build_maps(debug)
     print('Ginásios:')
     build_gyms()

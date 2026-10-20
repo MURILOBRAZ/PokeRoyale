@@ -11,6 +11,20 @@ const PMD_MAX_WALK_HEIGHT = 64;
 const PMD_DIR_ROWS = [2, 1, 0, 7, 6, 5, 4, 3];
 const animLength = (anim) => anim.d.reduce((a, b) => a + b, 0);
 
+// Partículas que passam pela arena, pelo tipo do ginásio (vy < 0 sobe; spin: gira; glow: brilha)
+const AMBIENT = {
+  normal: { colors: ['#9fd36b', '#6fb847', '#d9ef9a'], shape: 'leaf', vx: 0.5, vy: 0.35, size: 0.16, n: 9 },
+  rock: { colors: ['#d8c8a0', '#b9a77c'], shape: 'dust', vx: 0.6, vy: 0.1, size: 0.12, n: 10 },
+  water: { colors: ['#dff4ff', '#a8dcff'], shape: 'bubble', vx: 0.1, vy: -0.45, size: 0.13, n: 10 },
+  electric: { colors: ['#fff59d', '#ffe14d'], shape: 'spark', vx: 0.3, vy: -0.2, size: 0.12, n: 8, glow: true },
+  grass: { colors: ['#ffb7d5', '#ff8fbf', '#ffe0ee'], shape: 'leaf', vx: 0.45, vy: 0.3, size: 0.15, n: 11 },
+  poison: { colors: ['#c58ae0', '#9a5fc0'], shape: 'bubble', vx: 0.15, vy: -0.3, size: 0.15, n: 9 },
+  psychic: { colors: ['#ffc2e0', '#e7b0ff'], shape: 'spark', vx: 0.1, vy: -0.25, size: 0.13, n: 10, glow: true },
+  fire: { colors: ['#ffb347', '#ff7a1a', '#ffe08a'], shape: 'ember', vx: 0.2, vy: -0.6, size: 0.09, n: 12, glow: true },
+  ground: { colors: ['#d2b48c', '#b89870'], shape: 'dust', vx: 0.7, vy: 0.05, size: 0.13, n: 10 },
+  ice: { colors: ['#ffffff', '#cdeeff'], shape: 'snow', vx: 0.25, vy: 0.4, size: 0.1, n: 14 },
+};
+
 const imageCache = {};
 function getImage(url) {
   let entry = imageCache[url];
@@ -37,12 +51,104 @@ class Renderer {
   setArena(id) {
     const arena = ARENAS[id] || ARENAS[0];
     this.ground = arena.ground;
+    this.ambient = AMBIENT[arena.types[0]] || AMBIENT.normal;
+    this.river = arena.river;
     this.mapUrl = arena.map ? arenaMapUrl(arena) : null;
     // Mapa completo (com as bordas decorativas) para preencher a tela além da arena
     this.mapArt = arena.map && typeof ARENA_ART !== 'undefined' ? ARENA_ART[arena.map] : null;
     this.mapFullUrl = this.mapArt ? `assets/arenas/${arena.map}-full.webp` : null;
     if (this.mapUrl) getImage(this.mapUrl); // começa a carregar já
     if (this.mapFullUrl) getImage(this.mapFullUrl);
+  }
+
+  // Vida na arena por cima do mapa: brilhos correndo no rio e partículas do tema do ginásio passando
+  _drawAmbient() {
+    const ctx = this.ctx;
+    const s = this.scale;
+    const now = performance.now() / 1000;
+    const hash = (n) => {
+      const v = Math.sin(n * 12.9898) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    ctx.save();
+    // Rio: na água, reflexos que aparecem, correm um pouco e somem; na lava e no veneno, bolhas
+    // estourando (nunca por cima das pontes). Abismos, cristais e cânions ficam como no desenho.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, s * 0.06);
+    const bubbles = this.river === 'lava' || this.river === 'poison';
+    for (let i = 0; i < (this.river ? 16 : 0); i++) {
+      const cycle = 2.5 + hash(i) * 2;
+      const k = ((now + hash(i + 1) * cycle) % cycle) / cycle;
+      const round = Math.floor((now + hash(i + 1) * cycle) / cycle);
+      const wx = (hash(i * 7 + round) * ARENA.W + k * 1.2) % ARENA.W;
+      if (ARENA.BRIDGES.some((b) => Math.abs(wx - b) < ARENA.BRIDGE_HALF + 0.3)) continue;
+      const wy = ARENA.RIVER_TOP + 0.4 + hash(i * 3 + round) * (ARENA.RIVER_BOTTOM - ARENA.RIVER_TOP - 0.8);
+      const [x, y] = this.w2s(wx, wy);
+      if (bubbles) {
+        // Bolha cresce e estoura
+        ctx.globalAlpha = 0.6 * (k < 0.85 ? 1 : (1 - k) / 0.15);
+        ctx.strokeStyle = this.river === 'lava' ? '#ffb13b' : '#d58ae8';
+        ctx.lineWidth = Math.max(1, s * 0.05);
+        ctx.beginPath();
+        ctx.arc(x, y, s * (0.08 + k * 0.18), 0, Math.PI * 2);
+        ctx.stroke();
+        continue;
+      }
+      ctx.globalAlpha = 0.45 * Math.sin(k * Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.3, y);
+      ctx.lineTo(x + s * 0.3, y);
+      ctx.stroke();
+      if (i % 4 === 0) {
+        ctx.fillStyle = '#ffffff';
+        this._star(x, y - s * 0.1, s * 0.12 * Math.sin(k * Math.PI));
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // Partículas do tema atravessando a arena devagar
+    const amb = this.ambient;
+    if (amb) {
+      for (let i = 0; i < amb.n; i++) {
+        const speed = 0.6 + hash(i + 40) * 0.6;
+        const px = (((hash(i + 10) * ARENA.W + now * amb.vx * speed) % ARENA.W) + ARENA.W) % ARENA.W;
+        const py = (((hash(i + 20) * ARENA.H + now * amb.vy * speed * 2) % ARENA.H) + ARENA.H) % ARENA.H;
+        const [x, y] = this.w2s(px + Math.sin(now * 0.8 + i) * 0.4, py);
+        const r = s * amb.size * (0.7 + hash(i + 30) * 0.6);
+        ctx.globalAlpha = 0.55 + 0.25 * Math.sin(now * 2 + i);
+        ctx.fillStyle = amb.colors[i % amb.colors.length];
+        if (amb.glow) ctx.globalCompositeOperation = 'lighter';
+        switch (amb.shape) {
+          case 'leaf':
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(now * (1 + hash(i) * 2) + i);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r * 1.4, r * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            break;
+          case 'bubble':
+            ctx.strokeStyle = amb.colors[i % amb.colors.length];
+            ctx.lineWidth = Math.max(1, s * 0.03);
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.stroke();
+            break;
+          case 'spark':
+            this._star(x, y, r * (1 + 0.5 * Math.sin(now * 5 + i)));
+            break;
+          default:
+            // dust, ember, snow: bolinha
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+    ctx.restore();
   }
 
   // Retângulo do mundo -> tela (cuida da arena invertida do jogador de cima)
@@ -112,6 +218,7 @@ class Renderer {
       ctx.translate(shx, shy);
     }
     this._drawGround();
+    this._drawAmbient();
     if (ui.selected) this._drawDeployZone(game, ui);
 
     for (const s of game.spells) this._drawPendingSpell(s);
@@ -264,16 +371,7 @@ class Renderer {
     ctx.fill();
 
     if (t.dead) {
-      ctx.fillStyle = '#7a7a7a';
-      ctx.beginPath();
-      ctx.arc(x, y + r * 0.3, r * 0.75, Math.PI, 0);
-      ctx.fill();
-      ctx.fillStyle = '#5b5b5b';
-      for (let i = 0; i < 4; i++) {
-        ctx.beginPath();
-        ctx.arc(x - r * 0.5 + i * r * 0.35, y + r * 0.35, r * 0.18, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      this._drawRuins(t, x, y, r);
       return;
     }
 
@@ -297,9 +395,32 @@ class Renderer {
         ctx.shadowColor = skin.glow;
         ctx.shadowBlur = this.scale * 1.6;
       }
-      ctx.drawImage(sprite, x - w / 2, top, w, h);
-      if (skin && skin.glow) ctx.drawImage(sprite, x - w / 2, top, w, h); // 2ª passada reforça o brilho da skin
+      // Recuo ao atirar: o ginásio achata um pouco, apoiado na base
+      const since = game.time - (t.attackT ?? -99);
+      const kick = Math.max(0, 1 - since / 0.15);
+      const kw = w * (1 + 0.03 * kick);
+      const kh = h * (1 - 0.05 * kick);
+      ctx.drawImage(sprite, x - kw / 2, bottom - kh, kw, kh);
+      if (skin && skin.glow) ctx.drawImage(sprite, x - kw / 2, bottom - kh, kw, kh); // 2ª passada reforça o brilho da skin
       ctx.restore();
+      // Clarão de estrelas na boca do canhão (no Líder, na coroa)
+      if (since >= 0 && since < 0.14) {
+        const f = since / 0.14;
+        const fy = top + h * (t.kind === 'king' ? 0.1 : mine ? 0.12 : 0.25);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 1 - f;
+        ctx.fillStyle = '#ffe98a';
+        ctx.beginPath();
+        ctx.arc(x, fy, this.scale * (0.35 + f * 0.5), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2 + (t.id || 0);
+          this._star(x + Math.cos(a) * this.scale * 0.7 * f, fy + Math.sin(a) * this.scale * 0.5 * f, this.scale * 0.16 * (1 - f * 0.5));
+        }
+        ctx.restore();
+      }
     } else {
       this._drawPokeballTower(x, y, r, t, color);
     }
@@ -327,6 +448,72 @@ class Renderer {
     const txt = String(Math.ceil(t.hp));
     ctx.strokeText(txt, x, by + this.scale * 0.22);
     ctx.fillText(txt, x, by + this.scale * 0.22);
+  }
+
+  // Ginásio destruído: sobra a base do desenho, quebrada e escurecida, com pedras em volta e fumaça subindo
+  _drawRuins(t, x, y, r) {
+    const ctx = this.ctx;
+    const s = this.scale;
+    const now = performance.now() / 1000;
+    const mine = t.side === this.viewSide;
+    const sprite = getImage(`assets/ginasios/${t.kind === 'king' ? 'lider' : 'lateral'}-${mine ? 'azul' : 'vermelho'}.webp`);
+    const rnd = (n) => {
+      const v = Math.sin(t.id * 12.9898 + n * 78.233) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    const bottom = y + r * 0.85;
+    if (sprite) {
+      const w = r * (t.kind === 'king' ? 2.15 : 2.3);
+      const h = (w * sprite.height) / sprite.width;
+      const keep = 0.4; // fração de baixo que continua de pé
+      ctx.save();
+      // Borda de cima irregular: só o que fica abaixo da linha quebrada aparece
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2, bottom);
+      for (let i = 0; i <= 8; i++) {
+        ctx.lineTo(x - w / 2 + (w * i) / 8, bottom - h * keep * (0.7 + rnd(i) * 0.45));
+      }
+      ctx.lineTo(x + w / 2, bottom);
+      ctx.closePath();
+      ctx.clip();
+      ctx.filter = 'grayscale(0.6) brightness(0.55)';
+      ctx.drawImage(sprite, x - w / 2, bottom - h, w, h);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#7a7a7a';
+      ctx.beginPath();
+      ctx.arc(x, y + r * 0.3, r * 0.75, Math.PI, 0);
+      ctx.fill();
+    }
+    // Pedras caídas em volta
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI * (0.05 + rnd(i + 10) * 0.9);
+      const d = r * (0.9 + rnd(i + 20) * 0.5);
+      const px = x + Math.cos(a) * d * (i % 2 ? 1 : -1);
+      const py = bottom - r * 0.15 + rnd(i + 30) * r * 0.35;
+      const pr = s * (0.14 + rnd(i + 40) * 0.16);
+      ctx.fillStyle = i % 3 ? '#8d8676' : '#6d675b';
+      ctx.strokeStyle = '#3e3a32';
+      ctx.lineWidth = Math.max(1, s * 0.04);
+      ctx.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const ka = (k / 5) * Math.PI * 2 + rnd(i + k);
+        ctx.lineTo(px + Math.cos(ka) * pr, py + Math.sin(ka) * pr * 0.75);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Fumaça subindo devagar
+    ctx.fillStyle = '#c9c4ba';
+    for (let i = 0; i < 4; i++) {
+      const k = (now * 0.25 + i / 4 + rnd(i + 50)) % 1;
+      ctx.globalAlpha = 0.35 * Math.sin(k * Math.PI);
+      ctx.beginPath();
+      ctx.arc(x + (rnd(i + 60) - 0.5) * r + Math.sin(now + i) * s * 0.3, bottom - r * 0.6 - k * s * 2.6, s * (0.3 + k * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Reserva enquanto o desenho do ginásio carrega: Pokébola na cor do time
@@ -511,6 +698,8 @@ class Renderer {
 
   _drawUnit(u, game) {
     if (u.isBuilding) return this._drawBuilding(u, game);
+    // Enquanto a Poké Ball voa (começo do efeito 'spawn'), o Pokémon ainda não apareceu
+    if (u.deploy > MATCH.DEPLOY_TIME - 0.3) return;
     const ctx = this.ctx;
     const s = this.scale;
     const [x, y] = this.w2s(u.x, u.y);
@@ -529,14 +718,18 @@ class Renderer {
       ctx.fill();
       ctx.restore();
     }
-    // Anel do time no chão
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.ellipse(x, y + r * 0.5, r * 1.1, r * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(2, s * 0.08);
-    ctx.stroke();
+    // Anel do time no chão (nadando: ondas na água em volta, na cor do time, e rastro atrás)
+    if (u.swimming) {
+      this._drawSwimWater(u, x, y, r, color, now);
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.5, r * 1.1, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(2, s * 0.08);
+      ctx.stroke();
+    }
 
     ctx.save();
     if (u.deploy > 0) ctx.globalAlpha = 0.5;
@@ -546,11 +739,18 @@ class Renderer {
     const frame = this._unitFrame(u, game);
     const fallback = !frame && getImage(spriteFront(u.def.dex));
     let top;
+    // Nadando: afunda um pouco e a parte de baixo some dentro d'água (linha d'água balançando)
+    const sink = u.swimming ? s * 0.22 : 0;
+    if (u.swimming) {
+      ctx.beginPath();
+      ctx.rect(x - s * 4, y - s * 6, s * 8, s * 6 + r * 0.35 + Math.sin(now * 5 + u.id) * s * 0.05);
+      ctx.clip();
+    }
     if (frame) {
       // O centro do quadro é o ponto no chão onde o Pokémon está
       const dw = frame.w * frame.k;
       const dh = frame.h * frame.k;
-      ctx.drawImage(frame.img, frame.sx, frame.sy, frame.w, frame.h, x - dw / 2, y - dh / 2 - lift, dw, dh);
+      ctx.drawImage(frame.img, frame.sx, frame.sy, frame.w, frame.h, x - dw / 2, y - dh / 2 - lift + sink, dw, dh);
       top = y - frame.walkH * frame.k * 0.5 - lift; // estável: não pula com a animação de ataque
     } else if (fallback) {
       // Folha animada ainda carregando: usa o sprite estático da PokéAPI
@@ -586,31 +786,94 @@ class Renderer {
     if (u.stun > 0) this._icon('dizzy', x + r, top + s * 0.4, s * 0.5);
   }
 
-  // Quadro atual da animação: ataque (logo após atacar), andar (em movimento) ou parado
+  // Água em volta de quem está nadando: rastro em V atrás, ondas saindo e espuma na linha d'água
+  _drawSwimWater(u, x, y, r, color, now) {
+    const ctx = this.ctx;
+    const s = this.scale;
+    const wy = y + r * 0.35;
+    const a = (u.face ?? 0) + (this.viewSide === 1 ? Math.PI : 0);
+    ctx.save();
+    ctx.lineCap = 'round';
+    if (u.moving) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = Math.max(1, s * 0.06);
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(x - Math.cos(a) * r * 0.5, wy - Math.sin(a) * r * 0.25);
+        const bx = x - Math.cos(a) * s * 1.4 + Math.cos(a + (side * Math.PI) / 2) * s * 0.6;
+        const by = wy - Math.sin(a) * s * 0.7 + Math.sin(a + (side * Math.PI) / 2) * s * 0.3;
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+      }
+    }
+    for (let i = 0; i < 2; i++) {
+      const k = (now * 0.9 + i * 0.5 + u.id * 0.37) % 1;
+      ctx.globalAlpha = 0.6 * (1 - k);
+      ctx.strokeStyle = i === 0 ? color : '#ffffff';
+      ctx.lineWidth = Math.max(1.5, s * 0.07);
+      ctx.beginPath();
+      ctx.ellipse(x, wy, r * (0.9 + k * 0.9), r * (0.35 + k * 0.35), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 5; i++) {
+      const px = x + (i - 2) * r * 0.42 + Math.sin(now * 4 + i + u.id) * s * 0.05;
+      ctx.beginPath();
+      ctx.arc(px, wy + Math.sin(now * 6 + i * 1.7) * s * 0.03, s * (0.06 + 0.03 * Math.sin(now * 5 + i)), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Quadro atual da animação, por prioridade: surgindo (Charge; lendário faz Pose), ataque (normal ou
+  // golpe próprio), vitória (Pose), levou golpe (Hurt), acabou de evoluir (Pose), voo, andar ou parado
   _unitFrame(u, game) {
     const sp = SPRITES[u.def.dex];
     if (!sp) return null;
-    const atk = u.def.range > 1.6 ? sp.shoot || sp.attack : sp.attack;
-    const since = (game.time - (u.attackT ?? -99)) * 60; // em quadros de 60 fps, como no SpriteCollab
-    let anim;
-    let tick;
-    if (!(u.deploy > 0) && since >= 0 && since < animLength(atk)) {
-      anim = atk;
-      tick = since;
-    } else if (u.air) {
-      // Voador não "anda" no ar: usa a animação de voo (Hover/FlapAround/Float) ou, sem ela, a parada
-      anim = sp.fly || sp.idle;
-      tick = ((performance.now() / 1000) * 60 + u.id * 13) % animLength(anim);
-    } else {
-      anim = u.moving && !(u.deploy > 0) && !(u.stun > 0) ? sp.walk : sp.idle;
-      tick = ((performance.now() / 1000) * 60 + u.id * 13) % animLength(anim);
+    this._preloadSheets(u.def.dex, sp);
+    const now = (performance.now() / 1000) * 60 + u.id * 13; // em quadros de 60 fps, como no SpriteCollab
+    const since = (t) => (game.time - (t ?? -99)) * 60;
+    const atk = unitAttackAnim(u.def, u.attackAlt);
+    const base = u.air ? sp.fly || sp.idle : u.moving && !(u.deploy > 0) && !(u.stun > 0) ? sp.walk : sp.idle;
+    let anim = base;
+    let tick = now % animLength(base);
+    const play = (a, t) => {
+      anim = a;
+      tick = t;
+    };
+    if (u.deploy > 0) {
+      const a = (u.def.legendary && sp.pose) || sp.charge;
+      if (a) play(a, now % animLength(a));
+    } else if (atk && since(u.attackT) >= 0 && since(u.attackT) < animLength(atk)) {
+      play(atk, since(u.attackT));
+    } else if (game.over && game.winner === u.side && sp.pose) {
+      play(sp.pose, now % animLength(sp.pose));
+    } else if (sp.hurt && since(u.hurtT) >= 0 && since(u.hurtT) < animLength(sp.hurt)) {
+      play(sp.hurt, since(u.hurtT));
+    } else if (sp.pose && since(u.poseT) >= 0 && since(u.poseT) < animLength(sp.pose)) {
+      play(sp.pose, since(u.poseT));
     }
+    const angle = this._screenAngle(u);
+    // Folha nova ainda carregando: segue com a animação de andar/parada em vez de piscar
+    return this._animFrame(u.def.dex, anim, tick, angle, sp.walk.h) || (anim !== base && this._animFrame(u.def.dex, base, now % animLength(base), angle, sp.walk.h));
+  }
+
+  _animFrame(dex, anim, tick, angle, walkH) {
     let i = 0;
     while (i < anim.d.length - 1 && tick >= anim.d[i]) {
       tick -= anim.d[i];
       i++;
     }
-    return this._sheetFrame(u.def.dex, anim, i, this._screenAngle(u), sp.walk.h);
+    return this._sheetFrame(dex, anim, i, angle, walkH);
+  }
+
+  // Começa a baixar todas as folhas de um Pokémon quando ele aparece, para as animações extras
+  // (golpe próprio, Hurt, Pose, Faint) já estarem prontas quando forem usadas
+  _preloadSheets(dex, sp) {
+    if (sp.preloaded) return;
+    sp.preloaded = true;
+    for (const a of Object.values(sp)) if (a && a.file) getImage(animSheetUrl(dex, a));
   }
 
   _screenAngle(u) {
@@ -734,145 +997,393 @@ class Renderer {
     ctx.stroke();
   }
 
-  // Golpe à distância: cada tipo tem um formato (chama, gota, raio, folha, pedra, cristal...)
-  _drawProjectile(p) {
+  // Estrela de cinco pontas (Meteoro dos ginásios)
+  _star5(cx, cy, size, rot) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const rr = k % 2 ? size * 0.45 : size;
+      const a = rot - Math.PI / 2 + (k * Math.PI) / 5;
+      ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+  }
+
+  // Tiro dos ginásios: Meteoro (Swift), estrela dourada girando com rastro de brilhos.
+  // O do Líder é maior e leva duas estrelinhas em órbita.
+  _drawSwift(p, x, y) {
     const ctx = this.ctx;
     const s = this.scale;
+    const now = performance.now() / 1000;
+    const [ox, oy] = this.w2s(p.sx ?? p.x, p.sy ?? p.y);
+    const travel = Math.hypot(x - ox, y - oy);
+    const angle = travel > 2 ? Math.atan2(y - oy, x - ox) : 0;
+    const size = s * (p.king ? 0.42 : 0.32);
+    const L = Math.min(travel, s * 1.4);
+    ctx.save();
+    ctx.lineJoin = 'round';
+    // Rastro: brilhos ficando para trás
+    ctx.fillStyle = '#fff3a0';
+    for (let i = 1; i <= 5; i++) {
+      const t = (i - ((now * 6) % 1)) / 5;
+      if (t <= 0) continue;
+      ctx.globalAlpha = 0.8 * (1 - t);
+      const side = Math.sin((p.id || 0) * 3 + i * 2.3) * s * 0.18;
+      this._star(x - Math.cos(angle) * L * t - Math.sin(angle) * side, y - Math.sin(angle) * L * t + Math.cos(angle) * side, size * 0.45 * (1 - t * 0.5));
+    }
+    ctx.globalAlpha = 0.35;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = '#ffd84a';
+    ctx.beginPath();
+    ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    const rot = now * 9 + (p.id || 0);
+    this._star5(x, y, size, rot);
+    ctx.fillStyle = '#ffd84a';
+    ctx.fill();
+    ctx.strokeStyle = '#b8860b';
+    ctx.lineWidth = Math.max(1, s * 0.05);
+    ctx.stroke();
+    this._star5(x, y, size * 0.45, rot);
+    ctx.fillStyle = '#fffbe0';
+    ctx.fill();
+    if (p.king) {
+      for (let i = 0; i < 2; i++) {
+        const a = now * 7 + i * Math.PI;
+        const mx = x + Math.cos(a) * size * 1.5;
+        const my = y + Math.sin(a) * size * 1.5;
+        this._star5(mx, my, size * 0.42, -rot);
+        ctx.fillStyle = '#ffe98a';
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Golpe à distância: cada tipo tem um formato próprio. O desenho é feito com a ponta do golpe na origem,
+  // apontando para +x; o rastro vai para trás, até no máximo onde o golpe saiu (sx, sy).
+  //   elétrico: raio em zigue-zague desde o atacante · fogo/dragão: rajada de chamas · água: jato com bolhas
+  //   planta: folhas girando · gelo: cristal com neve · pedra/terra: rocha com poeira · psíquico/fada: ondas
+  //   voador: lâmina de ar · veneno: gosma pingando · fantasma/sombrio: bola sombria · inseto/aço: ferrão
+  //   normal/lutador: esfera de energia com linhas de velocidade
+  _drawProjectile(p) {
+    const ctx = this.ctx;
+    let s = this.scale;
     const [x, y] = this.w2s(p.x, p.y);
     if (p.tower) {
-      ctx.fillStyle = '#fff4c2';
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(x, y, s * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      this._drawSwift(p, x, y);
       return;
     }
-    const color = TYPE_COLORS[p.type] || '#ffffff';
+    s *= 1.6; // golpes bem maiores que o tiro dos ginásios, para o formato de cada tipo aparecer
+    const [ox, oy] = this.w2s(p.sx ?? p.x, p.sy ?? p.y);
+    const travel = Math.hypot(x - ox, y - oy);
+    const angle = travel > 2 ? Math.atan2(y - oy, x - ox) : (p.a || 0) + (this.viewSide === 1 ? Math.PI : 0);
     const now = performance.now() / 1000;
+    const seed = (p.id || 0) * 7.13;
+    const tail = (max) => Math.min(travel, s * max);
+    const color = TYPE_COLORS[p.type] || '#ffffff';
+    const dot = (px, py, r) => {
+      ctx.beginPath();
+      ctx.arc(px, py, Math.max(0.5, r), 0, Math.PI * 2);
+      ctx.fill();
+    };
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate((p.a || 0) + (this.viewSide === 1 ? Math.PI : 0));
-    // Rastro
-    ctx.fillStyle = color;
-    for (let i = 1; i <= 3; i++) {
-      ctx.globalAlpha = 0.42 - i * 0.12;
-      ctx.beginPath();
-      ctx.arc(-i * s * 0.22, 0, s * (0.17 - i * 0.03), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    ctx.rotate(angle);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     switch (p.type) {
-      case 'fire':
-      case 'dragon': {
-        const f = 1 + Math.sin(now * 40) * 0.12;
-        ctx.fillStyle = p.type === 'fire' ? '#ff6a1a' : '#7a3cff';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, s * 0.34 * f, s * 0.2 * f, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = p.type === 'fire' ? '#ffd54a' : '#d6b8ff';
-        ctx.beginPath();
-        ctx.ellipse(s * 0.06, 0, s * 0.17, s * 0.1, 0, 0, Math.PI * 2);
-        ctx.fill();
+      case 'electric': {
+        // Raio inteiro, do atacante até a ponta, tremendo a cada quadro
+        const L = travel;
+        const parts = Math.max(3, Math.round(L / (s * 0.5)));
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = 'rgba(255, 220, 60, 0.45)';
+        ctx.lineWidth = s * 0.34;
+        this._zigzag(-L, 0, 0, 0, s * 0.22, parts);
+        ctx.strokeStyle = '#fff7b0';
+        ctx.lineWidth = s * 0.11;
+        this._zigzag(-L, 0, 0, 0, s * 0.22, parts);
+        // Galhos saindo do raio
+        ctx.lineWidth = s * 0.05;
+        for (let i = 0; i < 2; i++) {
+          const bx = -Math.random() * L * 0.8;
+          const side = Math.random() < 0.5 ? -1 : 1;
+          this._zigzag(bx, 0, bx - s * 0.4, side * s * (0.3 + Math.random() * 0.3), s * 0.1, 3);
+        }
+        ctx.fillStyle = 'rgba(255, 240, 140, 0.55)';
+        dot(0, 0, s * (0.38 + Math.random() * 0.1));
+        ctx.fillStyle = '#ffffff';
+        dot(0, 0, s * 0.16);
         break;
       }
-      case 'electric':
-        ctx.strokeStyle = '#fff59d';
-        ctx.lineWidth = s * 0.08;
-        ctx.lineCap = 'round';
-        this._zigzag(-s * 0.4, 0, s * 0.3, 0, s * 0.15, 4);
-        ctx.fillStyle = 'rgba(255, 240, 120, 0.5)';
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.22, 0, Math.PI * 2);
-        ctx.fill();
+      case 'fire':
+      case 'dragon': {
+        // Rajada: bolhas de chama que diminuem e esfriam para trás, com fagulhas
+        const L = tail(1.6);
+        const pal = p.type === 'fire' ? ['#fff3a0', '#ffc23a', '#ff7a1a', '#d8331a'] : ['#f0e0ff', '#b98aff', '#7a3cff', '#3d1a99'];
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 11; i >= 0; i--) {
+          const t = i / 11;
+          const wob = Math.sin(now * 30 + i * 1.7 + seed) * s * 0.08 * t;
+          ctx.globalAlpha = 0.85 - t * 0.6;
+          ctx.fillStyle = pal[Math.min(3, Math.floor(t * 4))];
+          dot(-t * L, wob, s * (0.32 - t * 0.12) * (1 + Math.sin(now * 40 + i) * 0.12));
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = pal[0];
+        dot(s * 0.04, 0, s * 0.17);
+        ctx.fillStyle = pal[1];
+        for (let i = 0; i < 4; i++) {
+          const t = (now * 2.5 + i / 4 + seed) % 1;
+          dot(-t * L * 1.1, Math.sin(seed + i * 2.4) * s * 0.35 * t, s * 0.05 * (1 - t));
+        }
         break;
-      case 'grass':
-        ctx.rotate(now * 14);
-        ctx.fillStyle = '#5cc04a';
+      }
+      case 'water': {
+        // Jato contínuo afinando para trás, com brilho e bolhas soltas
+        const L = tail(2.2);
+        const grad = ctx.createLinearGradient(-L, 0, 0, 0);
+        grad.addColorStop(0, 'rgba(79, 140, 255, 0)');
+        grad.addColorStop(0.6, 'rgba(79, 140, 255, 0.75)');
+        grad.addColorStop(1, '#8fc0ff');
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.ellipse(0, 0, s * 0.24, s * 0.1, 0, 0, Math.PI * 2);
+        ctx.moveTo(-L, 0);
+        for (let i = 0; i <= 8; i++) {
+          const t = i / 8;
+          ctx.lineTo(-L + t * L, -s * (0.05 + 0.2 * t) - Math.sin(now * 25 + i) * s * 0.025);
+        }
+        ctx.arc(0, 0, s * 0.25, -Math.PI / 2, Math.PI / 2);
+        for (let i = 8; i >= 0; i--) {
+          const t = i / 8;
+          ctx.lineTo(-L + t * L, s * (0.05 + 0.2 * t) + Math.sin(now * 25 + i + 2) * s * 0.025);
+        }
         ctx.fill();
-        ctx.strokeStyle = '#2f7a22';
-        ctx.lineWidth = Math.max(1, s * 0.03);
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = s * 0.05;
         ctx.beginPath();
-        ctx.moveTo(-s * 0.22, 0);
-        ctx.lineTo(s * 0.22, 0);
+        ctx.moveTo(-L * 0.6, -s * 0.07);
+        ctx.lineTo(s * 0.05, -s * 0.09);
         ctx.stroke();
-        break;
-      case 'ice':
-      case 'bug':
-      case 'steel':
-        ctx.fillStyle = p.type === 'ice' ? '#bff4ff' : color;
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = 'rgba(220, 240, 255, 0.9)';
         ctx.lineWidth = Math.max(1, s * 0.03);
+        for (let i = 0; i < 4; i++) {
+          const t = (now * 1.8 + i / 4 + seed) % 1;
+          ctx.beginPath();
+          ctx.arc(-t * L, Math.sin(seed + i * 1.9) * s * 0.32, s * (0.05 + 0.05 * t), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'grass': {
+        // Folha Navalha: três folhas girando em volta da trajetória
+        const L = tail(1);
+        for (let i = 0; i < 3; i++) {
+          const ph = now * 9 + (i * Math.PI * 2) / 3 + seed;
+          ctx.save();
+          ctx.translate(-i * L * 0.33, Math.sin(ph) * s * 0.3);
+          ctx.rotate(now * 16 + i * 2);
+          ctx.globalAlpha = 1 - i * 0.2;
+          ctx.fillStyle = i === 0 ? '#7ddc5a' : '#5cc04a';
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.26, 0);
+          ctx.quadraticCurveTo(0, -s * 0.18, s * 0.26, 0);
+          ctx.quadraticCurveTo(0, s * 0.18, -s * 0.26, 0);
+          ctx.fill();
+          ctx.strokeStyle = '#2f7a22';
+          ctx.lineWidth = Math.max(1, s * 0.03);
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.22, 0);
+          ctx.lineTo(s * 0.22, 0);
+          ctx.stroke();
+          ctx.restore();
+        }
+        break;
+      }
+      case 'ice': {
+        // Raio de Gelo: cristal brilhante com rastro de flocos
+        const L = tail(1.4);
+        ctx.strokeStyle = 'rgba(191, 244, 255, 0.45)';
+        ctx.lineWidth = s * 0.16;
         ctx.beginPath();
-        ctx.moveTo(s * 0.32, 0);
-        ctx.lineTo(0, s * 0.09);
-        ctx.lineTo(-s * 0.2, 0);
-        ctx.lineTo(0, -s * 0.09);
+        ctx.moveTo(-L, 0);
+        ctx.lineTo(0, 0);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 6; i++) {
+          const t = (i + ((now * 3) % 1)) / 6;
+          this._star(-t * L, Math.sin(seed + i * 2.1) * s * 0.22, s * 0.09 * (1 - t * 0.6));
+        }
+        ctx.fillStyle = '#bff4ff';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1, s * 0.04);
+        ctx.beginPath();
+        ctx.moveTo(s * 0.42, 0);
+        ctx.lineTo(0, s * 0.14);
+        ctx.lineTo(-s * 0.28, 0);
+        ctx.lineTo(0, -s * 0.14);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         break;
+      }
+      case 'bug':
+      case 'steel': {
+        // Ferrão / aço: ponta metálica com linhas de velocidade
+        const L = tail(1.1);
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = Math.max(1, s * 0.04);
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.2, i * s * 0.12);
+          ctx.lineTo(-L, i * s * 0.12);
+          ctx.stroke();
+        }
+        ctx.fillStyle = p.type === 'bug' ? '#c8d84a' : '#d8d8ea';
+        ctx.strokeStyle = p.type === 'bug' ? '#5a6a10' : '#6a6a80';
+        ctx.beginPath();
+        ctx.moveTo(s * 0.4, 0);
+        ctx.lineTo(-s * 0.2, s * 0.13);
+        ctx.lineTo(-s * 0.12, 0);
+        ctx.lineTo(-s * 0.2, -s * 0.13);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
       case 'rock':
-      case 'ground':
+      case 'ground': {
+        // Pedra girando com nuvem de poeira e pedrinhas atrás
+        const L = tail(1.2);
+        ctx.fillStyle = p.type === 'rock' ? 'rgba(200, 185, 150, 0.4)' : 'rgba(210, 170, 110, 0.45)';
+        for (let i = 1; i <= 4; i++) dot(-(i / 4) * L, Math.sin(seed + i) * s * 0.1, s * (0.12 + i * 0.05));
+        ctx.fillStyle = '#6b5a3a';
+        for (let i = 0; i < 3; i++) {
+          const t = (now * 2 + i / 3 + seed) % 1;
+          ctx.fillRect(-t * L - s * 0.05, Math.sin(seed * 3 + i * 2) * s * 0.25 - s * 0.05, s * 0.1, s * 0.1);
+        }
         ctx.rotate(now * 9);
         ctx.fillStyle = p.type === 'rock' ? '#9c8a5a' : '#b98c4a';
         ctx.strokeStyle = '#4a3b22';
-        ctx.lineWidth = Math.max(1, s * 0.04);
+        ctx.lineWidth = Math.max(1, s * 0.05);
         ctx.beginPath();
         [1, 0.75, 1.05, 0.8, 0.95, 0.7].forEach((r, i) => {
           const a = (i * Math.PI) / 3;
-          ctx.lineTo(Math.cos(a) * s * 0.21 * r, Math.sin(a) * s * 0.21 * r);
+          ctx.lineTo(Math.cos(a) * s * 0.3 * r, Math.sin(a) * s * 0.3 * r);
         });
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        dot(-s * 0.07, -s * 0.07, s * 0.08);
         break;
+      }
       case 'psychic':
-      case 'fairy':
+      case 'fairy': {
+        // Ondas em anel saindo da ponta e ficando para trás
+        const L = tail(1.6);
+        ctx.globalCompositeOperation = 'lighter';
         ctx.strokeStyle = color;
         ctx.lineWidth = s * 0.07;
-        ctx.beginPath();
-        ctx.arc(0, 0, s * (0.2 + Math.sin(now * 22) * 0.06), 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#ffffff';
-        this._star(0, 0, s * 0.12);
-        break;
-      case 'flying':
-        ctx.strokeStyle = '#eef3ff';
-        ctx.lineWidth = s * 0.08;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(-s * 0.1, 0, s * 0.26, -1.1, 1.1);
-        ctx.stroke();
-        break;
-      case 'water':
-        ctx.fillStyle = '#4f8cff';
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.19, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.beginPath();
-        ctx.arc(s * 0.05, -s * 0.06, s * 0.06, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-      default: {
-        // Veneno, fantasma, sombrio, normal, lutador: esfera com brilho
+        for (let i = 0; i < 4; i++) {
+          const t = (now * 2.2 + i / 4) % 1;
+          ctx.globalAlpha = 1 - t;
+          ctx.beginPath();
+          ctx.ellipse(-t * L, 0, s * (0.1 + t * 0.12), s * (0.22 + t * 0.25), 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 0.5;
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.35;
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.3, 0, Math.PI * 2);
-        ctx.fill();
+        dot(0, 0, s * 0.3);
         ctx.globalAlpha = 1;
+        ctx.fillStyle = '#ffffff';
+        this._star(0, 0, s * 0.16 * (1 + Math.sin(now * 20) * 0.15));
+        break;
+      }
+      case 'flying': {
+        // Lâmina de ar: meia-lua branca com rastros de vento
+        const L = tail(1.2);
+        ctx.strokeStyle = 'rgba(230, 240, 255, 0.55)';
+        ctx.lineWidth = Math.max(1, s * 0.04);
+        for (let i = -1; i <= 1; i += 2) {
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.1, i * s * 0.28);
+          ctx.quadraticCurveTo(-L * 0.5, i * s * (0.3 + Math.sin(now * 12 + i) * 0.08), -L, i * s * 0.12);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#f4f8ff';
         ctx.beginPath();
-        ctx.arc(0, 0, s * 0.17, 0, Math.PI * 2);
+        ctx.arc(-s * 0.12, 0, s * 0.38, -1.2, 1.2);
+        ctx.arc(-s * 0.3, 0, s * 0.34, 1.0, -1.0, true);
+        ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        break;
+      }
+      case 'poison': {
+        // Gosma roxa tremendo, pingando gotas
+        const L = tail(1.1);
+        ctx.fillStyle = 'rgba(160, 64, 160, 0.55)';
+        for (let i = 0; i < 4; i++) {
+          const t = (now * 2.4 + i / 4 + seed) % 1;
+          dot(-t * L, Math.sin(seed + i * 2.7) * s * 0.18 + t * s * 0.1, s * 0.09 * (1 - t * 0.5));
+        }
+        const w = 1 + Math.sin(now * 18 + seed) * 0.12;
+        ctx.fillStyle = '#9a3fb0';
         ctx.beginPath();
-        ctx.arc(s * 0.04, -s * 0.05, s * 0.05, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, s * 0.3 * w, (s * 0.24) / w, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = '#d58ae8';
+        dot(s * 0.07, -s * 0.07, s * 0.08);
+        dot(-s * 0.1, s * 0.06, s * 0.05);
+        break;
+      }
+      case 'ghost':
+      case 'dark': {
+        // Bola Sombria: esfera escura girando, com fiapos de sombra atrás
+        const L = tail(1.2);
+        const ghost = p.type === 'ghost';
+        ctx.strokeStyle = ghost ? 'rgba(120, 80, 170, 0.6)' : 'rgba(60, 40, 40, 0.6)';
+        ctx.lineWidth = s * 0.08;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.15, 0);
+          ctx.quadraticCurveTo(-L * 0.5, Math.sin(now * 10 + i * 2.1 + seed) * s * 0.35, -L, Math.sin(now * 7 + i) * s * 0.2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = ghost ? 'rgba(170, 120, 230, 0.4)' : 'rgba(150, 60, 60, 0.4)';
+        dot(0, 0, s * 0.36);
+        ctx.fillStyle = ghost ? '#2a1640' : '#1e1414';
+        dot(0, 0, s * 0.24);
+        ctx.strokeStyle = ghost ? '#b98aff' : '#d05050';
+        ctx.lineWidth = Math.max(1, s * 0.04);
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.18, now * 8, now * 8 + 2.2);
+        ctx.stroke();
+        break;
+      }
+      default: {
+        // Normal e lutador: esfera de energia com brilho e linhas de velocidade
+        const L = tail(1);
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = Math.max(1, s * 0.04);
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.25, i * s * 0.14);
+          ctx.lineTo(-L * (0.7 + 0.3 * Math.abs(i)), i * s * 0.14);
+          ctx.stroke();
+        }
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.45;
+        dot(0, 0, s * 0.36 * (1 + Math.sin(now * 24) * 0.08));
+        ctx.globalAlpha = 1;
+        dot(0, 0, s * 0.22);
+        ctx.fillStyle = '#ffffff';
+        dot(s * 0.03, 0, s * 0.11);
       }
     }
     ctx.restore();
@@ -1126,14 +1637,33 @@ class Renderer {
           ctx.restore();
           if (k > 0.5) break;
         }
-        // Poké Ball abrindo: a bola pula e solta um clarão na cor do time
+        // Poké Ball arremessada do Líder em arco até o ponto, quica e solta um clarão na cor do time
         // (construção: sem bola, só poeira e o anel do time)
-        if (k < 0.35 && !e.building) {
-          const t = k / 0.35;
+        const thrown = e.bx !== undefined;
+        const ballEnd = thrown ? 0.45 : 0.35;
+        if (k < ballEnd && !e.building) {
+          const t = k / ballEnd;
           const r = s * 0.3;
-          const by = y - s * 0.6 - Math.sin(t * Math.PI) * s * 0.5;
-          ctx.translate(x, by);
-          ctx.rotate(Math.sin(t * 18) * 0.3);
+          let bx = x;
+          let by = y - s * 0.6 - Math.sin(t * Math.PI) * s * 0.5;
+          if (thrown) {
+            // 75% do tempo voando, o resto num quique no chão
+            const [fx, fy] = this.w2s(e.bx, e.by);
+            const f = Math.min(1, t / 0.75);
+            const dist = Math.hypot(x - fx, y - fy);
+            bx = fx + (x - fx) * f;
+            by = fy + (y - s * 0.6 - fy) * f - Math.sin(f * Math.PI) * Math.min(s * 4, dist * 0.45);
+            if (t > 0.75) by = y - s * 0.6 - Math.sin(((t - 0.75) / 0.25) * Math.PI) * s * 0.35;
+            // Sombra no chão acompanhando a bola
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.ellipse(fx + (x - fx) * f, fy + (y - fy) * f + s * 0.2, r * 0.9, r * 0.35, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+          ctx.translate(bx, by);
+          ctx.rotate(thrown && t < 0.75 ? t * 14 : Math.sin(t * 18) * 0.3);
           ctx.fillStyle = '#e8413a';
           ctx.beginPath();
           ctx.arc(0, 0, r, Math.PI, 0);
@@ -1156,7 +1686,7 @@ class Renderer {
           ctx.stroke();
         } else {
           // Construção não tem a bola: o clarão começa já no início
-          const t = e.building ? k : Math.max(0, (k - 0.35) / 0.65);
+          const t = e.building ? k : Math.max(0, (k - ballEnd) / (1 - ballEnd));
           ctx.globalAlpha = 1 - t;
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
@@ -1172,22 +1702,53 @@ class Renderer {
         }
         break;
       }
+      case 'splash': {
+        // Entrou ou saiu do rio: gotas pulando em arco e um anel de água
+        const R = e.radius * s;
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1, s * 0.07);
+        ctx.beginPath();
+        ctx.ellipse(x, y + R * 0.35, R * (0.8 + out * 1.4), R * (0.3 + out * 0.5), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + rnd(i);
+          const d = R * (0.4 + out * (1 + rnd(i + 8)));
+          const px = x + Math.cos(a) * d;
+          const py = y + R * 0.2 - Math.sin(k * Math.PI) * s * (0.6 + rnd(i + 16) * 0.5) + Math.sin(a) * d * 0.35;
+          ctx.fillStyle = i % 2 ? '#ffffff' : '#9fd4ff';
+          ctx.beginPath();
+          ctx.arc(px, py, s * 0.09 * (1 - k * 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
       case 'faint': {
-        // Desmaio: o Pokémon fica cinza, achata e some (voadores caem)
+        // Desmaio: com a animação Faint do SpriteCollab, ela toca e o Pokémon some aos poucos;
+        // sem ela, fica cinza, achata e some. Voadores caem nos dois casos.
         const sp = SPRITES[e.dex];
         const angle = (e.face ?? Math.PI / 2) + (this.viewSide === 1 ? Math.PI : 0);
-        const frame = sp && this._sheetFrame(e.dex, sp.idle, 0, angle, sp.walk.h);
+        const played = (e.total - e.ttl) * 60;
+        const faint = sp && sp.faint && this._animFrame(e.dex, sp.faint, played, angle, sp.walk.h);
+        const frame = faint || (sp && this._sheetFrame(e.dex, sp.idle, 0, angle, sp.walk.h));
         if (frame) {
           ctx.save();
           const lift = e.air ? s * 0.9 * (1 - out) : 0;
           const dw = frame.w * frame.k;
           const dh = frame.h * frame.k;
-          ctx.globalAlpha = 1 - k;
           ctx.imageSmoothingEnabled = false;
-          ctx.filter = 'grayscale(0.7) brightness(1.4)';
-          ctx.translate(x, y + dh / 2 - lift);
-          ctx.scale(1 + 0.25 * k, 1 - 0.55 * k);
-          ctx.drawImage(frame.img, frame.sx, frame.sy, frame.w, frame.h, -dw / 2, -dh, dw, dh);
+          if (faint) {
+            const fade = Math.max(0, (played - animLength(sp.faint)) / 60 / 0.35);
+            ctx.globalAlpha = Math.max(0, 1 - fade);
+            ctx.filter = `grayscale(${Math.min(0.7, k)}) brightness(${1 + 0.4 * Math.min(1, fade)})`;
+            ctx.drawImage(frame.img, frame.sx, frame.sy, frame.w, frame.h, x - dw / 2, y - dh / 2 - lift, dw, dh);
+          } else {
+            ctx.globalAlpha = 1 - k;
+            ctx.filter = 'grayscale(0.7) brightness(1.4)';
+            ctx.translate(x, y + dh / 2 - lift);
+            ctx.scale(1 + 0.25 * k, 1 - 0.55 * k);
+            ctx.drawImage(frame.img, frame.sx, frame.sy, frame.w, frame.h, -dw / 2, -dh, dw, dh);
+          }
           ctx.restore();
         }
         if (k > 0.4) {

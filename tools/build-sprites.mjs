@@ -8,7 +8,17 @@ const RAW = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master';
 const LAST_DEX = 151;
 // Animações usadas no jogo (nome no jogo -> nomes no SpriteCollab, em ordem de preferência)
 // fly: voo (só alguns voadores têm); sem ela, o voador usa a animação parada no ar em vez de "andar"
-const WANTED = { idle: ['Idle', 'Walk'], walk: ['Walk'], attack: ['Attack'], shoot: ['Shoot', 'Charge', 'Attack'], fly: ['Hover', 'FlapAround', 'Float'] };
+// hurt: ao levar golpe; charge: surgindo em campo; faint: desmaio (só ~30 têm); pose: evolução e vitória (sem Pose, Hop)
+const WANTED = {
+  idle: ['Idle', 'Walk'], walk: ['Walk'], attack: ['Attack'], shoot: ['Shoot', 'Charge', 'Attack'], fly: ['Hover', 'FlapAround', 'Float'],
+  hurt: ['Hurt'], charge: ['Charge'], faint: ['Faint'], pose: ['Pose', 'Hop'],
+};
+// Golpe próprio: animações que só alguns Pokémon têm (ex.: Shock do Pikachu, Kick do Charmander).
+// strike: corpo a corpo; special: à distância. Só vale se for própria (não CopyOf) e tiver quadro de acerto.
+const SIGNATURE = {
+  strike: ['QuickStrike', 'MultiStrike', 'MultiScratch', 'Punch', 'Kick', 'Slam', 'Jab', 'Stomp', 'Slice', 'Uppercut', 'Slap', 'Lick', 'TailWhip', 'Strike', 'Twirl'],
+  special: ['Shock', 'Emit', 'SpAttack', 'Gas', 'Ricochet'],
+};
 
 async function get(url, as = 'text') {
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -58,6 +68,10 @@ function parseAnimData(xml) {
         break;
       }
     }
+  }
+  for (const [key, names] of Object.entries(SIGNATURE)) {
+    const n = names.find((x) => anims[x] && !anims[x].copyOf && anims[x].hit !== undefined && anims[x].d.length);
+    if (n) out[key] = resolve(n);
   }
   return out;
 }

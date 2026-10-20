@@ -381,6 +381,10 @@ const Sound = (() => {
       case 'faint':
         if (allow('faint', 0.12)) faint();
         break;
+      case 'splash':
+        // Entrou ou saiu do rio: chuá curto
+        if (allow('splash', 0.15)) noise({ dur: 0.22, vol: 0.14, type: 'bandpass', f: 1400, f2: 500, q: 0.8 });
+        break;
       case 'crash':
         crash(e.king);
         break;
