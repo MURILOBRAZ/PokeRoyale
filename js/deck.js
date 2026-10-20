@@ -105,7 +105,7 @@ class DeckEditor {
   open({ account = false, sub = 'cards' } = {}) {
     this.account = account;
     const typeSel = this.el('#deck-type');
-    typeSel.innerHTML = (account ? '<option value="owned">Minhas cartas</option>' : '')
+    typeSel.innerHTML = (account ? '<option value="owned">Meus Pokémon</option>' : '')
       + '<option value="">Todos os tipos</option>'
       + Object.keys(TYPE_NAMES).map((t) => `<option value="${t}">${TYPE_NAMES[t]}</option>`).join('')
       + '<option value="spell">Golpes</option>'
@@ -196,7 +196,7 @@ class DeckEditor {
     this.baseline = JSON.stringify(saved || (pending ? [] : draft));
     this.setDraft([...draft]);
     if (!saved) {
-      this.flash(`Deck ${i + 1}: começou como cópia. Troque as cartas e ele é salvo sozinho.`, true);
+      this.flash(`Deck ${i + 1}: começou como cópia. Troque os Pokémon e ele é salvo sozinho.`, true);
       return;
     }
     if (i === Account.user.deckIndex) return;
@@ -460,7 +460,7 @@ class DeckEditor {
       } else if ((slot >= 0 || overSlots) && draft.length < DECK_SIZE) {
         draft.push(d.id);
       } else if (slot >= 0 || overSlots) {
-        this.flash('Deck cheio: solte em cima de uma carta para trocar.');
+        this.flash('Deck cheio: solte em cima de um Pokémon para trocar.');
       }
     } else if (slot >= 0) {
       const to = Math.min(slot, draft.length - 1);
@@ -587,7 +587,7 @@ class DeckEditor {
     const box = this.el('#deck-info');
     const c = CARDS[this.focused];
     if (!c) {
-      box.innerHTML = '<p class="hint">Toque numa carta para ver os detalhes, ou segure e arraste para o deck.</p>';
+      box.innerHTML = '<p class="hint">Toque num Pokémon para ver os detalhes, ou segure e arraste para o deck.</p>';
       return;
     }
     const own = this.account ? Account.card(c.id) : null;
