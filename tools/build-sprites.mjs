@@ -7,14 +7,18 @@ import { writeFile } from 'node:fs/promises';
 const RAW = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master';
 const LAST_DEX = 151;
 // Animações usadas no jogo (nome no jogo -> nomes no SpriteCollab, em ordem de preferência)
-// fly: voo (só alguns voadores têm); sem ela, o voador usa a animação parada no ar em vez de "andar"
+// fly: voo (só alguns voadores têm); sem ela, o voador usa a animação parada no ar em vez de "andar".
+// Só Hover serve: em FlapAround o Pokémon dá uma volta inteira no ar e em Float ele boia deitado na água
 // hurt: ao levar golpe; charge: surgindo em campo; faint: desmaio (só ~30 têm); pose: evolução e vitória (sem Pose, Hop)
 const WANTED = {
-  idle: ['Idle', 'Walk'], walk: ['Walk'], attack: ['Attack'], shoot: ['Shoot', 'Charge', 'Attack'], fly: ['Hover', 'FlapAround', 'Float'],
+  idle: ['Idle', 'Walk'], walk: ['Walk'], attack: ['Attack'], shoot: ['Shoot', 'Charge', 'Attack'], fly: ['Hover'],
   hurt: ['Hurt'], charge: ['Charge'], faint: ['Faint'], pose: ['Pose', 'Hop'],
 };
 // Golpe próprio: animações que só alguns Pokémon têm (ex.: Shock do Pikachu, Kick do Charmander).
 // strike: corpo a corpo; special: à distância. Só vale se for própria (não CopyOf) e tiver quadro de acerto.
+// Voo escolhido à mão: a linha do Pidgey não tem Hover e a parada dela é de pé, com as asas fechadas;
+// a Shoot dela é um bater de asas no lugar
+const FLY_FROM = { 16: 'Shoot', 17: 'Shoot', 18: 'Shoot' };
 const SIGNATURE = {
   strike: ['QuickStrike', 'MultiStrike', 'MultiScratch', 'Punch', 'Kick', 'Slam', 'Jab', 'Stomp', 'Slice', 'Uppercut', 'Slap', 'Lick', 'TailWhip', 'Strike', 'Twirl'],
   special: ['Shock', 'Emit', 'SpAttack', 'Gas', 'Ricochet'],
@@ -35,7 +39,7 @@ const tag = (xml, name) => {
   return m ? m[1] : null;
 };
 
-function parseAnimData(xml) {
+function parseAnimData(xml, dex) {
   const anims = {};
   for (const block of xml.match(/<Anim>[\s\S]*?<\/Anim>/g) || []) {
     const name = tag(block, 'Name');
@@ -69,6 +73,7 @@ function parseAnimData(xml) {
       }
     }
   }
+  if (FLY_FROM[dex]) out.fly = resolve(FLY_FROM[dex]);
   for (const [key, names] of Object.entries(SIGNATURE)) {
     const n = names.find((x) => anims[x] && !anims[x].copyOf && anims[x].hit !== undefined && anims[x].d.length);
     if (n) out[key] = resolve(n);
@@ -98,7 +103,7 @@ async function main() {
       const xml = await get(`${RAW}/sprite/${pad(dex)}/AnimData.xml`);
       const portraitOk = (await fetch(`${RAW}/portrait/${pad(dex)}/Normal.png`, { method: 'HEAD' })).ok;
       if (!xml) return;
-      const anims = parseAnimData(xml);
+      const anims = parseAnimData(xml, dex);
       if (!anims.walk) return;
       sprites[dex] = { ...anims, shadow: Number(tag(xml, 'ShadowSize') || 1), portrait: portraitOk };
       const t = tracker[pad(dex)] || {};

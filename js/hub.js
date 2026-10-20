@@ -513,22 +513,17 @@ $('#hub-logout').addEventListener('click', async () => {
 });
 
 // ---------- Menus suspensos: ranking (troféus) e minha conta (nome) ----------
-// Abrem por cima do início, sem trocar de aba; fecham no ✕, clicando fora ou com Esc.
+// Abrem por cima da tela em que você está (início ou qualquer aba), sem trocar de tela;
+// fecham no ✕, clicando fora ou com Esc.
 
 const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-let dropdownReturn = null; // aba que estava aberta antes do menu
-
 function openDropdown(id) {
-  const visible = TAB_SCREENS.find((s) => !$(s).classList.contains('hidden'));
-  dropdownReturn = visible || null;
-  showScreen(id);
+  document.querySelectorAll('.dropdown').forEach((dd) => dd.classList.toggle('hidden', `#${dd.id}` !== id));
 }
 
 function closeDropdown() {
-  if (dropdownReturn) showScreen(dropdownReturn);
-  else showScreen('#hub');
-  dropdownReturn = null;
+  document.querySelectorAll('.dropdown').forEach((dd) => dd.classList.add('hidden'));
 }
 
 document.querySelectorAll('.dropdown').forEach((dd) => {
