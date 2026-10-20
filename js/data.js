@@ -257,7 +257,7 @@ Object.assign(CARDS, SPELLS, BUILDINGS);
 
 const DEFAULT_DECK = ['pikachu', 'charmander', 'squirtle', 'bulbasaur', 'onix', 'zubat', 'thunderbolt', 'fireblast'];
 const DECK_SIZE = 8;
-const DECK_SLOTS = 5; // decks salvos por conta (troca na Coleção)
+const DECK_SLOTS = 5; // decks salvos por conta (troca na Pokédex)
 
 function isValidDeck(deck) {
   return Array.isArray(deck) && deck.length === DECK_SIZE && new Set(deck).size === DECK_SIZE && deck.every((id) => CARDS[id]);

@@ -110,8 +110,10 @@ class DeckEditor {
       + Object.keys(TYPE_NAMES).map((t) => `<option value="${t}">${TYPE_NAMES[t]}</option>`).join('')
       + '<option value="spell">Golpes</option>'
       + '<option value="building">Construções</option>';
-    this.el('#deck-title').textContent = account ? 'Coleção' : 'Deck de treino';
-    // Sub-abas (só com conta): Cartas | Ginásios
+    this.el('#deck-title').textContent = account ? 'Pokédex' : 'Deck de treino';
+    // Com conta o deck é salvo sozinho: sem Aleatório / Inicial / Salvar (só no deck de treino)
+    this.el('#deck-buttons').classList.toggle('hidden', account);
+    // Sub-abas (só com conta): Pokémon | Ginásios
     this.el('#deck-subtabs').classList.toggle('hidden', !account);
     this.setSub(sub);
     this.el('#deck-default').textContent = account ? 'Inicial' : 'Padrão';
@@ -515,7 +517,10 @@ class DeckEditor {
     }
     this.el('#deck-slots').innerHTML = slots.join('');
     const n = this.draft.length;
-    this.el('#deck-avg').textContent = n ? `Custo médio ${fmt(deckAverageCost(this.draft))}` : '';
+    const avg = n ? `Custo médio ${fmt(deckAverageCost(this.draft))}` : '';
+    // Sem o botão Salvar (conta), o aviso de deck incompleto fica aqui
+    const missing = this.account && n < DECK_SIZE ? `Faltam ${DECK_SIZE - n} · ` : '';
+    this.el('#deck-avg').textContent = missing + avg;
     this.renderSaveButton();
     this.scheduleSave();
   }

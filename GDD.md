@@ -154,8 +154,8 @@ Distribuição de custos: 1 (3 cartas) · 2 (17) · 3 (38) · 4 (23) · 5 (33) �
 - Botão **Aleatório** sorteia um deck jogável: 1–2 golpes, custo médio entre 2,8 e 4,6, pelo menos 2 cartas que acertam voadores e no máximo 1 carta de custo 8+.
 - Deck **Padrão**: Pikachu, Charmander, Squirtle, Bulbasaur, Onix, Zubat, Choque do Trovão e Explosão de Fogo.
 - No online, cada jogador usa o próprio deck salvo.
-- **Arrastar cartas:** na Coleção, dá para arrastar a carta para o deck, como no Clash Royale. No celular, segura-se a carta por um instante antes de arrastar, para a lista continuar rolando. Soltar num espaço vazio coloca a carta no deck; soltar em cima de uma carta troca as duas; arrastar entre espaços do deck muda a ordem; arrastar uma carta do deck para fora tira ela do deck.
-- **Vários decks (com conta):** 5 decks salvos no servidor, em abas 1–5 na Coleção. O deck marcado com ⚔️ é o que vai para a batalha. Tocar num deck salvo passa a usar ele. Num espaço vazio, o deck começa como cópia do atual. **Salvamento automático, sem avisos:** um deck completo é salvo sozinho logo depois de cada mudança, e o deck editado passa a ser o de batalha. Um deck incompleto fica guardado na tela até ser completado.
+- **Arrastar cartas:** na Pokédex, dá para arrastar a carta para o deck, como no Clash Royale. No celular, segura-se a carta por um instante antes de arrastar, para a lista continuar rolando. Soltar num espaço vazio coloca a carta no deck; soltar em cima de uma carta troca as duas; arrastar entre espaços do deck muda a ordem; arrastar uma carta do deck para fora tira ela do deck.
+- **Vários decks (com conta):** 5 decks salvos no servidor, em abas 1–5 na Pokédex. O deck marcado com ⚔️ é o que vai para a batalha. Tocar num deck salvo passa a usar ele. Num espaço vazio, o deck começa como cópia do atual. **Salvamento automático, sem avisos:** um deck completo é salvo sozinho logo depois de cada mudança, e o deck editado passa a ser o de batalha. Um deck incompleto fica guardado na tela até ser completado. A aba da conta se chama **Pokédex** (antes "Coleção"), com as sub-abas **Pokémon** (antes "Cartas") e **Ginásios**, e não tem os botões Aleatório, Inicial e Salvar. Se o deck estiver incompleto, aparece "Faltam N" ao lado do custo médio. No deck de treino, sem conta, os botões continuam.
 
 ## 9. Evolução em batalha
 
@@ -221,10 +221,10 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 
 **Tela inicial (com conta, v0.4.2):** inspirada num mockup do autor, adaptada ao que o jogo tem.
 - **Barra do topo:** treinador (retrato do inicial), nível e XP, troféus, Pokédólares e sair.
-- **Navegação:** Início, Coleção, Arenas, Amigos e Treino — menu lateral no PC, barra fixa embaixo no celular.
+- **Navegação:** Início, Pokédex, Arenas, Amigos e Treino — menu lateral no PC, barra fixa embaixo no celular.
 - **Centro:** a arena atual com o mapa como prévia, líder, tipos e o Pokémon símbolo do líder; setas para espiar as outras arenas (bloqueadas mostram os troféus necessários); botão **BATALHAR** como ação principal.
 - **Jornada em Kanto** (PC), **Premier Balls**, **deck ativo** com níveis e os modos **Treino** e **Amigos**.
-- O fundo é o mapa da arena atual, desfocado. Coleção, Arenas, Amigos e Treino são **abas**: trocam o conteúdo dentro do início, com a barra e o menu sempre visíveis (volta-se pelo menu). Só a recompensa abre por cima.
+- O fundo é o mapa da arena atual, desfocado. Pokédex, Arenas, Amigos e Treino são **abas**: trocam o conteúdo dentro do início, com a barra e o menu sempre visíveis (volta-se pelo menu). Só a recompensa abre por cima.
 - **Ranking global** (clique nos troféus): os 100 treinadores com mais troféus (desempate pelo recorde), com a sua posição mesmo fora do top 100. Não mostra e-mails.
 - **Minha conta** (clique no nome): perfil, trocar nome de treinador, trocar senha (pede a atual e desconecta os outros aparelhos) e sair. Ranking e Minha conta abrem como menus suspensos com ✕.
 - **Nome de treinador único**, sem diferenciar maiúsculas (índice único no banco). Contas antigas com nome repetido: a mais antiga fica com o nome, as outras ganham `_<número>`.
@@ -479,7 +479,7 @@ Cosméticos e Zona Safári: ver 17.12.
 |---|---|---|
 | **Avatar** | Qualquer Pokémon da sua coleção (grátis) | Barra do topo, ranking, Minha conta |
 | **Título** | "Treinador Novato" (grátis); um por arena alcançada (Quebra-Rochas, Surfista de Cerulean… Mestre Pokémon); classes de treinador da 1ª geração com Fichas (Caçador de Insetos, Montanhista, Nadador, Pescador 🪙30 · Cientista, Médium, Faixa-Preta 🪙50 · Recruta da Equipe Rocket 🪙100 · Assistente do Prof. Carvalho 🪙150) | Ranking |
-| **Skin de ginásio** | Clássico (grátis); Dourado, Cristal e Sombrio (🪙120 cada); Campeão (ao chegar na Liga). Escolhida na aba **Coleção → Ginásios**, com prévia grande sobre o mapa da sua arena e as bloqueadas mostrando como conseguir (compra e equipa ali mesmo) | Seus ginásios na partida, para os dois jogadores. Brilho e cor; as cores de time continuam azul/vermelho |
+| **Skin de ginásio** | Clássico (grátis); Dourado, Cristal e Sombrio (🪙120 cada); Campeão (ao chegar na Liga). Escolhida na aba **Pokédex → Ginásios**, com prévia grande sobre o mapa da sua arena e as bloqueadas mostrando como conseguir (compra e equipa ali mesmo) | Seus ginásios na partida, para os dois jogadores. Brilho e cor; as cores de time continuam azul/vermelho |
 | **Emotes** | Pacote do Pikachu (grátis); Charmander, Squirtle, Bulbasaur (🪙40) · Psyduck, Meowth, Jigglypuff, Eevee (🪙60) · Snorlax (🪙80) · Mewtwo (🪙150) | Botão 💬 na partida: 4 reações (feliz, bravo, chorando, surpreso) com os retratos do SpriteCollab, num balão perto do seu Ginásio Líder. Escolher outro emote substitui o balão na hora. Funciona online e o bot reage quando derruba ou perde ginásio |
 
 **Zona Safári** — na Loja. Entrada 💰100, **1 vez por dia**. 6 Safari Balls e até 3 Pokémon selvagens das suas arenas (sem lendários; comum 65%, rara 28%, épica 7%).
@@ -525,7 +525,7 @@ Aprovado em 19/10/2026. Os números abaixo já passaram pela simulação de part
 
 **Bot:** usa a Torre, o Laboratório e o Snorlax na defesa, no meio do próprio campo. O Centro Pokémon vai atrás de um ataque, e a Caverna fica no fundo da pista do ataque.
 
-**Filtro:** a Coleção tem o filtro "Construções".
+**Filtro:** a Pokédex tem o filtro "Construções".
 
 **Presente para quem já joga:** cada conta recebe **uma construção aleatória**, uma vez só. Pode vir qualquer uma menos a lendária, mesmo que ainda não tenha chegado na arena dela. O presente abre sozinho, com a animação da ball, na primeira vez que o jogador entra depois da atualização. Contas novas recebem depois de escolher o inicial. Os presentes de versão ficam em `GIFTS` (`js/progression.js`), e os já recebidos na coluna `users.gifts`, o que permite dar presentes em versões futuras.
 

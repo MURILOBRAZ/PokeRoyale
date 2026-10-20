@@ -1085,8 +1085,8 @@ $('#shop-body').addEventListener('click', async (e) => {
     }
     renderShop();
     const msg = r.kind === 'card'
-      ? `+${r.amount} ${CARDS[r.card].name}${r.newCards.length ? ' (nova!)' : ''} na sua coleção.`
-      : `${ITEMS[r.item].name} guardada. Use na Coleção, na carta que quiser.`;
+      ? `+${r.amount} ${CARDS[r.card].name}${r.newCards.length ? ' (nova!)' : ''} na sua Pokédex.`
+      : `${ITEMS[r.item].name} guardada. Use na Pokédex, na carta que quiser.`;
     formMsg($('#shop-msg'), msg, true);
   } catch (err) {
     formMsg($('#shop-msg'), err.message, false);

@@ -135,7 +135,7 @@
       <div class="hub-body">
         <nav class="hub-nav" aria-label="Menu">
           <button class="nav-btn active" data-nav="home"><span class="nav-ico">🏠</span><span>Início</span></button>
-          <button class="nav-btn" data-nav="collection"><span class="nav-ico">🃏</span><span>Coleção</span></button>
+          <button class="nav-btn" data-nav="collection"><span class="nav-ico">🃏</span><span>Pokédex</span></button>
           <button class="nav-btn" data-nav="shop"><span class="nav-ico">🛒</span><span>Loja</span></button>
           <button class="nav-btn" data-nav="road"><span class="nav-ico">🏅</span><span>Arenas</span></button>
           <button class="nav-btn" data-nav="friends"><span class="nav-ico">👥</span><span>Amigos</span></button>
@@ -287,7 +287,7 @@
           <h3>Visual <small>(não muda nenhum atributo)</small></h3>
           <label>Avatar <select id="look-avatar"></select></label>
           <label>Título no ranking <select id="look-title"></select></label>
-          <label>Ginásios na partida <button type="button" id="look-skin-open">🏰 Ver e trocar na Coleção</button></label>
+          <label>Ginásios na partida <button type="button" id="look-skin-open">🏰 Ver e trocar na Pokédex</button></label>
           <label>Emotes na partida <select id="look-emotes"></select></label>
           <p class="sub small">Mais títulos, ginásios e emotes na Loja, com Fichas 🪙.</p>
           <p id="msg-look" class="form-msg"></p>
@@ -358,7 +358,7 @@
           <button id="deck-close" class="icon" title="Fechar">✕</button>
         </div>
         <div id="deck-subtabs" class="subtabs hidden">
-          <button data-sub="cards" class="active">🃏 Cartas</button>
+          <button data-sub="cards" class="active">🃏 Pokémon</button>
           <button data-sub="skins">🏰 Ginásios</button>
         </div>
         <div id="skins-view" class="skins-view">
@@ -380,7 +380,7 @@
         <div id="deck-grid"></div>
         <div id="deck-info"><p class="hint">Toque numa carta para ver os detalhes.</p></div>
         <div id="deck-msg"></div>
-        <div class="btn-row">
+        <div id="deck-buttons" class="btn-row">
           <button id="deck-random">🎲 Aleatório</button>
           <button id="deck-default">Padrão</button>
           <button id="deck-save" class="primary">Salvar</button>
