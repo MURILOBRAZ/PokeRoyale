@@ -275,6 +275,49 @@ async function main() {
   assert.equal((await c('ball-unlock', { id: someBall })).status, 404);
   ok('login/logout, senha errada e uma conta não mexe nas balls da outra');
 
+  // Amigos: pedido pelo nome, aceitar, online, convite para X1
+  const ashName = (await a('me')).data.user.name;
+  assert.equal((await a('friend-add', { name: 'NinguemAqui' })).status, 404);
+  assert.equal((await a('friend-add', { name: ashName })).status, 400);
+  r = await a('friend-add', { name: 'gary' }); // sem diferenciar maiúsculas
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.status, 'pending');
+  assert.equal((await a('friend-add', { name: 'Gary' })).status, 409);
+  assert.equal((await a('invite-send', { to: 1, room: 'PIKA42' })).status, 403); // ainda não são amigos
+  r = await c('friends', {});
+  assert.equal(r.data.incoming.length, 1);
+  const ashFriendId = r.data.incoming[0].id;
+  assert.equal((await c('social-poll', {})).data.requests, 1);
+  assert.equal((await c('friend-respond', { id: ashFriendId, accept: true })).status, 200);
+  r = await a('friends', {});
+  assert.equal(r.data.friends.length, 1);
+  assert.equal(r.data.friends[0].name, 'Gary');
+  assert.equal(r.data.friends[0].online, true); // Gary chamou social-poll agora há pouco
+  const garyId = r.data.friends[0].id;
+  // Convite: Ash cria a sala e chama o Gary; Gary vê e aceita
+  r = await a('invite-send', { to: garyId, room: 'pika-42', ranked: true });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  r = await c('social-poll', {});
+  assert.equal(r.data.invites.length, 1);
+  assert.equal(r.data.invites[0].room, 'PIKA42');
+  assert.equal(r.data.invites[0].from, ashName);
+  r = await c('invite-respond', { id: r.data.invites[0].id, accept: true });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.room, 'PIKA42');
+  assert.equal(r.data.ranked, true);
+  assert.equal((await a('social-poll', {})).data.sent.status, 'accepted');
+  assert.equal((await c('invite-respond', { id: 999999, accept: true })).status, 410);
+  // Convite expirado não aparece nem pode ser aceito
+  r = await a('invite-send', { to: garyId, room: 'ONIX77' });
+  await pg.query(`UPDATE invites SET created_at = now() - interval '5 minutes' WHERE id = $1`, [r.data.id]);
+  assert.equal((await c('social-poll', {})).data.invites.length, 0);
+  assert.equal((await c('invite-respond', { id: r.data.id, accept: true })).status, 410);
+  // Desfazer amizade
+  assert.equal((await c('friend-remove', { id: ashFriendId })).status, 200);
+  assert.equal((await a('friends', {})).data.friends.length, 0);
+  assert.equal((await a('invite-send', { to: garyId, room: 'PIKA42' })).status, 403);
+  ok('amigos: pedido, aceitar, online, convite para X1, expirar e desfazer');
+
   // Ranking global
   await pg.query("UPDATE users SET trophies = 900, best_trophies = 900 WHERE email = 'gary@teste.local'");
   r = await a('ranking', {});

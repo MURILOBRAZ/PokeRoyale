@@ -35,6 +35,7 @@ function showHome(error = '') {
       if (!$('#hub').classList.contains('hidden') && Account.loggedIn) {
         renderHub();
         openPendingGift();
+        socialPoll();
       }
     });
     return;
@@ -236,7 +237,138 @@ function openCollection() {
 function openFriends() {
   setNav('friends');
   showScreen('#friends');
+  renderFriends();
 }
+
+// ---------- Amigos e convites para X1 ----------
+
+async function renderFriends() {
+  const box = $('#friends-box');
+  box.classList.toggle('hidden', !Account.loggedIn);
+  if (!Account.loggedIn) return;
+  try {
+    const r = await Account.api('friends', {});
+    const avatar = (id) => `<img src="${cardImage(CARDS[id] || CARDS.pikachu)}" alt="">`;
+    $('#friend-requests').innerHTML = [
+      ...r.incoming.map((f) => `<div class="friend-row request">${avatar(f.avatar)}<span class="friend-name">${escapeHtml(f.name)}<small>quer ser seu amigo</small></span>
+        <button data-friend-accept="${f.id}" class="primary">Aceitar</button><button data-friend-decline="${f.id}" class="icon" title="Recusar">✕</button></div>`),
+      ...r.outgoing.map((f) => `<div class="friend-row pending">${avatar(f.avatar)}<span class="friend-name">${escapeHtml(f.name)}<small>pedido enviado</small></span>
+        <button data-friend-remove="${f.id}" class="icon" title="Cancelar pedido">✕</button></div>`),
+    ].join('');
+    $('#friend-list').innerHTML = r.friends.length
+      ? r.friends.map((f) => `<div class="friend-row">${avatar(f.avatar)}<span class="friend-name"><i class="dot ${f.online ? 'on' : ''}"></i>${escapeHtml(f.name)}
+          <small>${f.online ? 'online' : 'offline'} · 🏆 ${fmtNum(f.trophies)} · ${ARENAS[f.arena] ? ARENAS[f.arena].short : ''}</small></span>
+          <button data-challenge="${f.id}" data-name="${escapeHtml(f.name)}" class="primary" title="Desafiar para um X1">⚔️ X1</button>
+          <button data-friend-remove="${f.id}" class="icon" title="Desfazer amizade">✕</button></div>`).join('')
+      : '<p class="sub small">Adicione seus amigos pelo nome de treinador para desafiar direto, sem código.</p>';
+    setFriendsBadge(r.incoming.length);
+  } catch (err) {
+    $('#friend-list').innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function setFriendsBadge(n) {
+  const btn = document.querySelector('.hub-nav [data-nav="friends"]');
+  if (btn) btn.dataset.badge = n > 0 ? String(n) : '';
+}
+
+$('#friend-add-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = $('#friend-name');
+  const name = input.value.trim();
+  if (!name) return;
+  const msg = $('#friend-msg');
+  try {
+    const r = await Account.api('friend-add', { name });
+    msg.textContent = r.status === 'accepted' ? `Agora você e ${r.name} são amigos!` : `Pedido enviado para ${r.name}.`;
+    msg.className = 'form-msg good';
+    input.value = '';
+    renderFriends();
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'form-msg bad';
+  }
+});
+
+// Remover amizade pede um segundo toque (evita tirar alguém sem querer)
+let removeArmed = null;
+$('#friends-box').addEventListener('click', async (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  try {
+    if (b.dataset.friendAccept) await Account.api('friend-respond', { id: Number(b.dataset.friendAccept), accept: true });
+    else if (b.dataset.friendDecline) await Account.api('friend-respond', { id: Number(b.dataset.friendDecline), accept: false });
+    else if (b.dataset.friendRemove) {
+      if (removeArmed !== b.dataset.friendRemove) {
+        removeArmed = b.dataset.friendRemove;
+        b.textContent = 'Tirar?';
+        b.classList.add('danger');
+        setTimeout(() => (removeArmed = null), 3000);
+        return;
+      }
+      removeArmed = null;
+      await Account.api('friend-remove', { id: Number(b.dataset.friendRemove) });
+    } else if (b.dataset.challenge) {
+      challengeFriend(Number(b.dataset.challenge), b.dataset.name);
+      return;
+    } else return;
+    renderFriends();
+  } catch (err) {
+    $('#friend-msg').textContent = err.message;
+    $('#friend-msg').className = 'form-msg bad';
+  }
+});
+
+// Cria a sala e, quando ela existir, o convite vai para o amigo (ver onRoom em main.js)
+function challengeFriend(id, name) {
+  pendingInvite = { id, name };
+  hostRoom();
+}
+
+// De tempos em tempos (fora da partida): marca online, mostra convites e pedidos novos
+const seenInvites = new Set();
+let currentInvite = null;
+async function socialPoll() {
+  if (!Account.loggedIn || game || document.visibilityState !== 'visible') return;
+  try {
+    const r = await Account.api('social-poll', {});
+    setFriendsBadge(r.requests);
+    const inv = r.invites.find((i) => !seenInvites.has(i.id));
+    if (inv && !currentInvite) showInvite(inv);
+    // Anfitrião esperando: o amigo recusou
+    if (pendingInvite && r.sent && r.sent.status === 'declined' && !$('#lobby').classList.contains('hidden')) {
+      setLobbyStatus(`${r.sent.to} recusou o desafio.`);
+    }
+  } catch {
+    // sem conexão: tenta de novo no próximo ciclo
+  }
+}
+setInterval(socialPoll, 10000);
+document.addEventListener('visibilitychange', socialPoll);
+
+function showInvite(inv) {
+  currentInvite = inv;
+  seenInvites.add(inv.id);
+  $('#invite-avatar').src = cardImage(CARDS[inv.avatar] || CARDS.pikachu);
+  $('#invite-title').textContent = `${inv.from} te desafiou para um X1!`;
+  $('#invite-sub').textContent = inv.ranked ? 'Vale troféus.' : 'Amistoso (não vale troféus).';
+  $('#invite').classList.remove('hidden');
+}
+
+async function answerInvite(accept) {
+  const inv = currentInvite;
+  currentInvite = null;
+  $('#invite').classList.add('hidden');
+  if (!inv) return;
+  try {
+    const r = await Account.api('invite-respond', { id: inv.id, accept });
+    if (accept) joinRoom(r.room);
+  } catch (err) {
+    if (accept) $('#hub-error').textContent = err.message;
+  }
+}
+$('#invite-accept').addEventListener('click', () => answerInvite(true));
+$('#invite-decline').addEventListener('click', () => answerInvite(false));
 
 function openTraining() {
   setNav('training');
@@ -367,7 +499,10 @@ $('#hub-battle').addEventListener('click', () => startRankedBot());
 $('#hub-collection').addEventListener('click', openCollection);
 $('#hub-training').addEventListener('click', openTraining);
 $('#hub-arena').addEventListener('click', () => showRoad());
-$('#hub-host').addEventListener('click', () => hostRoom());
+$('#hub-host').addEventListener('click', () => {
+  pendingInvite = null; // sala comum (com código), sem convite
+  hostRoom();
+});
 $('#hub-join').addEventListener('click', () => joinRoom($('#hub-join-code').value));
 $('#hub-join-code').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') joinRoom(e.target.value);

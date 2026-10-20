@@ -90,6 +90,10 @@ async function loadState(userId) {
 }
 
 // Visual equipado, com os padrões (avatar = o inicial)
+const ONLINE_SECONDS = 45; // visto há menos disso = online (o jogo avisa a cada ~10 s)
+const INVITE_SECONDS = 90; // convite para X1 expira
+const MAX_FRIENDS = 100;
+
 function lookOf(u) {
   const look = { ...R.DEFAULT_LOOK, avatar: u.starter, ...(u.look || {}) };
   return look;
@@ -457,6 +461,132 @@ const ACTIONS = {
   },
 
   // Ranking global: os 100 com mais troféus (desempate: recorde, depois quem chegou antes) e a sua posição
+  // ---------- Amigos e convites para X1 ----------
+
+  async friends({ req }) {
+    const userId = await requireUser(req);
+    const rows = await q(
+      `SELECT f.user_id, f.friend_id, f.status, u.id, u.name, u.trophies, u.arena, u.starter, u.look,
+              (u.last_seen > now() - make_interval(secs => $2)) AS online
+       FROM friendships f JOIN users u ON u.id = CASE WHEN f.user_id = $1 THEN f.friend_id ELSE f.user_id END
+       WHERE f.user_id = $1 OR f.friend_id = $1
+       ORDER BY u.name`,
+      [userId, ONLINE_SECONDS],
+    );
+    const person = (r) => ({ id: r.id, name: r.name, trophies: r.trophies, arena: r.arena, avatar: lookOf(r).avatar, online: !!r.online });
+    return {
+      friends: rows.filter((r) => r.status === 'accepted').map(person).sort((a, b) => b.online - a.online),
+      incoming: rows.filter((r) => r.status === 'pending' && r.friend_id === userId).map(person),
+      outgoing: rows.filter((r) => r.status === 'pending' && r.user_id === userId).map(person),
+    };
+  },
+
+  // Pedido de amizade pelo nome de treinador (se a pessoa já tinha pedido, vira amizade na hora)
+  async 'friend-add'({ req, body }) {
+    const userId = await requireUser(req);
+    const name = String(body.name || '').trim();
+    const other = await one('SELECT id, name FROM users WHERE lower(name) = lower($1) AND starter IS NOT NULL', [name]);
+    if (!other) fail(404, 'Nenhum treinador com esse nome.');
+    if (other.id === userId) fail(400, 'Esse é você!');
+    const count = await one('SELECT count(*)::int AS n FROM friendships WHERE user_id = $1 OR friend_id = $1', [userId]);
+    if (count.n >= MAX_FRIENDS) fail(409, `Limite de ${MAX_FRIENDS} amigos e pedidos.`);
+    const reverse = await one(
+      `UPDATE friendships SET status = 'accepted' WHERE user_id = $2 AND friend_id = $1 AND status = 'pending' RETURNING 1`,
+      [userId, other.id],
+    );
+    if (reverse) return { status: 'accepted', name: other.name };
+    const exists = await one(
+      'SELECT status FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)',
+      [userId, other.id],
+    );
+    if (exists) fail(409, exists.status === 'accepted' ? 'Vocês já são amigos.' : 'Pedido já enviado.');
+    await q('INSERT INTO friendships (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [userId, other.id]);
+    return { status: 'pending', name: other.name };
+  },
+
+  async 'friend-respond'({ req, body }) {
+    const userId = await requireUser(req);
+    const from = Number(body.id);
+    const row = body.accept
+      ? await one(`UPDATE friendships SET status = 'accepted' WHERE user_id = $1 AND friend_id = $2 AND status = 'pending' RETURNING 1`, [from, userId])
+      : await one(`DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2 AND status = 'pending' RETURNING 1`, [from, userId]);
+    if (!row) fail(404, 'Pedido não encontrado.');
+    return { ok: true };
+  },
+
+  // Desfazer amizade ou cancelar pedido enviado
+  async 'friend-remove'({ req, body }) {
+    const userId = await requireUser(req);
+    const other = Number(body.id);
+    await q('DELETE FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)', [userId, other]);
+    return { ok: true };
+  },
+
+  // Convida um amigo para a sala que acabou de criar
+  async 'invite-send'({ req, body }) {
+    const userId = await requireUser(req);
+    const to = Number(body.to);
+    const room = String(body.room || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (room.length < 4 || room.length > 12) fail(400, 'Sala inválida.');
+    const friend = await one(
+      `SELECT 1 FROM friendships WHERE status = 'accepted'
+         AND ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))`,
+      [userId, to],
+    );
+    if (!friend) fail(403, 'Só dá para convidar amigos.');
+    const recent = await one(`SELECT count(*)::int AS n FROM invites WHERE from_id = $1 AND created_at > now() - interval '10 minutes'`, [userId]);
+    if (recent.n >= 20) fail(429, 'Muitos convites seguidos. Espere um pouco.');
+    // Um convite pendente por vez: o novo substitui os anteriores
+    await q(`UPDATE invites SET status = 'cancelled' WHERE from_id = $1 AND status = 'pending'`, [userId]);
+    const inv = await one(
+      'INSERT INTO invites (from_id, to_id, room, ranked) VALUES ($1, $2, $3, $4) RETURNING id',
+      [userId, to, room, !!body.ranked],
+    );
+    return { id: inv.id };
+  },
+
+  async 'invite-cancel'({ req }) {
+    const userId = await requireUser(req);
+    await q(`UPDATE invites SET status = 'cancelled' WHERE from_id = $1 AND status = 'pending'`, [userId]);
+    return { ok: true };
+  },
+
+  async 'invite-respond'({ req, body }) {
+    const userId = await requireUser(req);
+    const inv = await one(
+      `UPDATE invites SET status = $3 WHERE id = $1 AND to_id = $2 AND status = 'pending'
+         AND created_at > now() - make_interval(secs => $4)
+       RETURNING room, ranked`,
+      [Number(body.id), userId, body.accept ? 'accepted' : 'declined', INVITE_SECONDS],
+    );
+    if (!inv) fail(410, 'Esse convite expirou.');
+    return { room: inv.room, ranked: inv.ranked };
+  },
+
+  // Chamado de tempos em tempos: marca "online", traz convites e pedidos novos
+  async 'social-poll'({ req }) {
+    const userId = await requireUser(req);
+    await q('UPDATE users SET last_seen = now() WHERE id = $1', [userId]);
+    const invites = await q(
+      `SELECT i.id, i.room, i.ranked, u.name, u.look, u.starter FROM invites i JOIN users u ON u.id = i.from_id
+       WHERE i.to_id = $1 AND i.status = 'pending' AND i.created_at > now() - make_interval(secs => $2)
+       ORDER BY i.id DESC LIMIT 3`,
+      [userId, INVITE_SECONDS],
+    );
+    const sent = await one(
+      `SELECT i.id, i.status, u.name FROM invites i JOIN users u ON u.id = i.to_id
+       WHERE i.from_id = $1 AND i.created_at > now() - make_interval(secs => $2)
+       ORDER BY i.id DESC LIMIT 1`,
+      [userId, INVITE_SECONDS + 30],
+    );
+    const requests = await one(`SELECT count(*)::int AS n FROM friendships WHERE friend_id = $1 AND status = 'pending'`, [userId]);
+    return {
+      invites: invites.map((i) => ({ id: i.id, room: i.room, ranked: i.ranked, from: i.name, avatar: lookOf(i).avatar })),
+      sent: sent ? { id: sent.id, status: sent.status, to: sent.name } : null,
+      requests: requests.n,
+    };
+  },
+
   async ranking({ req }) {
     const userId = await requireUser(req);
     const rows = await q(

@@ -199,12 +199,35 @@
           <h2>Jogar com amigos</h2>
           <button id="friends-close" class="icon" title="Fechar">✕</button>
         </div>
-        <p class="sub small">Crie uma sala e mande o convite, ou digite o código que seu amigo mandou.</p>
         <label class="check"><input type="checkbox" id="hub-ranked" checked> Vale troféus <small>(os dois precisam estar logados; sem isso é amistoso)</small></label>
+        <div id="friends-box" class="friends-box">
+          <h3>👥 Meus amigos</h3>
+          <form id="friend-add-form" class="friend-add-row">
+            <input id="friend-name" placeholder="Nome de treinador" maxlength="16" autocomplete="off" spellcheck="false">
+            <button type="submit">➕ Adicionar</button>
+          </form>
+          <p id="friend-msg" class="form-msg"></p>
+          <div id="friend-requests" class="friend-list"></div>
+          <div id="friend-list" class="friend-list"></div>
+        </div>
+        <h3 class="room-title">Ou por código de sala</h3>
+        <p class="sub small">Crie uma sala e mande o convite, ou digite o código que seu amigo mandou.</p>
         <button id="hub-host" class="wide primary">🌐 Criar sala</button>
         <div class="join-row">
           <input id="hub-join-code" placeholder="Código da sala (ex.: PIKA-42)" maxlength="12" autocomplete="off" spellcheck="false">
           <button id="hub-join">Entrar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="invite" class="overlay invite-overlay hidden">
+      <div class="panel invite-panel">
+        <img id="invite-avatar" alt="">
+        <h2 id="invite-title"></h2>
+        <p id="invite-sub" class="sub"></p>
+        <div class="btn-row">
+          <button id="invite-decline">Recusar</button>
+          <button id="invite-accept" class="primary">⚔️ Aceitar</button>
         </div>
       </div>
     </section>

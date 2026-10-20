@@ -324,6 +324,7 @@ PokeRoyale/
 | **v0.7** | Efeitos de golpe por tipo, som (efeitos, gritos, música), campo em tela cheia, invocação no ponto permitido mais próximo, vários decks com salvamento automático, arrastar cartas, várias balls abrindo juntas | ✅ Feito |
 | **v0.8** | Cartas de construção: Centro Pokémon, Torre Pokémon, Snorlax Dormindo, Caverna Zubat, Laboratório do Mewtwo (ver [18](#18-cartas-de-construção-v08)) | ✅ Feito |
 | **v0.9** | Golpes Surf, Terremoto e Nevasca; lendários raros com entrada especial; histórico de partidas; música do menu; correção de Pokémon parado (ver [19](#19-v09)) | ✅ Feito |
+| **v0.9.1** | Amigos: adicionar pelo nome, ver quem está online e desafiar direto para um X1, sem código (ver [20](#20-amigos-e-convite-para-x1-v091)) | ✅ Feito |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -552,7 +553,16 @@ Nos ginásios, os golpes causam 30% a 45% do dano. O bot sabe que o Terremoto n�
 
 **Correção:** se um Pokémon persegue um alvo por 2,5 s sem chegar mais perto (por exemplo, atrás de um ginásio colado na parede), ele desiste daquele alvo por 5 s e procura outro. Em 1.200 partidas simuladas, nenhum Pokémon ficou parado.
 
-## 20. Questões em aberto
+## 20. Amigos e convite para X1 (v0.9.1)
+
+- **Adicionar:** na aba Amigos, pelo nome de treinador (sem diferenciar maiúsculas). A pessoa recebe um pedido, com um número vermelho no botão Amigos, e aceita ou recusa. Se os dois pedirem um ao outro, vira amizade na hora. O limite é de 100 amigos e pedidos.
+- **Online:** bolinha verde para quem abriu o jogo nos últimos 45 s. Fora da partida, o jogo avisa o servidor a cada 10 s (`social-poll`), e com isso também chegam os convites e pedidos novos.
+- **Desafiar (⚔️ X1):** cria a sala normalmente e, assim que ela existe, manda o convite com o código para o amigo. Ele vê o aviso "Fulano te desafiou para um X1!" com Aceitar ou Recusar. Ao aceitar, entra direto na sala, sem digitar código. Se recusar, quem desafiou vê "recusou o desafio".
+- **Regras:** o convite vale por 90 s, só vai para amigos, só existe um pendente por vez (o novo substitui o anterior) e há no máximo 20 a cada 10 min. Cancelar a sala cancela o convite. A opção "Vale troféus" da aba vale para o desafio.
+- **Desfazer amizade:** o ✕ pede um segundo toque ("Tirar?") para confirmar.
+- **Servidor:** tabelas `friendships` (um pedido por linha, `pending`/`accepted`) e `invites`, mais a coluna `users.last_seen`.
+
+## 21. Questões em aberto
 
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).

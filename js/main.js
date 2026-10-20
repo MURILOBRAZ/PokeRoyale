@@ -23,6 +23,7 @@ let endShown = false;
 let roomCode = '';
 let snapTimer = 0;
 let rivalName = ''; // nome do amigo no online (histórico de partidas)
+let pendingInvite = null; // { id, name }: amigo desafiado, avisado assim que a sala for criada
 let guestInfo = null; // deck/níveis que o convidado mandou (anfitrião guarda para a revanche)
 let ranked = null; // { matchId, mode } quando a partida vale troféus (ver hub.js)
 let lastRankedMode = null; // para o "Jogar de novo"
@@ -243,6 +244,7 @@ function beginMatch(newMode, side, decks, opts = {}) {
   battleLook.packs = opts.packs || (side === 0 ? [mine.emotes, rivalPack] : [rivalPack, mine.emotes]);
   battleLook.bubbles = [];
   battleLook.crowns = [0, 0];
+  pendingInvite = null;
   game = new Game({ decks, levels: opts.levels, trainers: opts.trainers, skins });
   document.body.classList.add('in-battle');
   // Gritos das cartas em jogo já começam a carregar; a música começa com a partida
@@ -290,6 +292,12 @@ function netHandlers() {
       $('#lobby-code').textContent = formatCode(code);
       setLobbyStatus('Aguardando seu amigo entrar', true);
       $('#btn-copy').style.display = '';
+      if (pendingInvite) {
+        const inv = pendingInvite;
+        Account.api('invite-send', { to: inv.id, room: code, ranked: $('#hub-ranked').checked })
+          .then(() => setLobbyStatus(`Esperando ${inv.name} aceitar o desafio`, true))
+          .catch((err) => setLobbyStatus(err.message));
+      }
     },
     onConnect() {
       if (net.isHost) {
@@ -436,7 +444,11 @@ $('#btn-join').addEventListener('click', () => joinRoom($('#join-code').value));
 $('#join-code').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') joinRoom(e.target.value);
 });
-$('#btn-cancel').addEventListener('click', () => showMenu());
+$('#btn-cancel').addEventListener('click', () => {
+  if (pendingInvite) Account.api('invite-cancel', {}).catch(() => {});
+  pendingInvite = null;
+  showMenu();
+});
 $('#btn-copy').addEventListener('click', async () => {
   const text = `Bora jogar PokéRoyale! Código da sala: ${formatCode(roomCode)}\n${inviteLink()}`;
   try {

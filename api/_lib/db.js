@@ -91,6 +91,28 @@ const SCHEMA = [
     trophies_delta INT
   )`,
   'CREATE INDEX IF NOT EXISTS matches_user_started ON matches (user_id, started_at)',
+  // Amigos (v1.0): um pedido por linha (quem pediu -> quem recebeu); aceito vira 'accepted'
+  `CREATE TABLE IF NOT EXISTS friendships (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    friend_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, friend_id)
+  )`,
+  'CREATE INDEX IF NOT EXISTS friendships_friend ON friendships (friend_id)',
+  // Convite direto para X1: o anfitrião cria a sala e manda o código para o amigo
+  `CREATE TABLE IF NOT EXISTS invites (
+    id SERIAL PRIMARY KEY,
+    from_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    room TEXT NOT NULL,
+    ranked BOOLEAN NOT NULL DEFAULT false,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  'CREATE INDEX IF NOT EXISTS invites_to ON invites (to_id, created_at)',
+  // Visto por último (online = nos últimos 45 s)
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ',
   // Histórico de partidas (v0.9): adversário, coroas, deck usado e arena
   'ALTER TABLE matches ADD COLUMN IF NOT EXISTS opponent TEXT',
   'ALTER TABLE matches ADD COLUMN IF NOT EXISTS crowns JSONB',
