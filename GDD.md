@@ -167,7 +167,7 @@ Distribuição de custos: 1 (3 cartas) · 2 (17) · 3 (38) · 4 (23) · 5 (33) �
 ## 10. Comportamento das unidades (IA)
 
 1. **Procura alvo:** o inimigo mais próximo dentro do campo de visão (5,5 tiles) que ela consiga atacar.
-2. **Sem alvo por perto:** anda até o ginásio inimigo mais próximo. Terrestres passam pela ponte mais conveniente, e bandos atravessam lado a lado.
+2. **Sem alvo por perto:** segue a própria pista, como no Clash Royale: vai ao ginásio lateral daquele lado e, se ele já caiu, ao Ginásio Líder. Não atravessa o mapa para o ginásio da outra pista. Terrestres passam pela ponte mais conveniente, e bandos atravessam lado a lado.
 3. **Contorna ginásios** que estejam no caminho (os próprios e os inimigos que não são o alvo).
 4. **Trava no alvo:** depois de começar a atacar, só troca de alvo se o atual morrer ou sair do alcance.
 5. Unidades se empurram (as mais pesadas empurram mais) e levam **1 s para entrar em campo**. Enquanto surgem, são **invulneráveis**: ninguém mira nelas e nenhum dano as atinge (nem golpes, dano em área ou projéteis já lançados). Inimigos que não podem atacar um ao outro (ex.: dois tanques de ginásio) passam sem se bloquear.
@@ -258,7 +258,7 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
 - ~~Sprites estáticos~~ → resolvido na v0.3 com o SpriteCollab (parado, andar, atacar, 8 direções).
 
 **A fazer**
-- [ ] **Efeito de golpe por Pokémon** (campo `attackFx` em `data.js`, desenhado em `render.js`):
+- [x] **Efeito de golpe por tipo** (v0.7, `render.js`): cada tipo tem um projétil próprio (chama, gota, raio, folha, pedra, cristal, anel psíquico, lâmina de ar, esfera), com rastro; corpo a corpo mostra três garras na direção do golpe. A lista abaixo era a ideia original, por Pokémon:
   - Pikachu: raio em zigue-zague até o alvo
   - Charmander/Charmeleon: rajada de chamas com partículas
   - Squirtle/Wartortle: jato d'água com bolhas
@@ -266,14 +266,18 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
   - Onix: pancada com poeira e leve tremida de tela
   - Zubat/Golbat: mordida/asa roxa
   - Pokémon novos da v0.3: definir o efeito junto com a carta
-- [ ] **Efeitos de impacto**: partículas no acerto, tremida de tela em golpes fortes, faíscas em "Super efetivo!"
+- [x] **Efeitos de impacto** (v0.7): partículas do tipo no acerto, tremida de tela em explosões e ginásios caindo, clarão no Choque do Trovão, Poké Ball abrindo ao invocar, ginásio desabando com poeira e pedaços
 - [x] **Sprites animados**: SpriteCollab, feito na v0.3
 - [ ] **Sincronizar o dano com o quadro do golpe** (`hit` em `js/sprites.js`): hoje o dano sai no início da animação de ataque
-- [ ] **Animações extras do SpriteCollab**: `Hurt` ao levar dano, `Faint` ao ser derrotado
-- [ ] **Animação de evolução** mais caprichada (brilho branco piscando, como nos jogos)
-- [ ] **Som**: efeito por tipo de ataque, grito ao entrar em campo, trilha de batalha
+- [x] **Desmaio** (v0.7): o Pokémon derrotado fica cinza, achata e some (voadores caem). Feito no desenho, sem depender da animação `Faint`, que nem todo Pokémon tem
+- [x] **Animação de evolução** (v0.7): silhueta branca piscando, brilhos subindo, anel e o grito da nova forma
+- [x] **Som** (v0.7, `js/audio.js`, tudo pela Web Audio API):
+  - Efeitos sintetizados na hora, um timbre por tipo de golpe, mais explosões, desabamento, Poké Ball e evolução. Há um limite de sons por instante para não virar barulheira.
+  - Gritos originais ao entrar em campo, carregados do repositório público da PokéAPI (`PokeAPI/cries`), sem guardar no projeto. Se o navegador não tocar .ogg, toca um "piu" sintetizado.
+  - Música chiptune original (pulso, triângulo e ruído), que acelera na energia dupla e de novo na morte súbita, e vinheta de vitória, derrota ou empate.
+  - Botão 🔊/🔇 na partida e volumes de música e efeitos em "Minha conta", guardados no aparelho.
 - [x] **Mapas das arenas e ginásios** (arte do autor): as 10 arenas e os ginásios lateral/Líder, no jogo desde a v0.4.1.
-- [ ] **Multiplayer**: os efeitos devem ser gerados no convidado a partir dos eventos de ataque do snapshot (hoje só projéteis e efeitos genéricos são enviados)
+- [x] **Multiplayer** (v0.7): todo efeito tem um número crescente (`id`) e vai no snapshot; o convidado desenha e toca só os novos
 
 ## 15. Arquitetura técnica
 
@@ -314,7 +318,7 @@ PokeRoyale/
 | **v0.4.2** | Novo visual da tela inicial e dos menus | ✅ Feito |
 | **v0.5** | Ranking global, Minha conta, nome único, PokéMart e Fichas do Game Corner | ✅ Feito |
 | **v0.6** | Cosméticos (avatar, títulos, skins de ginásio, emotes) e Zona Safári | ✅ Feito |
-| v0.7 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) + emotes (Pikachu feliz/bravo) | 📝 Anotado |
+| v0.7 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) | 🚧 Em andamento |
 | v0.8 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
 
 ## 17. Contas e progressão (v0.4)

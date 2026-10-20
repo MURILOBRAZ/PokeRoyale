@@ -110,6 +110,7 @@ function onMatchOver(title) {
   const w = game.winner;
   const result = w === -1 ? 'draw' : w === mySide || w === null ? 'win' : 'loss';
   endReward = ranked ? finishRanked(result) : null;
+  Sound.jingle(result);
   setTimeout(() => showEnd(title), title ? 0 : 1200);
 }
 
@@ -191,6 +192,27 @@ $('#leave-confirm').addEventListener('click', () => {
   if (online) leaveOnline(); // o amigo recebe "Seu amigo saiu"
 });
 
+// ---------- Som ----------
+
+function syncSoundUi() {
+  $('#sound-btn').textContent = Sound.prefs.muted ? '🔇' : '🔊';
+  $('#vol-music').value = Sound.prefs.music;
+  $('#vol-sfx').value = Sound.prefs.sfx;
+}
+$('#sound-btn').addEventListener('click', () => {
+  Sound.toggleMute();
+  syncSoundUi();
+});
+$('#vol-music').addEventListener('input', (e) => Sound.set('music', Number(e.target.value)));
+$('#vol-sfx').addEventListener('input', (e) => {
+  Sound.set('sfx', Number(e.target.value));
+  if (Sound.prefs.muted) {
+    Sound.set('muted', false);
+    syncSoundUi();
+  }
+});
+syncSoundUi();
+
 // O bot reage aos ginásios derrubados e ao fim da partida
 function botReact(mood, chance = 1) {
   if (mode !== 'bot' || !game || Math.random() > chance) return;
@@ -222,6 +244,9 @@ function beginMatch(newMode, side, decks, opts = {}) {
   battleLook.crowns = [0, 0];
   game = new Game({ decks, levels: opts.levels, trainers: opts.trainers, skins });
   document.body.classList.add('in-battle');
+  // Gritos das cartas em jogo já começam a carregar; a música começa com a partida
+  Sound.preloadCries(game.players.flatMap((p) => [...p.hand, ...p.queue]).map((id) => CARDS[id] && CARDS[id].dex));
+  Sound.startMusic();
   buildEmoteMenu();
   $('#emote-menu').classList.add('hidden');
   ranked = opts.ranked || null;
@@ -657,6 +682,9 @@ function frame() {
   battleLook.bubbles = battleLook.bubbles.filter((b) => performance.now() - b.start < 2400);
   $('#emote-btn').classList.toggle('hidden', !game || game.over);
   $('#leave-btn').classList.toggle('hidden', !game || game.over);
+  $('#sound-btn').classList.toggle('hidden', !game || game.over);
+  if (game) Sound.watch(game, mySide);
+  else if (Sound.playing) Sound.stopMusic();
   renderer.draw(game || demoGame, game ? { ...ui, bubbles: battleLook.bubbles } : {});
   requestAnimationFrame(frame);
 }

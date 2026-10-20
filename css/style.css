@@ -413,3 +413,21 @@ button.danger { background: linear-gradient(180deg, #e2453c, #b62c25); box-shado
 
 /* Na partida, no PC: coluna com proporção de celular para o campo encher a tela sem bordas */
 body.in-battle #app { max-width: min(540px, calc((100dvh - 200px) * 0.62)); }
+
+/* ---------- Som ---------- */
+.sound-btn {
+  position: absolute;
+  left: 8px;
+  top: 58px;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 19px;
+  background: rgba(17, 26, 52, 0.85);
+  border: 2px solid #8fb4ff;
+  box-shadow: 0 3px 0 #0b1124;
+}
+.sound-form label { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sound-form input[type="range"] { flex: 1; max-width: 180px; accent-color: #ffcb05; }

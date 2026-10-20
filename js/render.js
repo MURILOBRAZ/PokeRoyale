@@ -103,6 +103,12 @@ class Renderer {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const [shx, shy] = this._shakeOffset(game);
+    if (shx || shy) {
+      ctx.fillStyle = '#0d1324';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.translate(shx, shy);
+    }
     this._drawGround();
     if (ui.selected) this._drawDeployZone(game, ui);
 
@@ -531,17 +537,188 @@ class Renderer {
     }
   }
 
+  // Tremida de tela: golpes fortes, explosões e ginásios desabando
+  _shakeOffset(game) {
+    let amp = 0;
+    for (const e of game.effects) if (e.shake) amp = Math.max(amp, e.shake * (e.ttl / e.total));
+    if (amp <= 0.01) return [0, 0];
+    const t = performance.now() / 1000;
+    return [Math.sin(t * 91) * amp * this.scale, Math.cos(t * 77) * amp * this.scale];
+  }
+
+  // Estrela de 4 pontas (brilhos)
+  _star(cx, cy, size) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const rr = k % 2 ? size * 0.3 : size;
+      const a = (k * Math.PI) / 4;
+      ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Raio em zigue-zague entre dois pontos (tela)
+  _zigzag(x1, y1, x2, y2, jitter, parts = 5) {
+    const ctx = this.ctx;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    for (let i = 1; i < parts; i++) {
+      const j = (Math.random() - 0.5) * 2 * jitter;
+      ctx.lineTo(x1 + (dx * i) / parts + nx * j, y1 + (dy * i) / parts + ny * j);
+    }
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  // Golpe à distância: cada tipo tem um formato (chama, gota, raio, folha, pedra, cristal...)
   _drawProjectile(p) {
     const ctx = this.ctx;
+    const s = this.scale;
     const [x, y] = this.w2s(p.x, p.y);
-    const r = this.scale * (p.tower ? 0.16 : 0.2);
-    ctx.fillStyle = p.tower ? '#fff4c2' : TYPE_COLORS[p.type];
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    if (p.tower) {
+      ctx.fillStyle = '#fff4c2';
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, s * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      return;
+    }
+    const color = TYPE_COLORS[p.type] || '#ffffff';
+    const now = performance.now() / 1000;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((p.a || 0) + (this.viewSide === 1 ? Math.PI : 0));
+    // Rastro
+    ctx.fillStyle = color;
+    for (let i = 1; i <= 3; i++) {
+      ctx.globalAlpha = 0.42 - i * 0.12;
+      ctx.beginPath();
+      ctx.arc(-i * s * 0.22, 0, s * (0.17 - i * 0.03), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    switch (p.type) {
+      case 'fire':
+      case 'dragon': {
+        const f = 1 + Math.sin(now * 40) * 0.12;
+        ctx.fillStyle = p.type === 'fire' ? '#ff6a1a' : '#7a3cff';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s * 0.34 * f, s * 0.2 * f, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = p.type === 'fire' ? '#ffd54a' : '#d6b8ff';
+        ctx.beginPath();
+        ctx.ellipse(s * 0.06, 0, s * 0.17, s * 0.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'electric':
+        ctx.strokeStyle = '#fff59d';
+        ctx.lineWidth = s * 0.08;
+        ctx.lineCap = 'round';
+        this._zigzag(-s * 0.4, 0, s * 0.3, 0, s * 0.15, 4);
+        ctx.fillStyle = 'rgba(255, 240, 120, 0.5)';
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'grass':
+        ctx.rotate(now * 14);
+        ctx.fillStyle = '#5cc04a';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s * 0.24, s * 0.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2f7a22';
+        ctx.lineWidth = Math.max(1, s * 0.03);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.22, 0);
+        ctx.lineTo(s * 0.22, 0);
+        ctx.stroke();
+        break;
+      case 'ice':
+      case 'bug':
+      case 'steel':
+        ctx.fillStyle = p.type === 'ice' ? '#bff4ff' : color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1, s * 0.03);
+        ctx.beginPath();
+        ctx.moveTo(s * 0.32, 0);
+        ctx.lineTo(0, s * 0.09);
+        ctx.lineTo(-s * 0.2, 0);
+        ctx.lineTo(0, -s * 0.09);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      case 'rock':
+      case 'ground':
+        ctx.rotate(now * 9);
+        ctx.fillStyle = p.type === 'rock' ? '#9c8a5a' : '#b98c4a';
+        ctx.strokeStyle = '#4a3b22';
+        ctx.lineWidth = Math.max(1, s * 0.04);
+        ctx.beginPath();
+        [1, 0.75, 1.05, 0.8, 0.95, 0.7].forEach((r, i) => {
+          const a = (i * Math.PI) / 3;
+          ctx.lineTo(Math.cos(a) * s * 0.21 * r, Math.sin(a) * s * 0.21 * r);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      case 'psychic':
+      case 'fairy':
+        ctx.strokeStyle = color;
+        ctx.lineWidth = s * 0.07;
+        ctx.beginPath();
+        ctx.arc(0, 0, s * (0.2 + Math.sin(now * 22) * 0.06), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        this._star(0, 0, s * 0.12);
+        break;
+      case 'flying':
+        ctx.strokeStyle = '#eef3ff';
+        ctx.lineWidth = s * 0.08;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(-s * 0.1, 0, s * 0.26, -1.1, 1.1);
+        ctx.stroke();
+        break;
+      case 'water':
+        ctx.fillStyle = '#4f8cff';
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.19, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath();
+        ctx.arc(s * 0.05, -s * 0.06, s * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      default: {
+        // Veneno, fantasma, sombrio, normal, lutador: esfera com brilho
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.35;
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.beginPath();
+        ctx.arc(s * 0.04, -s * 0.05, s * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   _drawPendingSpell(sp) {
@@ -575,48 +752,287 @@ class Renderer {
     const s = this.scale;
     const k = 1 - e.ttl / e.total; // 0 -> 1
     const [x, y] = this.w2s(e.x, e.y);
+    const color = e.color || TYPE_COLORS[e.type] || '#ffffff';
+    // Aleatório estável por efeito (o desenho não "pisca" de um quadro para o outro)
+    const rnd = (n) => {
+      const v = Math.sin((e.id || 1) * 12.9898 + n * 78.233) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    const out = 1 - (1 - k) * (1 - k); // desacelera no fim
     ctx.save();
-    if (e.kind === 'text') {
-      ctx.globalAlpha = 1 - k;
-      ctx.font = `bold ${e.size * s}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillStyle = e.color;
-      const ty = y - k * s * 0.9;
-      ctx.strokeText(e.text, x, ty);
-      ctx.fillText(e.text, x, ty);
-    } else if (e.kind === 'blast') {
-      ctx.globalAlpha = 0.55 * (1 - k);
-      ctx.fillStyle = e.color;
-      ctx.beginPath();
-      ctx.arc(x, y, e.radius * s * (0.6 + 0.4 * k), 0, Math.PI * 2);
-      ctx.fill();
-      if (e.spell === 'thunderbolt' && k < 0.6) {
+    switch (e.kind) {
+      case 'text': {
         ctx.globalAlpha = 1 - k;
-        ctx.strokeStyle = '#fff7a8';
-        ctx.lineWidth = s * 0.18;
-        ctx.beginPath();
-        ctx.moveTo(x - s * 0.3, y - s * 6);
-        ctx.lineTo(x + s * 0.4, y - s * 3.5);
-        ctx.lineTo(x - s * 0.3, y - s * 2.8);
-        ctx.lineTo(x, y);
-        ctx.stroke();
+        ctx.font = `bold ${e.size * s}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillStyle = e.color;
+        const ty = y - k * s * 0.9;
+        ctx.strokeText(e.text, x, ty);
+        ctx.fillText(e.text, x, ty);
+        break;
       }
-    } else if (e.kind === 'poof') {
-      ctx.globalAlpha = 0.7 * (1 - k);
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(x, y, e.radius * s * (0.8 + k), 0, Math.PI * 2);
-      ctx.fill();
-    } else if (e.kind === 'evolve') {
-      ctx.globalAlpha = 1 - k;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = s * 0.15;
-      ctx.beginPath();
-      ctx.arc(x, y - e.radius * s, e.radius * s * (1 + k * 2.5), 0, Math.PI * 2);
-      ctx.stroke();
+      case 'cast':
+        // Energia juntando no atacante
+        if (e.spell) break;
+        ctx.globalAlpha = 0.8 * (1 - k);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = s * 0.08;
+        ctx.beginPath();
+        ctx.arc(x, y, s * (0.15 + 0.45 * out), 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      case 'strike': {
+        // Golpe corpo a corpo: três garras cortando o alvo, na direção do ataque
+        const [ax, ay] = this.w2s(e.sx, e.sy);
+        const ang = Math.atan2(y - ay, x - ax) + Math.PI / 2;
+        const size = s * (e.big ? 0.75 : 0.5);
+        const reveal = Math.min(1, k * 3);
+        ctx.globalAlpha = k < 0.5 ? 1 : 1 - (k - 0.5) * 2;
+        ctx.translate(x, y);
+        ctx.rotate(ang + 0.5);
+        ctx.lineCap = 'round';
+        for (let i = -1; i <= 1; i++) {
+          const off = i * size * 0.32;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = s * (e.big ? 0.16 : 0.12);
+          ctx.beginPath();
+          ctx.moveTo(-size, off);
+          ctx.lineTo(-size + 2 * size * reveal, off);
+          ctx.stroke();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = s * 0.05;
+          ctx.stroke();
+        }
+        if (e.big && k < 0.4) {
+          ctx.fillStyle = '#fff6c8';
+          this._star(0, 0, size * (0.6 + k));
+        }
+        break;
+      }
+      case 'impact': {
+        // Partículas do tipo do golpe saindo do ponto de acerto
+        if (k < 0.3) {
+          ctx.globalAlpha = 0.8 * (1 - k / 0.3);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x, y, s * 0.3 * (1 - k / 0.3) + s * 0.08, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1 - k;
+        ctx.fillStyle = color;
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2 + rnd(i) * 0.8;
+          const d = s * (0.15 + 0.6 * out * (0.6 + rnd(i + 9) * 0.6));
+          let px = x + Math.cos(a) * d;
+          let py = y + Math.sin(a) * d * 0.8;
+          if (e.type === 'fire') py -= k * s * 0.5;
+          if (e.type === 'water') py += (k * k - k) * s * 0.9 + k * s * 0.3;
+          const r = s * 0.09 * (1 - k) + s * 0.02;
+          if (e.type === 'grass' || e.type === 'ice' || e.type === 'fairy' || e.type === 'psychic') this._star(px, py, r * 1.6);
+          else {
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        if (e.type === 'electric' && k < 0.6) {
+          ctx.strokeStyle = '#fff59d';
+          ctx.lineWidth = s * 0.05;
+          for (let i = 0; i < 3; i++) {
+            const a = rnd(i + 20) * Math.PI * 2;
+            this._zigzag(x, y, x + Math.cos(a) * s * 0.7, y + Math.sin(a) * s * 0.7, s * 0.12, 3);
+          }
+        }
+        break;
+      }
+      case 'blast': {
+        // Área: clarão, anel e estilhaços (raio e fogo têm desenho próprio)
+        if (e.spell === 'thunderbolt' && k < 0.12) {
+          ctx.globalAlpha = 0.28 * (1 - k / 0.12);
+          ctx.fillStyle = '#fffbe0';
+          ctx.fillRect(-50, -50, this.canvas.width + 100, this.canvas.height + 100);
+        }
+        ctx.globalAlpha = 0.5 * (1 - k);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, e.radius * s * (0.6 + 0.4 * out), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = s * 0.1 * (1 - k) + 1;
+        ctx.beginPath();
+        ctx.arc(x, y, e.radius * s * (0.3 + 0.8 * out), 0, Math.PI * 2);
+        ctx.stroke();
+        const n = Math.round(8 + e.radius * 4);
+        ctx.fillStyle = e.type === 'fire' ? '#ffd54a' : color;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2 + rnd(i);
+          const d = e.radius * s * out * (0.5 + rnd(i + 30) * 0.7);
+          const py = y + Math.sin(a) * d * 0.75 - (e.type === 'fire' ? k * s * 0.8 : 0);
+          ctx.beginPath();
+          ctx.arc(x + Math.cos(a) * d, py, s * 0.12 * (1 - k) + 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (e.spell === 'thunderbolt' && k < 0.6) {
+          ctx.globalAlpha = 1 - k / 0.6;
+          ctx.strokeStyle = '#fff7a8';
+          ctx.lineCap = 'round';
+          ctx.lineWidth = s * 0.22;
+          this._zigzag(x + s * 0.2, y - s * 9, x, y, s * 0.6, 7);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = s * 0.08;
+          this._zigzag(x + s * 0.2, y - s * 9, x, y, s * 0.4, 7);
+        }
+        break;
+      }
+      case 'spawn': {
+        // Poké Ball abrindo: a bola pula e solta um clarão na cor do time
+        if (k < 0.35) {
+          const t = k / 0.35;
+          const r = s * 0.3;
+          const by = y - s * 0.6 - Math.sin(t * Math.PI) * s * 0.5;
+          ctx.translate(x, by);
+          ctx.rotate(Math.sin(t * 18) * 0.3);
+          ctx.fillStyle = '#e8413a';
+          ctx.beginPath();
+          ctx.arc(0, 0, r, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI);
+          ctx.fill();
+          ctx.strokeStyle = '#1b1b1b';
+          ctx.lineWidth = Math.max(1, r * 0.16);
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI * 2);
+          ctx.moveTo(-r, 0);
+          ctx.lineTo(r, 0);
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(0, 0, r * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          const t = (k - 0.35) / 0.65;
+          ctx.globalAlpha = 1 - t;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(x, y - s * 0.5, s * (0.5 + t * 0.6), s * (1.1 + t * 0.4), 0, 0, Math.PI * 2);
+          ctx.globalAlpha = 0.55 * (1 - t);
+          ctx.fill();
+          ctx.globalAlpha = 1 - t;
+          ctx.strokeStyle = this.teamColor(e.side);
+          ctx.lineWidth = s * 0.12;
+          ctx.beginPath();
+          ctx.ellipse(x, y + s * 0.2, s * (0.4 + t * 1.4), s * (0.2 + t * 0.7), 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'faint': {
+        // Desmaio: o Pokémon fica cinza, achata e some (voadores caem)
+        const sp = SPRITES[e.dex];
+        const angle = (e.face ?? Math.PI / 2) + (this.viewSide === 1 ? Math.PI : 0);
+        const frame = sp && this._sheetFrame(e.dex, sp.idle, 0, angle, sp.walk.h);
+        if (frame) {
+          ctx.save();
+          const lift = e.air ? s * 0.9 * (1 - out) : 0;
+          const dw = frame.w * frame.k;
+          const dh = frame.h * frame.k;
+          ctx.globalAlpha = 1 - k;
+          ctx.imageSmoothingEnabled = false;
+          ctx.filter = 'grayscale(0.7) brightness(1.4)';
+          ctx.translate(x, y + dh / 2 - lift);
+          ctx.scale(1 + 0.25 * k, 1 - 0.55 * k);
+          ctx.drawImage(frame.img, frame.sx, frame.sy, frame.w, frame.h, -dw / 2, -dh, dw, dh);
+          ctx.restore();
+        }
+        if (k > 0.4) {
+          const t = (k - 0.4) / 0.6;
+          ctx.globalAlpha = 0.6 * (1 - t);
+          ctx.fillStyle = '#e8e2d0';
+          for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2 + rnd(i);
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * s * 0.5 * t, y + Math.sin(a) * s * 0.2 * t, s * (0.18 + 0.15 * t), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case 'crash': {
+        // Ginásio desabando: clarão, poeira e pedaços voando
+        const R = e.radius * s;
+        if (k < 0.15) {
+          ctx.globalAlpha = 0.8 * (1 - k / 0.15);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x, y, R * 1.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 0.65 * (1 - k);
+        for (let i = 0; i < 9; i++) {
+          const a = (i / 9) * Math.PI * 2 + rnd(i);
+          const d = R * (0.3 + out * (0.7 + rnd(i + 3) * 0.6));
+          ctx.fillStyle = i % 2 ? '#cfc6b0' : '#a89f8c';
+          ctx.beginPath();
+          ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.6 - k * s * 0.4, R * (0.35 + 0.35 * out), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1 - k;
+        ctx.fillStyle = '#6b5a45';
+        for (let i = 0; i < 10; i++) {
+          const a = rnd(i + 50) * Math.PI * 2;
+          const v = R * (1 + rnd(i + 60) * 1.5);
+          const px = x + Math.cos(a) * v * out;
+          const py = y - Math.abs(Math.sin(a)) * v * (out - k * k * 1.2);
+          const r = s * (0.1 + rnd(i + 70) * 0.12);
+          ctx.fillRect(px - r, py - r, r * 2, r * 2);
+        }
+        break;
+      }
+      case 'evolve': {
+        // Evolução: silhueta branca piscando, brilhos subindo e um anel no fim
+        const R = e.radius * s;
+        if (k < 0.75) {
+          const blink = 0.45 + 0.45 * Math.abs(Math.sin(k * 28));
+          ctx.globalAlpha = blink * (1 - k / 0.75 * 0.3);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(x, y - R * 1.4, R * 1.4, R * 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1 - k;
+        ctx.fillStyle = '#fff3a0';
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          const px = x + Math.cos(a + k * 3) * R * 1.6;
+          const py = y - R - k * s * 1.8 - rnd(i) * s * 0.6;
+          this._star(px, py, s * 0.18 * (1 - k * 0.5));
+        }
+        if (k > 0.6) {
+          const t = (k - 0.6) / 0.4;
+          ctx.globalAlpha = 1 - t;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = s * 0.15;
+          ctx.beginPath();
+          ctx.arc(x, y - R, R * (1 + t * 2.5), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'poof':
+        ctx.globalAlpha = 0.7 * (1 - k);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x, y, e.radius * s * (0.8 + k), 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      default:
     }
     ctx.restore();
   }

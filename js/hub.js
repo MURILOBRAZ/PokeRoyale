@@ -267,10 +267,14 @@ function renderBalls() {
   const balls = Account.state.balls;
   const anyUnlocking = balls.some((b) => b.unlockAt && Date.parse(b.unlockAt) > now);
   const slots = [];
+  const keys = [];
+  const texts = [];
   for (let i = 0; i < BALL_SLOTS; i++) {
     const b = balls[i];
     if (!b) {
       slots.push('<div class="ball-slot empty">Espaço livre<small>Vença para ganhar uma ball</small></div>');
+      keys.push('empty');
+      texts.push(null);
       continue;
     }
     const left = b.unlockAt ? (Date.parse(b.unlockAt) - now) / 1000 : null;
@@ -287,16 +291,34 @@ function renderBalls() {
       status = 'Abrir!';
     }
     slots.push(`<button class="ball-slot ${cls}" data-ball="${b.id}" data-state="${cls}">${ballImg(b.tier)}<b>${BALLS[b.tier].name}</b><small>${status}</small></button>`);
+    keys.push(`${b.id}|${b.tier}|${cls}`);
+    texts.push(status);
   }
-  $('#hub-balls').innerHTML = slots.join('');
+  // Só recria os botões quando algo muda de verdade; o cronômetro troca só o texto.
+  // (Recriar a cada segundo fazia o toque "sumir" se caísse bem na troca: precisava tocar duas vezes.)
+  const list = $('#hub-balls');
+  const key = keys.join(',');
+  if (list.dataset.key !== key) {
+    list.innerHTML = slots.join('');
+    list.dataset.key = key;
+  } else {
+    texts.forEach((t, i) => {
+      const small = t !== null && list.children[i] && list.children[i].querySelector('small');
+      if (small && small.textContent !== t) small.textContent = t;
+    });
+  }
 
   const fb = Account.user.freeBall;
   const ready = fb.available > 0 || (fb.nextAt && Date.parse(fb.nextAt) <= now);
   const free = $('#hub-free');
   free.disabled = !ready;
-  free.innerHTML = ready
+  const freeHtml = ready
     ? `${ballImg('poke')} Poké Ball grátis${fb.available > 1 ? ' ×2' : ''} — abrir!`
     : `${ballImg('poke')} Próxima Poké Ball grátis em ${fmtDuration((Date.parse(fb.nextAt) - now) / 1000)}`;
+  if (free.dataset.html !== freeHtml) {
+    free.innerHTML = freeHtml;
+    free.dataset.html = freeHtml;
+  }
 }
 
 // Atualiza os cronômetros enquanto o início estiver aberto

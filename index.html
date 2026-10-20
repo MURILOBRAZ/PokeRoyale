@@ -26,6 +26,7 @@
       <canvas id="arena"></canvas>
       <button id="emote-btn" class="emote-btn hidden" title="Emotes" aria-label="Emotes">💬</button>
       <button id="leave-btn" class="leave-btn hidden" title="Sair da partida" aria-label="Sair da partida">🏳️</button>
+      <button id="sound-btn" class="sound-btn hidden" title="Som" aria-label="Ligar ou desligar o som">🔊</button>
       <div id="emote-menu" class="emote-menu hidden"></div>
       <div id="banner"></div>
     </main>
@@ -264,6 +265,11 @@
           <p class="sub small">Mais títulos, ginásios e emotes na Loja, com Fichas 🪙.</p>
           <p id="msg-look" class="form-msg"></p>
         </div>
+        <div class="settings-form sound-form">
+          <h3>Som</h3>
+          <label>🎵 Música <input id="vol-music" type="range" min="0" max="1" step="0.05"></label>
+          <label>💥 Efeitos e gritos <input id="vol-sfx" type="range" min="0" max="1" step="0.05"></label>
+        </div>
         <form id="form-name" class="auth-form settings-form">
           <h3>Nome de treinador</h3>
           <input id="set-name-input" maxlength="16" autocomplete="nickname" spellcheck="false">
@@ -390,6 +396,7 @@
   <script src="js/render.js"></script>
   <script src="js/net.js"></script>
   <script src="js/deck.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/main.js"></script>
   <script src="js/hub.js"></script>
 </body>

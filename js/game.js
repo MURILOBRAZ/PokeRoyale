@@ -40,6 +40,7 @@ class Game {
     this.projectiles = [];
     this.spells = [];
     this.effects = [];
+    this.fxSeq = 0; // número do último efeito criado (o som toca só os novos, também no convidado)
     this.events = []; // mensagens para a interface (banners)
     this._createTowers();
   }
@@ -137,10 +138,12 @@ class Game {
     p.hand[handIndex] = p.queue.shift();
 
     if (card.kind === 'spell') {
+      this._fx({ kind: 'cast', spell: card.id, type: card.type, x, y, side, ttl: 0.3, total: 0.3 });
       const mult = levelMultiplier(card, this.levels[side][cardId]);
       this.spells.push({ card, side, x, y, timer: card.delay, total: card.delay, mult });
     } else {
       const n = card.count || 1;
+      this._fx({ kind: 'spawn', dex: card.dex, x, y, side, n, ttl: 0.7, total: 0.7 });
       const offsets = n === 1 ? [[0, 0]] : [[0, -0.5], [-0.6, 0.4], [0.6, 0.4]];
       for (let i = 0; i < n; i++) {
         const [ox, oy] = offsets[i % offsets.length];
@@ -201,6 +204,12 @@ class Game {
     this._checkTime();
   }
 
+  // Efeitos visuais/sonoros: só dados simples (vão no snapshot para o convidado)
+  _fx(e) {
+    e.id = ++this.fxSeq;
+    this.effects.push(e);
+  }
+
   _updateEffects(dt) {
     for (const e of this.effects) e.ttl -= dt;
     this.effects = this.effects.filter((e) => e.ttl > 0);
@@ -253,7 +262,13 @@ class Game {
       }
     }
     if (best) return best;
-    // Nada por perto: vai até o ginásio inimigo mais próximo
+    // Nada por perto: segue a própria pista (como no Clash Royale) — o ginásio lateral dela
+    // e, se ele já caiu, o Líder. Não atravessa o mapa para o ginásio da outra pista.
+    const lane = u.x < ARENA.W / 2 ? 0 : 1;
+    const laneTower = this.towers.find((t) => t.kind === 'princess' && t.lane === lane && this._canTarget(u, t));
+    if (laneTower) return laneTower;
+    const king = this.towers.find((t) => t.kind === 'king' && this._canTarget(u, t));
+    if (king) return king;
     for (const t of this.towers) {
       if (!this._canTarget(u, t)) continue;
       const d = edgeDist(u, t);
@@ -374,27 +389,32 @@ class Game {
       for (const e of [...this._enemiesOf(u.side)]) {
         if (Math.hypot(e.x - u.x, e.y - u.y) <= d.splash + e.radius) this._damage(e, d.dmg, d.type, u);
       }
-      this.effects.push({ kind: 'blast', x: u.x, y: u.y, radius: d.splash, color: TYPE_COLORS[d.type], ttl: 0.5, total: 0.5 });
+      this._fx({ kind: 'blast', type: d.type, x: u.x, y: u.y, radius: d.splash, color: TYPE_COLORS[d.type], ttl: 0.6, total: 0.6, shake: 0.25 });
       u.hp = 0;
       u.dead = true;
       return;
     }
     if (d.range > 1.6) {
+      this._fx({ kind: 'cast', type: d.type, x: u.x, y: u.y - (u.air ? 0.8 : 0.3), side: u.side, ttl: 0.25, total: 0.25 });
       this.projectiles.push({
         x: u.x, y: u.y - (u.air ? 0.8 : 0.3), target: t, speed: 11,
         dmg: d.dmg, type: d.type, splash: d.splash || 0, source: u, side: u.side,
       });
     } else {
-      this._hit(u, t, d.dmg, d.type, d.splash || 0);
+      this._fx({ kind: 'strike', type: d.type, x: t.x, y: t.y - (t.air ? 0.8 : 0), sx: u.x, sy: u.y, big: d.dmg >= 250, ttl: 0.3, total: 0.3 });
+      this._hit(u, t, d.dmg, d.type, d.splash || 0, true);
     }
   }
 
-  _hit(source, target, dmg, type, splash) {
+  _hit(source, target, dmg, type, splash, melee = false) {
+    if (!source.isTower && !melee && !(splash > 0)) {
+      this._fx({ kind: 'impact', type, x: target.x, y: target.y - (target.air ? 0.8 : 0), ttl: 0.35, total: 0.35 });
+    }
     if (splash > 0) {
       for (const e of this._enemiesOf(source.side)) {
         if (Math.hypot(e.x - target.x, e.y - target.y) <= splash + e.radius) this._damage(e, dmg, type, source);
       }
-      this.effects.push({ kind: 'blast', x: target.x, y: target.y, radius: splash, color: TYPE_COLORS[type], ttl: 0.3, total: 0.3 });
+      this._fx({ kind: 'blast', type, x: target.x, y: target.y, radius: splash, color: TYPE_COLORS[type], ttl: 0.4, total: 0.4 });
     } else {
       this._damage(target, dmg, type, source);
     }
@@ -411,20 +431,24 @@ class Game {
     const v = Math.round(amount * m);
     e.hp -= v;
     e.hitFlash = 0.12;
-    this.effects.push({
+    this._fx({
       kind: 'text', x: e.x + (Math.random() - 0.5) * 0.4, y: e.y - e.radius - 0.4,
       text: String(v), color: m > 1 ? '#ffe14d' : m < 1 ? '#c8c8c8' : '#ffffff',
       size: m > 1 ? 0.55 : 0.42, ttl: 0.8, total: 0.8,
     });
     if (m > 1 && (!e.lastSuper || this.time - e.lastSuper > 1.5)) {
       e.lastSuper = this.time;
-      this.effects.push({ kind: 'text', x: e.x, y: e.y - e.radius - 1.0, text: 'Super efetivo!', color: '#ffb020', size: 0.5, ttl: 1.1, total: 1.1 });
+      this._fx({ kind: 'text', x: e.x, y: e.y - e.radius - 1.0, text: 'Super efetivo!', color: '#ffb020', size: 0.5, ttl: 1.1, total: 1.1 });
     }
     if (e.isTower && e.kind === 'king') e.active = true;
     if (e.hp <= 0) {
       e.hp = 0;
       e.dead = true;
-      this.effects.push({ kind: 'poof', x: e.x, y: e.y, radius: e.radius, ttl: 0.5, total: 0.5 });
+      if (e.isTower) {
+        this._fx({ kind: 'crash', x: e.x, y: e.y, radius: e.radius, king: e.kind === 'king', ttl: 1.2, total: 1.2, shake: e.kind === 'king' ? 0.5 : 0.35 });
+      } else {
+        this._fx({ kind: 'faint', dex: e.def.dex, x: e.x, y: e.y, face: e.face, air: e.air, radius: e.radius, ttl: 0.7, total: 0.7 });
+      }
       if (e.isTower) this._towerDestroyed(e);
       if (source && !source.dead && !source.isTower) this._creditKill(source);
     }
@@ -452,7 +476,7 @@ class Game {
     u.kills = 0;
     u.evolved = true;
     u.target = null;
-    this.effects.push({ kind: 'evolve', x: u.x, y: u.y, radius: u.radius, ttl: 0.8, total: 0.8 });
+    this._fx({ kind: 'evolve', dex: into.dex, x: u.x, y: u.y, radius: u.radius, ttl: 1.1, total: 1.1 });
     this.events.push({ text: `${before} evoluiu para ${into.name}!`, side: u.side });
   }
 
@@ -517,6 +541,7 @@ class Game {
       } else {
         p.x += (dx / d) * step;
         p.y += (dy / d) * step;
+        p.a = Math.atan2(dy, dx);
       }
     }
     this.projectiles = this.projectiles.filter((p) => !p.done);
@@ -529,7 +554,7 @@ class Game {
       this._damage(e, c.dmg * (s.mult || 1) * (e.isTower ? c.towerMult : 1), c.type, null);
       if (c.stun && !e.isTower) e.stun = Math.max(e.stun, c.stun);
     }
-    this.effects.push({ kind: 'blast', x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl: 0.5, total: 0.5, spell: c.id });
+    this._fx({ kind: 'blast', type: c.type, x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl: 0.6, total: 0.6, spell: c.id, shake: c.id === 'fireblast' ? 0.3 : 0.15 });
   }
 
   // ---------- Rede ----------
@@ -546,7 +571,7 @@ class Game {
         id: u.id, c: u.card.id, s: u.side, x: r(u.x), y: r(u.y), hp: Math.round(u.hp), mhp: u.maxHp,
         r: r(u.radius), d: r(u.deploy), st: r(u.stun), ev: u.evolved ? u.def.id : 0, air: u.air, fa: r(u.face), m: u.moving, at: r(u.attackT), a: r(u.attackAnim), hf: r(u.hitFlash || 0),
       })),
-      projectiles: this.projectiles.map((p) => ({ x: r(p.x), y: r(p.y), type: p.type, tower: !!p.tower })),
+      projectiles: this.projectiles.map((p) => ({ x: r(p.x), y: r(p.y), type: p.type, tower: !!p.tower, a: r(p.a || 0) })),
       spells: this.spells.map((s) => ({ c: s.card.id, s: s.side, x: s.x, y: s.y, timer: r(s.timer), total: s.total })),
       effects: this.effects.map((e) => ({ ...e, x: r(e.x), y: r(e.y) })),
     };
