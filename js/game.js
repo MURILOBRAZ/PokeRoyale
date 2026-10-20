@@ -12,6 +12,17 @@ function shuffle(arr) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+// Tempo do começo da animação de ataque até o quadro em que o golpe acerta (campo hit do SpriteCollab).
+// O dano sai nesse momento, sincronizado com o desenho. Limitado para não pesar no balanceamento.
+function hitDelay(def) {
+  const sp = typeof SPRITES !== 'undefined' ? SPRITES[def.dex] : null;
+  if (!sp) return 0;
+  const anim = def.range > 1.6 ? sp.shoot || sp.attack : sp.attack;
+  if (!anim || !(anim.hit > 0)) return 0;
+  const frames = anim.d.slice(0, anim.hit).reduce((a, b) => a + b, 0);
+  return Math.min(frames / 60, 0.35, def.hitSpeed * 0.5);
+}
+
 function edgeDist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y) - a.radius - b.radius;
 }
@@ -294,9 +305,21 @@ class Game {
     }
     if (u.stun > 0) {
       u.stun -= dt;
+      u.windup = null; // atordoado no meio do golpe: o golpe é perdido
       return;
     }
     u.cooldown = Math.max(0, u.cooldown - dt);
+
+    // Golpe já começou: espera o quadro do acerto, parado no lugar
+    if (u.windup) {
+      u.windup.t -= dt;
+      if (u.windup.t > 0) return;
+      const t = u.windup.target;
+      u.windup = null;
+      if (this._canTarget(u, t) && edgeDist(u, t) <= u.def.range + 0.8) this._attack(u, t);
+      else u.cooldown = Math.min(u.cooldown, 0.2); // o alvo sumiu: procura outro logo
+      return;
+    }
 
     const locked = this._canTarget(u, u.target) && edgeDist(u, u.target) <= u.def.range + 0.3;
     if (!locked) u.target = this._acquireTarget(u);
@@ -310,7 +333,9 @@ class Game {
         u.attackAnim = 0.2;
         u.attackT = this.time;
         u.face = Math.atan2(t.y - u.y, t.x - u.x);
-        this._attack(u, t);
+        const delay = hitDelay(u.def);
+        if (delay > 0) u.windup = { t: delay, target: t };
+        else this._attack(u, t);
       }
     } else {
       const [wx, wy] = this._waypoint(u, t.x, t.y);

@@ -270,7 +270,7 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
   - Pokémon novos da v0.3: definir o efeito junto com a carta
 - [x] **Efeitos de impacto** (v0.7): partículas do tipo no acerto, tremida de tela em explosões e ginásios caindo, clarão no Choque do Trovão, Poké Ball abrindo ao invocar, ginásio desabando com poeira e pedaços
 - [x] **Sprites animados**: SpriteCollab, feito na v0.3
-- [ ] **Sincronizar o dano com o quadro do golpe** (`hit` em `js/sprites.js`): hoje o dano sai no início da animação de ataque
+- [x] **Dano no quadro do golpe** (v0.7, `hitDelay` em `js/game.js`): o dano sai no quadro em que o golpe acerta (`hit` em `js/sprites.js`), em média 0,13 s depois do início da animação, no máximo 0,35 s. Nesse meio-tempo o Pokémon fica parado. Se for atordoado, perde o golpe. Se o alvo sumir, procura outro logo.
 - [x] **Desmaio** (v0.7): o Pokémon derrotado fica cinza, achata e some (voadores caem). Feito no desenho, sem depender da animação `Faint`, que nem todo Pokémon tem
 - [x] **Animação de evolução** (v0.7): silhueta branca piscando, brilhos subindo, anel e o grito da nova forma
 - [x] **Som** (v0.7, `js/audio.js`, tudo pela Web Audio API):
@@ -320,8 +320,8 @@ PokeRoyale/
 | **v0.4.2** | Novo visual da tela inicial e dos menus | ✅ Feito |
 | **v0.5** | Ranking global, Minha conta, nome único, PokéMart e Fichas do Game Corner | ✅ Feito |
 | **v0.6** | Cosméticos (avatar, títulos, skins de ginásio, emotes) e Zona Safári | ✅ Feito |
-| v0.7 | Passe de visual e som (ver [14.1 Backlog visual](#141-backlog-visual-para-a-v05)) | 🚧 Em andamento |
-| v0.8 | Cartas de construção (Pokécentro que cura, Torre de Mewtwo...) | 💡 Ideia |
+| **v0.7** | Efeitos de golpe por tipo, som (efeitos, gritos, música), campo em tela cheia, invocação no ponto permitido mais próximo, vários decks com salvamento automático, arrastar cartas, várias balls abrindo juntas | ✅ Feito |
+| v0.8 | Cartas de construção (ver [18](#18-cartas-de-construção-v08-proposta)) | 📝 Proposta |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -496,7 +496,38 @@ Depois de cada ação o Pokémon pode fugir (comum 10%, rara 18%, épica 28%, co
 - Os números de troféus por arena (300 a 4000) estão bons, ou mais rápido no começo?
 - Nível de treinador deve fortalecer os ginásios, como no Clash Royale, ou ser só visual?
 
-## 18. Questões em aberto
+## 18. Cartas de construção (v0.8, proposta)
+
+Proposta para aprovar. Os números são o ponto de partida e serão ajustados com a simulação de partidas.
+
+**Regras gerais (como no Clash Royale)**
+- **Onde:** só no próprio lado do rio (ou no bolsão), sem andar.
+- **Vida:** a construção perde vida sozinha com o tempo e some quando a duração acaba.
+- **Alvo:** quem ataca "só ginásios" (Graveler, Onix...) também ataca construções. Assim, elas servem para **puxar** o inimigo para longe dos ginásios.
+- **Tipo:** cada construção tem um tipo, e a tabela de tipos vale para ela.
+- **Visual:** com sprite próprio, desenhado no chão.
+
+**Cartas propostas**
+
+| Carta | Custo | Vida | Dura | O que faz | Tipo |
+|---|---|---|---|---|---|
+| 🏥 Centro Pokémon | 4 | 900 | 40 s | Cura 50 de vida por segundo dos aliados num raio de 3 tiles | Normal |
+| 👻 Torre Pokémon | 4 | 1000 | 35 s | A torre assombrada de Lavender: atira Bolas Sombrias, dano 90 a cada 1,1 s, alcance 5,5, acerta voadores | Fantasma |
+| 🦇 Caverna Zubat | 5 | 800 | 40 s | Solta um Zubat a cada 7 s | Veneno |
+| 😴 Snorlax Dormindo | 4 | 2200 | 30 s | Não ataca: só bloqueia o caminho e atrai os inimigos | Normal |
+| 🧬 Laboratório do Mewtwo | 6 | 1300 | 40 s | Canhão psíquico em área: dano 160 a cada 2 s, alcance 6, só alvos no chão | Psíquico |
+
+**Como se ganha**
+- **Centro Pokémon, Torre Pokémon e Snorlax:** saem nas balls a partir da Rota 1 / Pewter.
+- **Caverna Zubat:** sai a partir de Celadon.
+- **Laboratório do Mewtwo:** lendária. Sai a partir de Saffron ou só na Liga (a decidir).
+
+**A decidir**
+1. Quais dessas cartas entram (dá para começar com 3).
+2. Se o Mewtwo é uma construção ou fica para uma futura carta lendária de Pokémon.
+3. Se o bot usa construções (proposta: sim, para defender).
+
+## 19. Questões em aberto
 
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).
