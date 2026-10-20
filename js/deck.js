@@ -62,7 +62,10 @@ class DeckEditor {
     this.el('#deck-default').addEventListener('click', () => {
       this.setDraft(this.account ? [...STARTERS[Account.user.starter].deck] : [...DEFAULT_DECK]);
     });
-    this.el('#deck-close').addEventListener('click', () => this.onClose(false));
+    this.el('#deck-close').addEventListener('click', () => {
+      this.flushSave(); // com conta, o que mudou já vai sendo salvo sozinho
+      this.onClose(false);
+    });
     this.el('#deck-save').addEventListener('click', () => this.save());
     this.el('#deck-grid').addEventListener('click', (e) => this._pick(e));
     this.el('#deck-subtabs').addEventListener('click', (e) => {
@@ -113,8 +116,11 @@ class DeckEditor {
     this.el('#deck-default').textContent = account ? 'Inicial' : 'Padrão';
     this.focused = null;
     this.slot = account ? Account.user.deckIndex || 0 : 0;
+    this.pendingDrafts = {};
     this.el('#deck-tabs').classList.toggle('hidden', !account);
-    this.setDraft(account ? [...(this.savedDeck() || Account.user.deck)] : loadDeck());
+    const deck = account ? [...(this.savedDeck() || Account.user.deck)] : loadDeck();
+    this.baseline = JSON.stringify(deck);
+    this.setDraft(deck);
   }
 
   // ---------- Vários decks (só com conta) ----------
@@ -124,8 +130,38 @@ class DeckEditor {
     return decks[slot] || null;
   }
 
+  // Mudou em relação ao que está salvo (num espaço vazio, em relação à cópia inicial)
   isDirty() {
-    return JSON.stringify(this.draft) !== JSON.stringify(this.savedDeck() || []);
+    return JSON.stringify(this.draft) !== this.baseline;
+  }
+
+  // Salvamento automático (com conta): deck completo é salvo pouco depois de cada mudança
+  scheduleSave() {
+    clearTimeout(this._saveTimer);
+    if (!this.account || !this.isDirty() || !isValidDeck(this.draft)) return;
+    this._saveTimer = setTimeout(() => this.flushSave(), 700);
+  }
+
+  flushSave() {
+    clearTimeout(this._saveTimer);
+    if (!this.account || !this.isDirty() || !isValidDeck(this.draft)) return this.saving || Promise.resolve();
+    const deck = [...this.draft];
+    const slot = this.slot;
+    const before = this.baseline;
+    this.baseline = JSON.stringify(deck);
+    this.saving = (this.saving || Promise.resolve()).then(async () => {
+      try {
+        await Account.api('deck', { deck, slot });
+        this.flash(`Deck ${slot + 1} salvo ✓`, true);
+      } catch (err) {
+        if (this.slot === slot) this.baseline = before;
+        this.flash(err.message);
+      }
+      this.renderTabs();
+      this.renderSaveButton();
+    });
+    this.renderSaveButton();
+    return this.saving;
   }
 
   renderTabs() {
@@ -142,28 +178,34 @@ class DeckEditor {
   }
 
   // Tocar num deck salvo passa a usar ele; num espaço vazio, começa um deck novo (cópia do atual)
+  // Sem aviso: o deck atual é salvo sozinho (se estiver completo) ou fica guardado aqui até voltar a ele
   async selectSlot(i) {
-    if (this.busy || i === this.slot) return;
-    if (this.isDirty() && !confirm(`Descartar as mudanças do deck ${this.slot + 1}?`)) return;
+    if (i === this.slot) return;
+    const leaving = this.slot;
+    this.flushSave();
+    if (this.isDirty()) this.pendingDrafts[leaving] = [...this.draft]; // incompleto
     const saved = this.savedDeck(i);
+    const pending = this.pendingDrafts[i];
+    delete this.pendingDrafts[i];
+    const draft = pending || saved || [...this.draft];
     this.slot = i;
     this.focused = null;
+    this.baseline = JSON.stringify(saved || (pending ? [] : draft));
+    this.setDraft([...draft]);
     if (!saved) {
-      this.setDraft([...this.draft]);
-      this.flash(`Deck ${i + 1} vazio: monte e toque em Salvar para usar ele.`, true);
+      this.flash(`Deck ${i + 1}: começou como cópia. Troque as cartas e ele é salvo sozinho.`, true);
       return;
     }
-    this.setDraft([...saved]);
-    this.busy = true;
+    if (i === Account.user.deckIndex) return;
+    await this.saving;
+    if (this.slot !== i) return;
     try {
       await Account.api('deck-select', { slot: i });
       this.flash(`Agora você batalha com o deck ${i + 1}.`, true);
-      this.renderTabs();
     } catch (err) {
       this.flash(err.message);
-    } finally {
-      this.busy = false;
     }
+    this.renderTabs();
   }
 
   setSub(sub) {
@@ -253,16 +295,7 @@ class DeckEditor {
       this.onClose(true);
       return;
     }
-    this.busy = true;
-    try {
-      await Account.api('deck', { deck: this.draft, slot: this.slot });
-      this.flash(`Deck ${this.slot + 1} salvo! É com ele que você batalha.`, true);
-      this.renderAll();
-    } catch (err) {
-      this.flash(err.message);
-    } finally {
-      this.busy = false;
-    }
+    await this.flushSave();
   }
 
   async upgrade(id) {
@@ -482,9 +515,23 @@ class DeckEditor {
     this.el('#deck-slots').innerHTML = slots.join('');
     const n = this.draft.length;
     this.el('#deck-avg').textContent = n ? `Custo médio ${fmt(deckAverageCost(this.draft))}` : '';
+    this.renderSaveButton();
+    this.scheduleSave();
+  }
+
+  renderSaveButton() {
+    const n = this.draft.length;
     const save = this.el('#deck-save');
-    save.disabled = n !== DECK_SIZE;
-    save.textContent = n === DECK_SIZE ? 'Salvar' : `Faltam ${DECK_SIZE - n}`;
+    if (n !== DECK_SIZE) {
+      save.disabled = true;
+      save.textContent = `Faltam ${DECK_SIZE - n}`;
+    } else if (this.account) {
+      save.disabled = !this.isDirty();
+      save.textContent = this.isDirty() ? 'Salvar' : 'Salvo ✓';
+    } else {
+      save.disabled = false;
+      save.textContent = 'Salvar';
+    }
   }
 
   _filtered() {

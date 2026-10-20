@@ -155,7 +155,7 @@ Distribuição de custos: 1 (3 cartas) · 2 (17) · 3 (38) · 4 (23) · 5 (33) �
 - Deck **Padrão**: Pikachu, Charmander, Squirtle, Bulbasaur, Onix, Zubat, Choque do Trovão e Explosão de Fogo.
 - No online, cada jogador usa o próprio deck salvo.
 - **Arrastar cartas:** na Coleção, dá para arrastar a carta para o deck, como no Clash Royale. No celular, segura-se a carta por um instante antes de arrastar, para a lista continuar rolando. Soltar num espaço vazio coloca a carta no deck; soltar em cima de uma carta troca as duas; arrastar entre espaços do deck muda a ordem; arrastar uma carta do deck para fora tira ela do deck.
-- **Vários decks (com conta):** 5 decks salvos no servidor, em abas 1–5 na Coleção. O deck marcado com ⚔️ é o que vai para a batalha. Tocar num deck salvo passa a usar ele. Num espaço vazio, o deck começa como cópia do atual e passa a ser usado ao Salvar.
+- **Vários decks (com conta):** 5 decks salvos no servidor, em abas 1–5 na Coleção. O deck marcado com ⚔️ é o que vai para a batalha. Tocar num deck salvo passa a usar ele. Num espaço vazio, o deck começa como cópia do atual. **Salvamento automático, sem avisos:** um deck completo é salvo sozinho logo depois de cada mudança, e o deck editado passa a ser o de batalha. Um deck incompleto fica guardado na tela até ser completado.
 
 ## 9. Evolução em batalha
 
