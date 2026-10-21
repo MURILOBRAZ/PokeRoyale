@@ -6,6 +6,7 @@
 // no portão do ginásio (trophies do ginásio) até vencer o desafio do Líder em melhor de 3 (ver GDD 22).
 // O número da arena do jogador (users.arena) é a etapa mais longe já liberada: ginásio vencido = arena >= ele.
 // kind: 'route' ou 'gym'; short: nome curto; mascot: nº do Pokémon símbolo (nos ginásios, o principal do líder)
+// badgeSprite: nº da insígnia (as 8 de Kanto, na ordem dos ginásios), em assets/insignias/ (tools/build-badges.py)
 // types: nos ginásios, os tipos que eles liberam nas balls (pelo primeiro tipo da carta); nas rotas, é
 // preenchido abaixo com os tipos dos Pokémon da rota (ROUTE_CARDS)
 // river: o que corre no meio do mapa desenhado (água deixa os Pokémon de água nadarem; lava e veneno
@@ -13,28 +14,28 @@
 const ARENAS = [
   { kind: 'route', name: 'Rota 1', short: 'Rota 1', mascot: 16, trophies: 0, ground: ['#74c255', '#6ab84c'], map: 'rota1', river: 'water' },
   { kind: 'route', name: 'Floresta de Viridian', short: 'Floresta', mascot: 10, trophies: 150, ground: ['#5fa84a', '#56a043'], map: 'florestaviridian', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Pewter', short: 'Pewter', mascot: 95, leader: 'Brock', trophies: 300, badge: 'Insígnia da Rocha', types: ['rock'], ground: ['#b9a77c', '#ab996f'], map: 'pewter', river: null },
+  { kind: 'gym', name: 'Ginásio de Pewter', short: 'Pewter', mascot: 95, leader: 'Brock', trophies: 300, badge: 'Insígnia da Rocha', badgeSprite: 1, types: ['rock'], ground: ['#b9a77c', '#ab996f'], map: 'pewter', river: null },
   { kind: 'route', name: 'Mt. Moon', short: 'Mt. Moon', mascot: 35, trophies: 300, ground: ['#8d8278', '#82776d'], map: 'mtmoon', river: 'water' },
   { kind: 'route', name: 'Rota 4', short: 'Rota 4', mascot: 39, trophies: 450, ground: ['#74c255', '#6ab84c'], map: 'rota4', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Cerulean', short: 'Cerulean', mascot: 121, leader: 'Misty', trophies: 600, badge: 'Insígnia da Cascata', types: ['water'], ground: ['#7cc3c9', '#6eb5bb'], map: 'cerulean', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Cerulean', short: 'Cerulean', mascot: 121, leader: 'Misty', trophies: 600, badge: 'Insígnia da Cascata', badgeSprite: 2, types: ['water'], ground: ['#7cc3c9', '#6eb5bb'], map: 'cerulean', river: 'water' },
   { kind: 'route', name: 'Ponte Pepita', short: 'Ponte Pepita', mascot: 43, trophies: 600, ground: ['#74c255', '#6ab84c'], map: 'pontepepita', river: 'water' },
   { kind: 'route', name: 'Rota 6', short: 'Rota 6', mascot: 83, trophies: 800, ground: ['#6cbb52', '#62b148'], map: 'rota6', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Vermilion', short: 'Vermilion', mascot: 26, leader: 'Lt. Surge', trophies: 1000, badge: 'Insígnia do Trovão', types: ['electric'], ground: ['#c9c26a', '#bbb45d'], map: 'vermilion', river: null },
+  { kind: 'gym', name: 'Ginásio de Vermilion', short: 'Vermilion', mascot: 26, leader: 'Lt. Surge', trophies: 1000, badge: 'Insígnia do Trovão', badgeSprite: 3, types: ['electric'], ground: ['#c9c26a', '#bbb45d'], map: 'vermilion', river: null },
   { kind: 'route', name: 'Túnel de Pedra', short: 'Túnel', mascot: 66, trophies: 1000, ground: ['#c9a66b', '#bd9a60'], map: 'tuneldepedra', river: 'water' },
   { kind: 'route', name: 'Rota 8', short: 'Rota 8', mascot: 58, trophies: 1200, ground: ['#74c255', '#6ab84c'], map: 'rota8', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Celadon', short: 'Celadon', mascot: 45, leader: 'Erika', trophies: 1400, badge: 'Insígnia do Arco-íris', types: ['grass'], ground: ['#5fae5a', '#54a04f'], map: 'celadon', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Celadon', short: 'Celadon', mascot: 45, leader: 'Erika', trophies: 1400, badge: 'Insígnia do Arco-íris', badgeSprite: 4, types: ['grass'], ground: ['#5fae5a', '#54a04f'], map: 'celadon', river: 'water' },
   { kind: 'route', name: 'Rota 12', short: 'Rota 12', mascot: 143, trophies: 1400, ground: ['#8b8f96', '#80848b'], map: 'rota12', river: 'water' },
   { kind: 'route', name: 'Ciclovia', short: 'Ciclovia', mascot: 84, trophies: 1600, ground: ['#6f747c', '#656a72'], map: 'ciclovia', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Fuchsia', short: 'Fuchsia', mascot: 110, leader: 'Koga', trophies: 1800, badge: 'Insígnia da Alma', types: ['poison'], ground: ['#a98bb5', '#9b7ea7'], map: 'fuchsia', river: 'poison' },
+  { kind: 'gym', name: 'Ginásio de Fuchsia', short: 'Fuchsia', mascot: 110, leader: 'Koga', trophies: 1800, badge: 'Insígnia da Alma', badgeSprite: 5, types: ['poison'], ground: ['#a98bb5', '#9b7ea7'], map: 'fuchsia', river: 'poison' },
   { kind: 'route', name: 'Rota 5', short: 'Rota 5', mascot: 132, trophies: 1800, ground: ['#74c255', '#6ab84c'], map: 'rota5', river: 'water' },
   { kind: 'route', name: 'Rota 7', short: 'Rota 7', mascot: 123, trophies: 2050, ground: ['#74c255', '#6ab84c'], map: 'rota7', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Saffron', short: 'Saffron', mascot: 65, leader: 'Sabrina', trophies: 2300, badge: 'Insígnia do Pântano', types: ['psychic'], ground: ['#d79bb3', '#c98ea6'], map: 'saffron', river: null },
+  { kind: 'gym', name: 'Ginásio de Saffron', short: 'Saffron', mascot: 65, leader: 'Sabrina', trophies: 2300, badge: 'Insígnia do Pântano', badgeSprite: 6, types: ['psychic'], ground: ['#d79bb3', '#c98ea6'], map: 'saffron', river: null },
   { kind: 'route', name: 'Ilhas Seafoam', short: 'Seafoam', mascot: 86, trophies: 2300, ground: ['#e4cf96', '#d8c38a'], map: 'seafoam', river: 'water' },
   { kind: 'route', name: 'Rota 20', short: 'Rota 20', mascot: 116, trophies: 2550, ground: ['#e4cf96', '#d8c38a'], map: 'rota20', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Cinnabar', short: 'Cinnabar', mascot: 59, leader: 'Blaine', trophies: 2800, badge: 'Insígnia do Vulcão', types: ['fire'], ground: ['#cf8f62', '#c18256'], map: 'cinnabar', river: 'lava' },
+  { kind: 'gym', name: 'Ginásio de Cinnabar', short: 'Cinnabar', mascot: 59, leader: 'Blaine', trophies: 2800, badge: 'Insígnia do Vulcão', badgeSprite: 7, types: ['fire'], ground: ['#cf8f62', '#c18256'], map: 'cinnabar', river: 'lava' },
   { kind: 'route', name: 'Rota 21', short: 'Rota 21', mascot: 131, trophies: 2800, ground: ['#e4cf96', '#d8c38a'], map: 'rota21', river: 'water' },
   { kind: 'route', name: 'Rota 22', short: 'Rota 22', mascot: 56, trophies: 3050, ground: ['#74c255', '#6ab84c'], map: 'rota22', river: 'water' },
-  { kind: 'gym', name: 'Ginásio de Viridian', short: 'Viridian', mascot: 112, leader: 'Giovanni', trophies: 3300, badge: 'Insígnia da Terra', types: ['ground'], ground: ['#a8906a', '#9a835e'], map: 'viridian', river: null },
+  { kind: 'gym', name: 'Ginásio de Viridian', short: 'Viridian', mascot: 112, leader: 'Giovanni', trophies: 3300, badge: 'Insígnia da Terra', badgeSprite: 8, types: ['ground'], ground: ['#a8906a', '#9a835e'], map: 'viridian', river: null },
   { kind: 'route', name: 'Estrada da Vitória', short: 'Estrada', mascot: 106, trophies: 3300, ground: ['#c9a66b', '#bd9a60'], map: 'estradavitoria', river: 'water' },
   { kind: 'gym', name: 'Liga Pokémon', short: 'Liga', mascot: 149, leader: 'Elite dos Quatro', trophies: 4000, badge: 'Título de Campeão', types: ['ice', 'fighting', 'ghost', 'dragon'], ground: ['#8a93b8', '#7d86ab'], map: 'liga', river: 'water' },
 ];
@@ -49,6 +50,11 @@ function arenaIndex(map) {
   const i = ARENAS.findIndex((a) => a.map === map);
   if (i < 0) throw new Error(`Arena desconhecida: ${map}`);
   return i;
+}
+
+// Desenho da insígnia do ginásio (a Liga não tem insígnia: o título de Campeão usa o troféu do jogo)
+function badgeUrl(gym) {
+  return gym.badgeSprite ? `assets/insignias/${gym.badgeSprite}.png` : 'assets/icones/trophy.png';
 }
 
 // Mapa desenhado da arena (assets/arenas, gerado por tools/build-arenas.py)

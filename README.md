@@ -55,6 +55,7 @@ node tools/build-sprites.mjs   # baixa as animações e créditos do SpriteColla
 node tools/simulate.js 1500    # partidas bot x bot: procura erros e mostra o balanceamento
 node tools/test-api.js         # testa a API de contas num banco em memória
 python tools/build-arenas.py   # converte a arte das arenas e ginásios (assets/originais -> assets/)
+python tools/build-badges.py   # baixa as insígnias de Kanto e limpa o recorte (-> assets/insignias/)
 ```
 
 ## Estrutura

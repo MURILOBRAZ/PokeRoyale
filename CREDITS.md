@@ -164,3 +164,7 @@ sob a licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). 
 ## Dados
 
 Stats, tipos e linhas evolutivas da [PokéAPI](https://pokeapi.co/).
+
+## Insígnias
+
+Desenhos das 8 insígnias de Kanto (estojo de insígnias e vitória no desafio do Líder) do repositório de sprites da [PokéAPI](https://github.com/PokeAPI/sprites), com o recorte limpo por `tools/build-badges.py`.

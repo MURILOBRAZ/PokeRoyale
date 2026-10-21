@@ -629,6 +629,7 @@ function showSettings() {
   $('#msg-name').textContent = '';
   $('#msg-pass').textContent = '';
   openDropdown('#settings');
+  renderBadgeCase();
   loadHistory();
 }
 
@@ -640,6 +641,25 @@ function timeAgo(iso) {
   if (s < 3600) return `há ${Math.floor(s / 60)} min`;
   if (s < 86400) return `há ${Math.floor(s / 3600)} h`;
   return `há ${Math.floor(s / 86400)} d`;
+}
+
+// Estojo de insígnias: os 8 ginásios e a Liga, acesos quando vencidos (ter a insígnia = etapa >= ginásio)
+function renderBadgeCase() {
+  const u = Account.user;
+  const gyms = ARENAS.filter((a) => a.kind === 'gym');
+  const won = gyms.filter((g) => u.arena >= g.id).length;
+  $('#badge-count').textContent = `${won}/${gyms.length}`;
+  $('#badge-case').innerHTML = gyms.map((g) => {
+    const have = u.arena >= g.id;
+    const at = have && u.badges && u.badges[g.map];
+    const when = at ? new Date(at).toLocaleDateString('pt-BR') : '';
+    const tip = have ? `${g.badge} · venceu ${g.leader}${when ? ` em ${when}` : ''}` : `${g.badge} · vença ${g.leader} (${g.name})`;
+    return `<div class="badge-slot ${have ? 'won' : 'locked'}" title="${tip}">
+      <img class="badge-icon" src="${badgeUrl(g)}" alt="">${have ? '' : '<span class="badge-lock">🔒</span>'}
+      <b>${g.badge.replace(/^Insígnia d[oa] /, '')}</b>
+      <small>${g.leader}</small>
+    </div>`;
+  }).join('');
 }
 
 async function loadHistory() {
@@ -1280,7 +1300,7 @@ function gymResultHtml(out) {
   const g = out.gym;
   const gym = ARENAS[g.id];
   const dots = `${'🏅'.repeat(g.wins)}${'✖️'.repeat(g.losses)}`;
-  if (g.done === 'won') return `<div class="arena-up">🏅 Você venceu ${gym.leader} (${g.wins}–${g.losses}) e ganhou a <b>${gym.badge}</b>!</div>`;
+  if (g.done === 'won') return `<div class="arena-up"><img class="badge-inline" src="${badgeUrl(gym)}" alt=""> Você venceu ${gym.leader} (${g.wins}–${g.losses}) e ganhou a <b>${gym.badge}</b>!</div>`;
   if (g.done === 'lost') return `<div class="trophy-delta down">${gym.leader} venceu o desafio (${g.wins}–${g.losses}) · 🏆 ${out.delta} <small>(${fmtNum(out.trophies)})</small></div>`;
   return `<div class="gym-score">${dots} <b>${g.wins}–${g.losses}</b> contra ${gym.leader} · melhor de 3</div>`;
 }

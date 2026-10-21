@@ -72,6 +72,8 @@ async function loadState(userId) {
       arena: u.arena,
       // Desafio do próximo ginásio em andamento (melhor de 3)
       gym: { wins: u.gym_wins, losses: u.gym_losses },
+      // Data de cada insígnia ganha (ter a insígnia = arena >= ginásio; da v0.9 vêm sem data)
+      badges: u.badges || {},
       xp: u.xp,
       level: R.trainerLevel(u.xp),
       gold: u.gold,
@@ -350,8 +352,9 @@ const ACTIONS = {
       }
       // Placar mostrado é o da série; terminada, o próximo desafio começa do zero
       gym = { id: match.arena, wins, losses, done };
-      await q('UPDATE users SET trophies = $2, arena = $3, gym_wins = $4, gym_losses = $5 WHERE id = $1',
-        [userId, trophies, arena, done ? 0 : wins, done ? 0 : losses]);
+      await q(`UPDATE users SET trophies = $2, arena = $3, gym_wins = $4, gym_losses = $5,
+         badges = CASE WHEN $6::text IS NULL THEN badges ELSE badges || jsonb_build_object($6::text, now()) END WHERE id = $1`,
+        [userId, trophies, arena, done ? 0 : wins, done ? 0 : losses, done === 'won' ? next.map : null]);
     } else {
       // Sequência: vitórias desde a última derrota ou empate; cada uma vale +1 troféu nesta vitória
       let streak = 0;

@@ -130,6 +130,8 @@ const SCHEMA = [
   // Desafio do próximo ginásio em andamento (melhor de 3 contra o Líder)
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_wins INT NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_losses INT NOT NULL DEFAULT 0',
+  // Quando cada insígnia foi ganha ({ mapa do ginásio: data }); quem já tinha da v0.9 fica sem data
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS badges JSONB NOT NULL DEFAULT '{}'`,
 ];
 
 function setDb(queryFn) {

@@ -160,9 +160,15 @@ class Game {
   }
 
   // Caminho reto todo em terra? (margin: meia largura do corredor, para o corpo não raspar na água)
-  _clearPath(x0, y0, x1, y1, margin = 0.3) {
+  _clearPath(x0, y0, x1, y1, margin = 0.3, body = 0.5) {
     const len = Math.hypot(x1 - x0, y1 - y0);
     if (len < 1e-6) return true;
+    // Nem passando por cima de um ginásio de pé (menos o do destino): o caminho é que contorna eles
+    for (const t of this.towers) {
+      if (t.dead || Math.hypot(t.x - x1, t.y - y1) < t.radius + body) continue;
+      const k = clamp(((t.x - x0) * (x1 - x0) + (t.y - y0) * (y1 - y0)) / (len * len), 0, 1);
+      if (Math.hypot(x0 + (x1 - x0) * k - t.x, y0 + (y1 - y0) * k - t.y) < t.radius + body) return false;
+    }
     const px = (-(y1 - y0) / len) * margin;
     const py = ((x1 - x0) / len) * margin;
     const n = Math.ceil(len / 0.3);
@@ -241,6 +247,7 @@ class Game {
         }
       }
     }
+    flow.blocked = wet; // terra/água com os ginásios de pé marcados, para o passo a passo seguir as mesmas regras
     if (this.flowCache.size > 300) this.flowCache.clear();
     this.flowCache.set(key, flow);
     return flow;
@@ -248,11 +255,40 @@ class Game {
 
   // Terrestre num mapa de água: segue o caminho por terra, indo reto até onde der
   _terrainWaypoint(u, tx, ty) {
-    if (this._clearPath(u.x, u.y, tx, ty)) return [tx, ty];
+    const body = u.radius + 0.1;
+    if (this._clearPath(u.x, u.y, tx, ty, 0.3, body)) return [tx, ty];
     const goal = this._cell(tx, ty);
     const flow = this._flow(goal);
     let cell = this._cell(u.x, u.y);
-    if (!Number.isFinite(flow[cell])) return this._nearestLand(u.x, u.y, true);
+    // Em terra, numa casa que o caminho evita por estar colada a um ginásio (o corpo do Pokémon ainda cabe ali):
+    // segue a partir da vizinha com caminho, em vez de voltar para trás
+    if (!Number.isFinite(flow[cell]) && !this.terrain.wet[cell]) {
+      let near = -1;
+      for (const [dx, dy] of TERRAIN_STEPS) {
+        const gx = (cell % ARENA.W) + dx;
+        const gy = Math.floor(cell / ARENA.W) + dy;
+        if (gx < 0 || gx >= ARENA.W || gy < 0 || gy >= ARENA.H) continue;
+        const n = gy * ARENA.W + gx;
+        if (Number.isFinite(flow[n]) && (near < 0 || flow[n] < flow[near])) near = n;
+      }
+      if (near >= 0) cell = near;
+    }
+    if (!Number.isFinite(flow[cell])) {
+      // Sem caminho a partir daqui: na água ou numa casa colada a um ginásio (que o caminho evita). Vai para
+      // a casa mais perto que tenha caminho e segue dali
+      let best = -1;
+      let bestD = Infinity;
+      for (let c = 0; c < flow.length; c++) {
+        if (!Number.isFinite(flow[c])) continue;
+        const [cx, cy] = this._cellCenter(c);
+        const d = (cx - u.x) ** 2 + (cy - u.y) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          best = c;
+        }
+      }
+      return best < 0 ? [tx, ty] : this._cellCenter(best);
+    }
     let best = null;
     for (let i = 0; i < 8 && cell !== goal; i++) {
       let next = -1;
@@ -264,13 +300,13 @@ class Game {
         if (gx < 0 || gx >= ARENA.W || gy < 0 || gy >= ARENA.H) continue;
         const n = gy * ARENA.W + gx;
         // Diagonal que corta a quina da água não vale (igual ao cálculo do caminho)
-        if (dx && dy && (this.terrain.wet[cy0 * ARENA.W + gx] || this.terrain.wet[gy * ARENA.W + cx0])) continue;
+        if (dx && dy && (flow.blocked[cy0 * ARENA.W + gx] || flow.blocked[gy * ARENA.W + cx0])) continue;
         if (flow[n] < flow[next < 0 ? cell : next]) next = n;
       }
       if (next < 0) break;
       cell = next;
       const [cx, cy] = this._cellCenter(cell);
-      if (best && !this._clearPath(u.x, u.y, cx, cy)) break;
+      if (best && !this._clearPath(u.x, u.y, cx, cy, 0.3, body)) break;
       best = [cx, cy];
     }
     return best || [tx, ty];
@@ -741,7 +777,10 @@ class Game {
     if (d < 1e-3) return;
     const rx = (tx - u.x) / d;
     const ry = (ty - u.y) / d;
-    let [dx, dy] = u.air ? [rx, ry] : this._avoidTowers(u, rx, ry, target);
+    // Nos mapas de água o caminho já contorna os ginásios: o desvio de última hora fica só para construções
+    // (os dois juntos disputavam a direção e o Pokémon ia e voltava atrás do ginásio)
+    const pathed = !!this.terrain && !this._swims(u);
+    let [dx, dy] = u.air ? [rx, ry] : this._avoidTowers(u, rx, ry, target, pathed);
     const swim = u.swimming ? SWIM_SPEED : 1;
     const step = Math.min(d, u.def.speed * swim * (u.slowT > 0 ? 0.55 : 1) * dt); // Nevasca: mais lento
     let nx = u.x + dx * step;
@@ -776,8 +815,8 @@ class Game {
   }
 
   // Ginásio no caminho (que não seja o alvo): contorna pela tangente mais próxima da direção desejada
-  _avoidTowers(u, dx, dy, target) {
-    for (const t of [...this.towers, ...this.units.filter((b) => b.isBuilding)]) {
+  _avoidTowers(u, dx, dy, target, buildingsOnly = false) {
+    for (const t of [...(buildingsOnly ? [] : this.towers), ...this.units.filter((b) => b.isBuilding)]) {
       if (t.dead || t === target) continue;
       const ox = t.x - u.x;
       const oy = t.y - u.y;

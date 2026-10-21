@@ -220,6 +220,8 @@ async function main() {
   assert.equal(r.data.ball.tier, 'great');
   assert.ok(r.data.fichas >= R.FICHAS.badge + R.FICHAS.routeUp);
   assert.deepEqual(r.data.state.user.gym, { wins: 0, losses: 0 });
+  assert.deepEqual(Object.keys(r.data.state.user.badges), ['pewter']); // data da insígnia, para o estojo
+  assert.ok(!Number.isNaN(Date.parse(r.data.state.user.badges.pewter)));
   assert.equal((await a('match-start', { mode: 'gym' })).status, 409); // longe do portão de Cerulean
   ok('desafio do Líder: melhor de 3, insígnia, próxima rota, Fichas e Great Ball');
 

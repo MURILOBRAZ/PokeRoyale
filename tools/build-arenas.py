@@ -35,6 +35,13 @@ CROPS = {
 GRID_W, GRID_H = 18, 32
 # Mapas com muita água: ganham um terreno próprio (js/terrain.js), em vez de só o rio do meio (GDD 22.4)
 WATER_MAPS = ['rota8', 'rota12', 'seafoam', 'rota20', 'rota21']
+# Terreno desenhado à mão, para mapas em que a cor não separa a água do chão (no Cerulean, o piso de pedra
+# azulada tem quase a mesma cor da água). Não ganham a faixa automática de terra em volta dos ginásios.
+MANUAL_TERRAIN = {
+    'cerulean': (['~~~~~~.......~~~~~'] * 3 + ['~~~............~~~'] + ['..................'] * 10
+                 + ['~...~~~~~~~~~~...~'] * 3 + ['..................'] * 10 + ['~~~............~~~']
+                 + ['~~~~~........~~~~~'] * 4),
+}
 OUT_SIZE = (720, 1280)
 THUMB_SIZE = (180, 320)
 FULL_WIDTH = 1000  # versão completa (com as bordas decorativas) para preencher a tela além da arena
@@ -67,7 +74,9 @@ def build_maps(debug_dir=None):
         full = im.resize(OUT_SIZE, Image.LANCZOS)
         full.save(OUT_ARENAS / f'{name}.webp', 'WEBP', quality=82, method=6)
         im.resize(THUMB_SIZE, Image.LANCZOS).save(OUT_ARENAS / f'{name}-mini.webp', 'WEBP', quality=75, method=6)
-        if name in WATER_MAPS:
+        if name in MANUAL_TERRAIN:
+            terrain[name] = MANUAL_TERRAIN[name]
+        elif name in WATER_MAPS:
             terrain[name] = water_grid(full)
         if debug_dir:
             draw_debug(full).save(Path(debug_dir) / f'{name}-debug.png')
