@@ -353,6 +353,7 @@ PokeRoyale/
 | **v0.9** | Golpes Surf, Terremoto e Nevasca; lendários raros com entrada especial; histórico de partidas; música do menu; correção de Pokémon parado (ver [19](#19-v09)) | ✅ Feito |
 | **v0.9.1** | Amigos: adicionar pelo nome, ver quem está online e desafiar direto para um X1, sem código (ver [20](#20-amigos-e-convite-para-x1-v091)) | ✅ Feito |
 | v0.9.2 | Mais animações do SpriteCollab (golpe próprio, levar golpe, surgir, desmaiar e comemorar), golpes à distância redesenhados por tipo, Meteoro dos ginásios, ruínas, Poké Ball arremessada, arena com vida, animações da interface e Pokémon de água nadando no rio (ver [5](#5-arena) e [14.1](#141-backlog-visual-para-a-v05)) | ✅ Feito |
+| v0.10 | Rotas entre os ginásios e desafio de ginásio em melhor de 3 contra o Líder (ver [22](#22-rotas-e-desafios-de-ginásio-planejado)) | 🎨 Esperando mapas |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -379,6 +380,8 @@ O modo **Treino** (contra o bot, sem conta, com todas as cartas) continua existi
 | 💧 Squirtle | Squirtle, Poliwag, Psyduck, Pidgey, Weedle ×3, Diglett ×3, Nidoran♂, Explosão de Fogo | 2,6 | Equilibrado, bom de defesa |
 
 ### 17.3 Troféus e arenas (ginásios de Kanto)
+
+> Planejado: rotas entre os ginásios e o ginásio como desafio em melhor de 3 contra o Líder (ver [22](#22-rotas-e-desafios-de-ginásio-planejado)).
 
 Cada arena tem a cor/tema do ginásio e **libera os Pokémon do seu tipo** nas Premier Balls (além dos das arenas anteriores). A regra de qual Pokémon pertence a qual arena é pelo **primeiro tipo**; lendários ficam na Liga.
 
@@ -600,3 +603,42 @@ Nos ginásios, os golpes causam 30% a 45% do dano. O bot sabe que o Terremoto n�
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).
 - ~~Ranking entre amigos~~ → feito na v0.5 (ranking global, ao tocar nos troféus).
+
+## 22. Rotas e desafios de ginásio (planejado)
+
+Combinado em 21/10/2026. Ainda não implementado: espera os mapas que faltam (abaixo). Substitui a progressão da [17.3](#173-troféus-e-arenas-ginásios-de-kanto), em que cada ginásio é uma faixa de troféus.
+
+**Ideia:** o jogador sobe troféus andando pelas **rotas** (umas 2 antes de cada ginásio). No fim delas chega ao **ginásio**, que é um desafio contra o Líder, específico do tipo dele, e precisa vencer para seguir viagem.
+
+### 22.1 Regras do desafio
+
+- **Rotas:** partidas normais valendo troféus, como hoje. Cada rota é uma faixa de troféus e libera um grupo de Pokémon nas Premier Balls.
+- **Portão:** ao chegar no fim da última rota antes de um ginásio, os troféus **travam** naquele limite e o próximo passo é desafiar o Líder.
+- **Desafio:** **melhor de 3** contra o Líder (bot) com um deck só do tipo dele, no mapa do ginásio.
+- **Vitória:** dá a **insígnia**, destrava os troféus e abre as próximas rotas.
+- **Derrota no desafio:** −15 troféus (metade de uma derrota normal). Como o jogador está no limite, perder 2 desafios (−30) o devolve para dentro da rota, e ele precisa ganhar partidas para voltar ao portão.
+
+### 22.2 Rotas (ordem de Kanto)
+
+✅ = mapa pronto (recebido em 21/10/2026) · 🎨 = falta gerar
+
+| Antes de | 1ª rota | 2ª rota |
+|---|---|---|
+| Pewter (Brock) | Rota 1 ✅ (já no jogo) | Floresta de Viridian ✅ (floresta com rio) |
+| Cerulean (Misty) | Mt. Moon ✅ (caverna com cristais) | Rota 4 ✅ (campo com capim alto) |
+| Vermilion (Lt. Surge) | Ponte Pepita ✅ (campo com árvores e água dos lados) | Rota 6 ✅ (parque com laguinhos) |
+| Celadon (Erika) | Túnel de Pedra ✅ (cânion) | Rota 8 🎨 |
+| Fuchsia (Koga) | Ciclovia ✅ (pista de bicicleta) | Rota 15 🎨 |
+| Saffron (Sabrina) | Zona Safári 🎨 | Rota 5 🎨 |
+| Cinnabar (Blaine) | Ilhas Seafoam ✅ (praia) | Rota 20 🎨 (mar aberto) |
+| Viridian (Giovanni) | Mansão Pokémon 🎨 | Rota 21 🎨 |
+| Liga | Rota 22 🎨 | Estrada da Vitória 🎨 (caverna) |
+
+Os mapas novos devem ter o mesmo tamanho dos mapas de ginásio (1086 × 1448), com o rio e as pontes na mesma altura, para usar o mesmo recorte de `tools/build-arenas.py`.
+
+### 22.3 A decidir quando os mapas estiverem prontos
+
+- **Pokémon de cada rota:** cada rota libera um grupo, de preferência os que aparecem nela no jogo original (ex.: insetos na Floresta de Viridian; Clefairy e Jigglypuff no Mt. Moon; Snorlax e Doduo na Ciclovia). Hoje a Rota 1 sozinha libera 42 cartas, então dá para espalhar.
+- **Faixas de troféus** de cada rota e quanto a insígnia vale (Fichas, ball, cosmético).
+- **Liga:** melhor de 3 contra cada membro da Elite dos Quatro, ou um único desafio final.
+- **Contas existentes:** os números das arenas mudam (entram rotas entre os ginásios), então as colunas `users.arena`, `balls.arena` e `matches.arena` precisam ser convertidas uma vez, e quem já passou de um ginásio ganha a insígnia dele.
