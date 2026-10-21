@@ -176,7 +176,6 @@ function renderHub() {
   }
   $('#hub').style.setProperty('--map-full', cssUrl(arenaMapUrl(ARENAS[u.arena])));
   renderShowcase();
-  renderJourney();
   renderDeckStrip();
   renderBalls();
 }
@@ -211,36 +210,23 @@ function renderShowcase() {
   if (locked) lock.innerHTML = `<b>🔒</b>${unlockHint(a)}`;
   $('#arena-prev').disabled = viewArena === 0;
   $('#arena-next').disabled = viewArena === ARENAS.length - 1;
-  // No portão: o desafio do Líder aparece acima do Batalhar (que continua dando balls na rota)
+  // Meta do próximo desafio: barra de troféus até o portão; no portão, vira o botão do desafio do Líder
   const { gym, atGate } = gymGate();
-  const gymBtn = $('#hub-gym');
-  gymBtn.classList.toggle('hidden', !atGate);
-  if (atGate) {
+  const goal = $('#hub-gym');
+  goal.classList.toggle('challenge', atGate);
+  if (!gym) {
+    goal.innerHTML = `<img class="goal-ico" src="${badgeUrl(ARENAS[ARENAS.length - 1])}" alt=""><span class="goal-text"><b>Campeão de Kanto!</b><small>Suba no ranking</small></span>`;
+  } else if (atGate) {
     const { wins, losses } = u.gym || { wins: 0, losses: 0 };
     const score = wins || losses ? ` · ${wins}–${losses}` : '';
-    gymBtn.innerHTML = `<img src="${mascotImg(gym)}" alt=""><span>Desafiar ${gym.leader}<small>${gym.name} · melhor de 3${score}</small></span>`;
+    goal.innerHTML = `<img class="goal-ico mascot" src="${mascotImg(gym)}" alt=""><span class="goal-text"><b>${gym.leader}</b><small>Desafiar · melhor de 3${score}</small></span>`;
+  } else {
+    const from = ARENAS[u.arena].trophies;
+    const pct = Math.max(0, Math.min(100, ((u.trophies - from) / Math.max(1, gym.trophies - from)) * 100));
+    goal.innerHTML = `<img class="goal-ico" src="${badgeUrl(gym)}" alt=""><span class="goal-text"><b>${gym.short}</b>
+      <small>🏆 ${fmtNum(u.trophies)}/${fmtNum(gym.trophies)} · desafio</small><span class="goal-bar"><i style="width:${pct}%"></i></span></span>`;
   }
-  const toGate = gym && !atGate ? ` · faltam ${fmtNum(gym.trophies - u.trophies)} 🏆 para o desafio de ${gym.short}` : '';
-  $('#hub-battle-sub').textContent = atGate
-    ? `Troféus no limite da rota: vença ${gym.leader} para seguir viagem`
-    : mine
-      ? `Contra o bot · vale troféus e Premier Balls${toGate}`
-      : `Você batalha na sua etapa: ${ARENAS[u.arena].name}`;
-  document.querySelectorAll('.journey-step').forEach((el) => el.classList.toggle('viewing', Number(el.dataset.arena) === viewArena));
-}
-
-function renderJourney() {
-  const u = Account.user;
-  $('#hub-journey').innerHTML = ARENAS.map((a) => {
-    const reached = u.arena >= a.id;
-    const cls = [a.kind, reached ? '' : 'locked', u.arena === a.id ? 'current' : '', viewArena === a.id ? 'viewing' : ''].join(' ');
-    const sub = a.kind === 'gym' ? `${a.leader} · ${reached ? '🏅' : `🏆 ${fmtNum(a.trophies)}`}` : a.id === 0 ? 'Começo da jornada' : `🏆 ${fmtNum(a.trophies)}`;
-    return `<button class="journey-step ${cls}" data-arena="${a.id}">
-      <img src="${mascotImg(a)}" alt="">
-      <span class="j-name">${a.short}<small>${sub}</small></span>
-      ${reached ? '' : '🔒'}<span class="type-dot" style="background:${TYPE_COLORS[a.types[0]]}" title="${TYPE_NAMES[a.types[0]]}"></span>
-    </button>`;
-  }).join('');
+  $('#hub-battle-sub').textContent = mine ? 'vale troféus e balls' : `na ${ARENAS[u.arena].short}`;
 }
 
 function renderDeckStrip() {
@@ -251,7 +237,7 @@ function renderDeckStrip() {
     return `<div class="card small" data-card="${id}" title="${c.name}" style="--type:${TYPE_COLORS[c.type]};--rarity:${RARITIES[rarityOf(c)].color}">
       ${cardImgTag(c)}<div class="cost">${c.cost}</div><div class="lvl-tag">Nv. ${own ? own.level : 1}</div></div>`;
   }).join('');
-  $('#hub-deck-avg').textContent = deck.length ? `Custo médio ${fmt(deckAverageCost(deck))}` : '';
+  $('#hub-deck-avg').textContent = deck.length ? `⚡ ${fmt(deckAverageCost(deck))}` : '';
 }
 
 $('#arena-prev').addEventListener('click', () => {
@@ -260,12 +246,6 @@ $('#arena-prev').addEventListener('click', () => {
 });
 $('#arena-next').addEventListener('click', () => {
   viewArena = Math.min(ARENAS.length - 1, viewArena + 1);
-  renderShowcase();
-});
-$('#hub-journey').addEventListener('click', (e) => {
-  const step = e.target.closest('[data-arena]');
-  if (!step) return;
-  viewArena = Number(step.dataset.arena);
   renderShowcase();
 });
 
@@ -487,9 +467,11 @@ function renderBalls() {
   const ready = fb.available > 0 || (fb.nextAt && Date.parse(fb.nextAt) <= now);
   const free = $('#hub-free');
   free.disabled = !ready;
-  const freeHtml = ready
-    ? `${ballImg('poke')} Poké Ball grátis${fb.available > 1 ? ' ×2' : ''} — abrir!`
-    : `${ballImg('poke')} Próxima Poké Ball grátis em ${fmtDuration((Date.parse(fb.nextAt) - now) / 1000)}`;
+  free.classList.toggle('ready', ready);
+  const left = ready ? 0 : (Date.parse(fb.nextAt) - now) / 1000;
+  const pct = ready ? 100 : Math.max(0, Math.min(100, (1 - left / FREE_BALL_SECONDS) * 100));
+  const freeHtml = `${ballImg('poke', 'goal-ico')}<span class="goal-text"><b>Poké Ball</b>
+    <small>${ready ? `${fb.available > 1 ? `${fb.available} grátis` : 'grátis'} · abrir!` : `grátis em ${fmtDuration(left)}`}</small><span class="goal-bar"><i style="width:${pct.toFixed(1)}%"></i></span></span>`;
   if (free.dataset.html !== freeHtml) {
     free.innerHTML = freeHtml;
     free.dataset.html = freeHtml;
@@ -537,7 +519,8 @@ $('#hub-free').addEventListener('click', async () => {
 });
 
 $('#hub-battle').addEventListener('click', () => startRankedBot());
-$('#hub-gym').addEventListener('click', () => startGymMatch());
+// Card do próximo desafio: no portão, começa o desafio; antes, mostra o caminho dos troféus
+$('#hub-gym').addEventListener('click', () => (gymGate().atGate ? startGymMatch() : showRoad()));
 $('#hub-collection').addEventListener('click', openCollection);
 $('#hub-training').addEventListener('click', openTraining);
 $('#hub-arena').addEventListener('click', () => showRoad());

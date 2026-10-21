@@ -167,35 +167,28 @@
             <div id="hub-arena" class="arena-preview">
               <div id="hub-arena-lock" class="arena-lock hidden"></div>
             </div>
-            <button id="hub-gym" class="gym-btn hidden"></button>
-            <button id="hub-battle" class="battle-btn"><span>⚔️</span> Batalhar</button>
-            <small id="hub-battle-sub" class="battle-sub"></small>
+            <!-- O deck ativo é o "time": fica logo abaixo da arena -->
+            <div class="deck-row">
+              <div id="hub-deck" class="deck-strip"></div>
+              <button id="hub-collection" class="deck-edit" title="Editar deck"><span>✏️</span><small id="hub-deck-avg"></small></button>
+            </div>
+            <div class="battle-row">
+              <button id="hub-friends" class="side-btn"><span class="side-ico">👥</span>Amigos</button>
+              <button id="hub-battle" class="battle-btn"><span class="battle-label"><span>⚔️</span> Batalhar</span><small id="hub-battle-sub"></small></button>
+              <button id="hub-training" class="side-btn"><span class="side-ico">🎯</span>Treino</button>
+            </div>
             <p id="hub-error" class="error"></p>
+          </section>
+
+          <!-- Metas sempre à vista: o próximo desafio do Líder e a Poké Ball grátis -->
+          <section class="goals">
+            <button id="hub-gym" class="goal-card"></button>
+            <button id="hub-free" class="goal-card free-ball"></button>
           </section>
 
           <section class="box balls-box">
             <h3>Premier Balls</h3>
             <div id="hub-balls" class="ball-slots"></div>
-            <button id="hub-free" class="free-ball"></button>
-          </section>
-
-          <aside class="box journey">
-            <h3>Jornada em Kanto</h3>
-            <div id="hub-journey"></div>
-          </aside>
-
-          <section class="box deck-box">
-            <div class="box-head">
-              <h3>Deck ativo</h3>
-              <span id="hub-deck-avg"></span>
-            </div>
-            <div id="hub-deck" class="deck-strip"></div>
-            <button id="hub-collection" class="ghost-btn">🃏 Editar deck</button>
-          </section>
-
-          <section class="modes">
-            <button id="hub-training" class="mode mode-red"><span class="mode-ico">🎯</span><b>Treino</b><small>Sem riscos, todas as cartas</small></button>
-            <button id="hub-friends" class="mode mode-green"><span class="mode-ico">👥</span><b>Amigos</b><small>Crie ou entre numa sala</small></button>
           </section>
         </main>
         </div>
