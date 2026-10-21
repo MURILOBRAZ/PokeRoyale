@@ -34,12 +34,19 @@ function hitDelay(def, alt) {
 // Pokémon de água (terrestre) atravessa o rio nadando, sem precisar da ponte — só nas arenas em que
 // o rio é de água (em Cinnabar é lava, em Viridian um cânion...)
 const canSwim = (u) => !u.air && !u.isBuilding && !!u.types && u.types.includes('water');
-const SWIM_SPEED = 1.2; // nadando é um pouco mais rápido que andando
-const inWater = (x, y) => y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM && !ARENA.BRIDGES.some((b) => Math.abs(x - b) < ARENA.BRIDGE_HALF);
+const SWIM_SPEED = 1.3; // nadando é 30% mais rápido que andando
+const inRiver = (x, y) => y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM && !ARENA.BRIDGES.some((b) => Math.abs(x - b) < ARENA.BRIDGE_HALF);
+// Elétrico conduz na água: o golpe que acerta alguém nadando também acerta os inimigos nadando perto dele
+const CONDUCT_RADIUS = 2.5;
+const CONDUCT_MULT = 0.5;
+// Mapas com muita água (js/terrain.js, GDD 22.4): casa a casa, o que é terra e o que é água
+const TERRAIN_STEPS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
 
 // Centro exato da arena: quem é invocado ali (sem pender para nenhuma pista) vai ao ginásio lateral que
 // ainda está de pé; fora dele, vale a metade em que caiu
 const CENTER_HALF = 0.5;
+// Na escolha do alvo, o Líder conta como mais longe enquanto houver ginásio lateral de pé
+const KING_BIAS = 3;
 // Depois de escolher o ginásio, o Pokémon só troca de pista se for parar bem dentro da outra metade
 // (ex.: perseguindo alguém); a caminho do Líder, no centro, ele não troca pelo lateral
 const LANE_SWITCH = 1.5;
@@ -54,7 +61,9 @@ class Game {
   // skins: visual dos ginásios de cada lado (cosmético, não muda nada na simulação)
   constructor({ decks = [DEFAULT_DECK, DEFAULT_DECK], levels = [{}, {}], trainers = [1, 1], skins = ['skin:classico', 'skin:classico'], arena = 0 } = {}) {
     this.skins = skins;
-    this.swimRiver = (ARENAS[arena] || ARENAS[0]).river === 'water';
+    const stage = ARENAS[arena] || ARENAS[0];
+    this.swimRiver = stage.river === 'water';
+    this._setTerrain(typeof TERRAIN !== 'undefined' ? TERRAIN[stage.map] : null);
     this.levels = levels;
     this.trainers = trainers;
     this.nextId = 1;
@@ -90,6 +99,183 @@ class Game {
     return this.players[side].queue[0];
   }
 
+  // ---------- Terreno (mapas com muita água) ----------
+  // wet: casa de água; main: terra ligada aos ginásios (ilhas soltas no meio da água não recebem terrestres)
+
+  _setTerrain(rows) {
+    this.terrain = null;
+    this.flowCache = new Map();
+    if (!rows) return;
+    const W = ARENA.W;
+    const wet = new Uint8Array(W * ARENA.H);
+    rows.forEach((row, gy) => {
+      for (let gx = 0; gx < W; gx++) wet[gy * W + gx] = row[gx] === '~' ? 1 : 0;
+    });
+    const main = new Uint8Array(wet.length);
+    const stack = [Math.floor(25.5) * W + Math.floor(ARENA.BRIDGES[0])];
+    main[stack[0]] = 1;
+    while (stack.length) {
+      const c = stack.pop();
+      const gx = c % W;
+      for (const n of [c - W, c + W, gx > 0 ? c - 1 : -1, gx < W - 1 ? c + 1 : -1]) {
+        if (n >= 0 && n < wet.length && !wet[n] && !main[n]) {
+          main[n] = 1;
+          stack.push(n);
+        }
+      }
+    }
+    this.terrain = { wet, main };
+  }
+
+  _cell(x, y) {
+    return clamp(Math.floor(y), 0, ARENA.H - 1) * ARENA.W + clamp(Math.floor(x), 0, ARENA.W - 1);
+  }
+
+  _cellCenter(c) {
+    return [(c % ARENA.W) + 0.5, Math.floor(c / ARENA.W) + 0.5];
+  }
+
+  _inWater(x, y) {
+    return this.terrain ? this.terrain.wet[this._cell(x, y)] === 1 : this.swimRiver && inRiver(x, y);
+  }
+
+  // Ponto de terra mais perto de (x, y) (mainOnly: só a terra ligada aos ginásios)
+  _nearestLand(x, y, mainOnly = false) {
+    const { wet, main } = this.terrain;
+    let best = null;
+    let bestD = Infinity;
+    for (let c = 0; c < wet.length; c++) {
+      if (wet[c] || (mainOnly && !main[c])) continue;
+      const gx = c % ARENA.W;
+      const gy = Math.floor(c / ARENA.W);
+      const px = clamp(x, gx + 0.05, gx + 0.95);
+      const py = clamp(y, gy + 0.05, gy + 0.95);
+      const d = (px - x) ** 2 + (py - y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = [px, py];
+      }
+    }
+    return best || [x, y];
+  }
+
+  // Caminho reto todo em terra? (margin: meia largura do corredor, para o corpo não raspar na água)
+  _clearPath(x0, y0, x1, y1, margin = 0.3) {
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (len < 1e-6) return true;
+    const px = (-(y1 - y0) / len) * margin;
+    const py = ((x1 - x0) / len) * margin;
+    const n = Math.ceil(len / 0.3);
+    for (let i = 1; i <= n; i++) {
+      const x = x0 + ((x1 - x0) * i) / n;
+      const y = y0 + ((y1 - y0) * i) / n;
+      const { wet } = this.terrain;
+      if (wet[this._cell(x, y)] || wet[this._cell(x + px, y + py)] || wet[this._cell(x - px, y - py)]) return false;
+    }
+    return true;
+  }
+
+  // Distância andando (só por terra) de cada casa até a casa do alvo. Os ginásios de pé (menos o do
+  // destino) bloqueiam as casas que ocupam, para o caminho já contorná-los em vez de desviar em cima da hora.
+  // Guardada por casa de destino e ginásios de pé
+  _flow(goal) {
+    const key = `${goal}:${this.towers.map((t) => (t.dead ? 0 : 1)).join('')}`;
+    let flow = this.flowCache.get(key);
+    if (flow) return flow;
+    const W = ARENA.W;
+    const wet = Uint8Array.from(this.terrain.wet);
+    const [gx0, gy0] = this._cellCenter(goal);
+    for (const t of this.towers) {
+      const reach = t.radius + 0.35;
+      if (t.dead || Math.hypot(gx0 - t.x, gy0 - t.y) < reach) continue;
+      for (let c = 0; c < wet.length; c++) {
+        const [cx, cy] = this._cellCenter(c);
+        if (Math.hypot(cx - t.x, cy - t.y) < reach) wet[c] = 1;
+      }
+    }
+    flow = new Float64Array(wet.length).fill(Infinity); // Float64: com Float32 o arredondamento das diagonais (√2) descartava casas
+    flow[goal] = 0;
+    const heap = [[0, goal]];
+    const push = (item) => {
+      heap.push(item);
+      for (let i = heap.length - 1; i > 0;) {
+        const p = (i - 1) >> 1;
+        if (heap[p][0] <= heap[i][0]) break;
+        [heap[p], heap[i]] = [heap[i], heap[p]];
+        i = p;
+      }
+    };
+    const pop = () => {
+      const top = heap[0];
+      const last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        for (let i = 0; ;) {
+          const l = 2 * i + 1;
+          const r = l + 1;
+          let m = i;
+          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+          if (m === i) break;
+          [heap[m], heap[i]] = [heap[i], heap[m]];
+          i = m;
+        }
+      }
+      return top;
+    };
+    while (heap.length) {
+      const [d, c] = pop();
+      if (d > flow[c]) continue;
+      const gx = c % W;
+      const gy = Math.floor(c / W);
+      for (const [dx, dy, cost] of TERRAIN_STEPS) {
+        const nx = gx + dx;
+        const ny = gy + dy;
+        if (nx < 0 || nx >= W || ny < 0 || ny >= ARENA.H) continue;
+        const n = ny * W + nx;
+        // Na diagonal, não corta a quina da água
+        if (wet[n] || (dx && dy && (wet[gy * W + nx] || wet[ny * W + gx]))) continue;
+        if (d + cost < flow[n]) {
+          flow[n] = d + cost;
+          push([d + cost, n]);
+        }
+      }
+    }
+    if (this.flowCache.size > 300) this.flowCache.clear();
+    this.flowCache.set(key, flow);
+    return flow;
+  }
+
+  // Terrestre num mapa de água: segue o caminho por terra, indo reto até onde der
+  _terrainWaypoint(u, tx, ty) {
+    if (this._clearPath(u.x, u.y, tx, ty)) return [tx, ty];
+    const goal = this._cell(tx, ty);
+    const flow = this._flow(goal);
+    let cell = this._cell(u.x, u.y);
+    if (!Number.isFinite(flow[cell])) return this._nearestLand(u.x, u.y, true);
+    let best = null;
+    for (let i = 0; i < 8 && cell !== goal; i++) {
+      let next = -1;
+      const cx0 = cell % ARENA.W;
+      const cy0 = Math.floor(cell / ARENA.W);
+      for (const [dx, dy] of TERRAIN_STEPS) {
+        const gx = cx0 + dx;
+        const gy = cy0 + dy;
+        if (gx < 0 || gx >= ARENA.W || gy < 0 || gy >= ARENA.H) continue;
+        const n = gy * ARENA.W + gx;
+        // Diagonal que corta a quina da água não vale (igual ao cálculo do caminho)
+        if (dx && dy && (this.terrain.wet[cy0 * ARENA.W + gx] || this.terrain.wet[gy * ARENA.W + cx0])) continue;
+        if (flow[n] < flow[next < 0 ? cell : next]) next = n;
+      }
+      if (next < 0) break;
+      cell = next;
+      const [cx, cy] = this._cellCenter(cell);
+      if (best && !this._clearPath(u.x, u.y, cx, cy)) break;
+      best = [cx, cy];
+    }
+    return best || [tx, ty];
+  }
+
   _createTowers() {
     for (const side of [0, 1]) {
       const yP = side === 0 ? 25.5 : 6.5;
@@ -119,6 +305,12 @@ class Game {
     if (card.kind === 'spell') return true;
     for (const t of this.towers) {
       if (!t.dead && Math.hypot(t.x - x, t.y - y) < t.radius + 0.3) return false;
+    }
+    // Mapa com água: terrestres e construções só na terra ligada aos ginásios; os de água também na água
+    if (this.terrain && !card.air) {
+      const c = this._cell(x, y);
+      const swimmer = card.kind === 'unit' && card.types.includes('water');
+      if (this.terrain.wet[c] ? !swimmer : !this.terrain.main[c]) return false;
     }
     // Construção não pode trancar a saída de uma ponte
     if (card.kind === 'building') {
@@ -209,7 +401,9 @@ class Game {
   _spawnUnit(card, side, x, y, mult = 1) {
     const hp = Math.round(card.hp * mult);
     // Terrestres nunca nascem dentro do rio (bandos se espalham ao redor do ponto escolhido)
-    if (!card.air && y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM) {
+    if (this.terrain) {
+      if (!card.air && !card.types.includes('water') && this._inWater(x, y)) [x, y] = this._nearestLand(x, y, true);
+    } else if (!card.air && y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM) {
       y = side === 0 ? ARENA.RIVER_BOTTOM + 0.05 : ARENA.RIVER_TOP - 0.05;
     }
     const u = {
@@ -402,30 +596,38 @@ class Game {
     // ele mudar de alvo) ou um que já esteja ao alcance do ataque
     const sight = Math.max(MATCH.SIGHT, u.def.range + 0.5);
     const reach = u.def.range + 0.3;
+    // Foco no que está mais perto (Pokémon, construção ou ginásio à vista), como no Clash Royale. O Líder
+    // conta como KING_BIAS tiles mais longe enquanto houver lateral de pé: no meio do caminho, o lateral
+    // fica sempre mais perto que ele
+    const score = (t, slack = 0) => {
+      const d = edgeDist(u, t);
+      // O ginásio da pista sempre entra na conta, mesmo fora da visão (senão, colado no Líder, só ele "existe")
+      if (!(d <= sight + slack) && t !== tower) return Infinity;
+      if (d > reach + slack && this._offShore(u, t)) return Infinity; // nadando longe: o terrestre não chega lá
+      return d + (t.isTower && t.kind === 'king' && this._princessUp(t.side) ? KING_BIAS : 0);
+    };
     let best = null;
-    let bestD = Infinity;
-    let bestReach = false;
+    let bestS = Infinity;
     for (const t of [...this.units, ...this.towers]) {
       if (!this._canTarget(u, t) || t.id === ignored) continue;
-      const d = edgeDist(u, t);
-      const inReach = d <= reach;
-      if (t.isTower && t !== tower && !inReach) continue;
-      if (d > sight) continue;
-      // O que ele já consegue acertar vem antes do que ainda está chegando
-      if (inReach !== bestReach ? inReach : d < bestD) {
+      const s = score(t);
+      if (s < bestS) {
         best = t;
-        bestD = d;
-        bestReach = inReach;
+        bestS = s;
       }
     }
-    // Não fica trocando de alvo à toa: só larga o atual (Pokémon ou ginásio) por um que dê para acertar já
-    // ou que esteja pelo menos 1 tile mais perto — com um ginásio logo à frente, quem vem chegando não tira o foco
+    // Não fica trocando de alvo à toa: o atual só sai por um que esteja meio tile mais perto (e tem meio
+    // tile de folga no alcance e na visão, senão quem fica bem no limite vira e desvira de alvo)
     const cur = u.target;
     if (cur && cur !== best && this._canTarget(u, cur) && cur.id !== ignored) {
-      const d = edgeDist(u, cur);
-      if (d <= sight && !bestReach && bestD > d - 1) return cur;
+      const s = score(cur, 0.5);
+      if (Number.isFinite(s) && bestS > s - 0.5) return cur;
     }
     return best || tower;
+  }
+
+  _princessUp(side) {
+    return this.towers.some((t) => t.side === side && t.kind === 'princess' && !t.dead);
   }
 
   // Ginásio que o Pokémon persegue: o da pista da metade da arena em que está, dos dois lados do rio —
@@ -490,8 +692,12 @@ class Game {
       return;
     }
 
+    // Atacando, revê o alvo a cada 0,3 s: se um inimigo chegou mais perto, troca para ele
     const locked = this._canTarget(u, u.target) && edgeDist(u, u.target) <= u.def.range + 0.3;
-    if (!locked) u.target = this._acquireTarget(u);
+    if (!locked || this.time >= (u.retargetAt || 0)) {
+      u.retargetAt = this.time + 0.3;
+      u.target = this._acquireTarget(u);
+    }
     const t = u.target;
     if (!t) return;
 
@@ -512,7 +718,9 @@ class Game {
     } else {
       // Alvo inalcançável (ex.: atrás de um ginásio colado na parede): sem chegar mais perto em 2,5 s,
       // desiste dele por um tempo e procura outro — senão o Pokémon fica parado para sempre
-      const dist = edgeDist(u, t);
+      // Nos mapas de água, o avanço do terrestre é medido pelo caminho por terra (contornar a água
+      // pode afastar em linha reta antes de aproximar)
+      const dist = this._chaseDist(u, t);
       if (!u.chase || u.chase.id !== t.id) u.chase = { id: t.id, best: dist, since: this.time };
       else if (dist < u.chase.best - 0.25) {
         u.chase.best = dist;
@@ -531,15 +739,40 @@ class Game {
   _moveToward(u, tx, ty, dt, target) {
     const d = Math.hypot(tx - u.x, ty - u.y);
     if (d < 1e-3) return;
-    let dx = (tx - u.x) / d;
-    let dy = (ty - u.y) / d;
-    if (!u.air) [dx, dy] = this._avoidTowers(u, dx, dy, target);
+    const rx = (tx - u.x) / d;
+    const ry = (ty - u.y) / d;
+    let [dx, dy] = u.air ? [rx, ry] : this._avoidTowers(u, rx, ry, target);
     const swim = u.swimming ? SWIM_SPEED : 1;
     const step = Math.min(d, u.def.speed * swim * (u.slowT > 0 ? 0.55 : 1) * dt); // Nevasca: mais lento
+    let nx = u.x + dx * step;
+    let ny = u.y + dy * step;
+    // Mapa com água: quem não nada desliza pela margem (como numa parede) em vez de entrar na água; se o
+    // desvio de um ginásio joga para a água, tenta reto e depois de lado
+    if (this.terrain && !u.air && !this._swims(u)) {
+      const land = (x, y) => !this._inWater(x, y);
+      // De lado, mantém por 0,5 s o lado que já vinha usando (senão alterna a cada quadro e treme)
+      const slide = u.slide && this.time < u.slide.until ? u.slide.sign : 1;
+      const dirs = [[dx, dy], [rx, ry], [-dy * slide, dx * slide], [dy * slide, -dx * slide]];
+      let moved = false;
+      for (const [k, [cx, cy]] of dirs.entries()) {
+        const ax = u.x + cx * step;
+        const ay = u.y + cy * step;
+        if (land(ax, ay)) [nx, ny, moved] = [ax, ay, true];
+        else if (land(ax, u.y) && Math.abs(cx) > 0.2) [nx, ny, moved] = [ax, u.y, true];
+        else if (land(u.x, ay) && Math.abs(cy) > 0.2) [nx, ny, moved] = [u.x, ay, true];
+        if (moved) {
+          if (k >= 2) u.slide = { sign: k === 2 ? slide : -slide, until: this.time + 0.5 };
+          break;
+        }
+      }
+      if (!moved) return;
+      // Deslizando pela margem, continua olhando para onde quer ir (virar a cada quadro parecia girar)
+      if (Math.hypot(nx - (u.x + dx * step), ny - (u.y + dy * step)) > 1e-6) [dx, dy] = [rx, ry];
+    }
     u.face = Math.atan2(dy, dx);
     u.moving = true;
-    u.x += dx * step;
-    u.y += dy * step;
+    u.x = nx;
+    u.y = ny;
   }
 
   // Ginásio no caminho (que não seja o alvo): contorna pela tangente mais próxima da direção desejada
@@ -559,18 +792,32 @@ class Game {
       // Ginásio colado na parede: contorna pelo lado que tem espaço para o Pokémon passar
       const towardCenter = Math.sign(ARENA.W / 2 - t.x);
       const wallRoom = towardCenter > 0 ? t.x - t.radius - 0.4 : ARENA.W - 0.4 - (t.x + t.radius);
-      if (Math.abs(px) > 0.3 && Math.sign(px) !== towardCenter && wallRoom < u.radius * 2) {
+      // (nos mapas de água, quem já está do lado do centro não é mandado de volta: ali ele contorna por baixo)
+      const centerSide = !!this.terrain && (u.x - t.x) * towardCenter > 0;
+      if (Math.abs(px) > 0.3 && Math.sign(px) !== towardCenter && wallRoom < u.radius * 2 && !centerSide) {
         px = -px;
         py = -py;
+      }
+      // Mantém o lado escolhido para contornar por 1 s (perto do limite, a regra acima trocava de lado a
+      // cada quadro e o Pokémon ficava tremendo no lugar)
+      const side = Math.sign(px * oy - py * ox) || 1;
+      // (nunca o lado que faz o Pokémon recuar)
+      const backward = -px * dx - py * dy < -0.1;
+      if (u.detour && u.detour.id === t.id && this.time < u.detour.until && u.detour.side !== side && !backward) {
+        px = -px;
+        py = -py;
+      } else if (!u.detour || u.detour.id !== t.id || this.time >= u.detour.until) {
+        u.detour = { id: t.id, side, until: this.time + 1 };
       }
       return [px, py];
     }
     return [dx, dy];
   }
 
-  // Terrestres só cruzam o rio pelas pontes
+  // Terrestres só cruzam o rio pelas pontes (nos mapas de água, só andam por terra)
   _waypoint(u, tx, ty) {
     if (u.air || this._swims(u)) return [tx, ty];
+    if (this.terrain) return this._terrainWaypoint(u, tx, ty);
     const RT = ARENA.RIVER_TOP;
     const RB = ARENA.RIVER_BOTTOM;
     const [b1, b2] = ARENA.BRIDGES;
@@ -592,8 +839,22 @@ class Game {
     return [laneX, goingUp ? RT - 0.5 : RB + 0.5];
   }
 
+  // Alvo que um terrestre não alcança andando num mapa de água: nadando no mar ou numa ilha solta no meio
+  // dele (no rio dos mapas comuns ele ainda alcança pela ponte)
+  _offShore(u, t) {
+    if (!this.terrain || t.isTower || u.air || this._swims(u)) return false;
+    const c = this._cell(t.x, t.y);
+    return !!t.swimming || !!this.terrain.wet[c] || !this.terrain.main[c];
+  }
+
+  _chaseDist(u, t) {
+    if (!this.terrain || u.air || this._swims(u)) return edgeDist(u, t);
+    const d = this._flow(this._cell(t.x, t.y))[this._cell(u.x, u.y)];
+    return Number.isFinite(d) ? d : edgeDist(u, t);
+  }
+
   _swims(u) {
-    return this.swimRiver && canSwim(u);
+    return (this.swimRiver || !!this.terrain) && canSwim(u);
   }
 
   _nearestBridge(x) {
@@ -629,13 +890,34 @@ class Game {
     if (!source.isTower && !melee && !(splash > 0)) {
       this._fx({ kind: 'impact', type, x: target.x, y: target.y - (target.air ? 0.8 : 0), ttl: 0.35, total: 0.35 });
     }
+    const hit = new Set();
     if (splash > 0) {
       for (const e of this._enemiesOf(source.side)) {
-        if (Math.hypot(e.x - target.x, e.y - target.y) <= splash + e.radius) this._damage(e, dmg, type, source);
+        if (Math.hypot(e.x - target.x, e.y - target.y) <= splash + e.radius) {
+          this._damage(e, dmg, type, source);
+          hit.add(e);
+        }
       }
       this._fx({ kind: 'blast', type, x: target.x, y: target.y, radius: splash, color: TYPE_COLORS[type], ttl: 0.4, total: 0.4 });
     } else {
       this._damage(target, dmg, type, source);
+      hit.add(target);
+    }
+    if (type === 'electric') this._conduct(source.side, hit, dmg);
+  }
+
+  // Elétrico conduz na água: de cada alvo atingido que está nadando, a descarga passa para os inimigos
+  // nadando perto dele (metade do dano)
+  _conduct(side, hit, dmg) {
+    for (const from of hit) {
+      if (!from.swimming) continue;
+      for (const e of this.units) {
+        if (e.dead || e.side === side || !e.swimming || hit.has(e)) continue;
+        if (Math.hypot(e.x - from.x, e.y - from.y) > CONDUCT_RADIUS + e.radius) continue;
+        hit.add(e);
+        this._damage(e, dmg * CONDUCT_MULT, 'electric', null);
+        this._fx({ kind: 'impact', type: 'electric', x: e.x, y: e.y, ttl: 0.35, total: 0.35 });
+      }
     }
   }
 
@@ -786,12 +1068,14 @@ class Game {
 
   _resolveSpell(s) {
     const c = s.card;
+    const hit = new Set();
     for (const e of [...this._enemiesOf(s.side)]) {
       const dist = Math.hypot(e.x - s.x, e.y - s.y);
       if (dist > c.radius + e.radius) continue;
       if (c.groundOnly && e.air) continue; // Terremoto não alcança quem voa
       const mult = e.isTower ? c.towerMult : e.isBuilding ? c.buildingMult || 1 : 1;
       this._damage(e, c.dmg * (s.mult || 1) * mult, c.type, null);
+      hit.add(e);
       if (e.isTower || e.isBuilding || e.dead) continue;
       if (c.stun) e.stun = Math.max(e.stun, c.stun);
       if (c.slow) e.slowT = Math.max(e.slowT || 0, c.slowTime);
@@ -803,6 +1087,7 @@ class Game {
         e.y = clamp(e.y + uy * c.knockback, 0.5, ARENA.H - 0.5);
       }
     }
+    if (c.type === 'electric') this._conduct(s.side, hit, c.dmg * (s.mult || 1));
     const shake = { fireblast: 0.3, earthquake: 0.45, surf: 0.12 }[c.id] || 0.15;
     this._fx({ kind: 'blast', type: c.type, x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl: c.id === 'earthquake' ? 0.9 : 0.6, total: c.id === 'earthquake' ? 0.9 : 0.6, spell: c.id, shake });
   }
@@ -925,8 +1210,11 @@ class Game {
             u.y = t.y + (dy / d) * min;
           }
         }
-        // No rio, fica preso à ponte (quem é de água nada)
-        if (u.y > ARENA.RIVER_TOP && u.y < ARENA.RIVER_BOTTOM && !this._swims(u)) {
+        // Mapa com água: empurrado para a água, quem não nada volta para a terra mais perto
+        if (this.terrain) {
+          if (!this._swims(u) && this._inWater(u.x, u.y)) [u.x, u.y] = this._nearestLand(u.x, u.y);
+        } else if (u.y > ARENA.RIVER_TOP && u.y < ARENA.RIVER_BOTTOM && !this._swims(u)) {
+          // No rio, fica preso à ponte (quem é de água nada)
           const b = this._nearestBridge(u.x);
           const h = ARENA.BRIDGE_HALF - u.radius * 0.5;
           u.x = clamp(u.x, b - h, b + h);
@@ -935,7 +1223,7 @@ class Game {
       u.x = clamp(u.x, 0.4, ARENA.W - 0.4);
       u.y = clamp(u.y, 0.4, ARENA.H - 0.4);
       // Entrou ou saiu da água: espirro
-      const swimming = this._swims(u) && inWater(u.x, u.y);
+      const swimming = this._swims(u) && this._inWater(u.x, u.y);
       if (swimming !== !!u.swimming && !(u.deploy > 0)) {
         this._fx({ kind: 'splash', x: u.x, y: u.y, radius: u.radius, ttl: 0.5, total: 0.5 });
       }

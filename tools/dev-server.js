@@ -115,6 +115,20 @@ async function main() {
       res.setHeader('Location', '/');
       return res.end();
     }
+    // Só no desenvolvimento: muda troféus e etapa da conta logada (/__dev/trofeus?n=300&arena=1), para testar
+    // as rotas e o desafio do Líder sem jogar dezenas de partidas
+    if (url.pathname === '/__dev/trofeus') {
+      const userId = await require('../api/_lib/auth').currentUserId(req);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      if (!userId) {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ error: 'Entre na conta primeiro.' }));
+      }
+      const n = Math.max(0, Number(url.searchParams.get('n')) || 0);
+      const arena = url.searchParams.has('arena') ? Number(url.searchParams.get('arena')) : null;
+      await pg.query('UPDATE users SET trophies = $2, arena = COALESCE($3, arena), gym_wins = 0, gym_losses = 0 WHERE id = $1', [userId, n, arena]);
+      return res.end(JSON.stringify({ ok: true, trophies: n, arena }));
+    }
     // Só no desenvolvimento: cria treinadores de mentira para testar o ranking (/__dev/treinadores?n=15)
     if (url.pathname === '/__dev/treinadores') {
       const n = Math.min(200, Number(url.searchParams.get('n')) || 15);
@@ -126,7 +140,7 @@ async function main() {
           `INSERT INTO users (email, name, pass_hash, starter, trophies, best_trophies, arena, xp)
            VALUES ($1, $2, 'x', $3, $4, $4, $5, $6) ON CONFLICT DO NOTHING`,
           [`bot${Date.now()}${i}@teste.local`, `${names[i % names.length]}${i >= names.length ? i : ''}`, starters[i % 3], trophies,
-            [0, 300, 600, 1000, 1400, 1800, 2300, 2800, 3300, 4000].filter((t) => trophies >= t).length - 1, Math.floor(Math.random() * 3000)],
+            require('../api/_lib/rules').arenaForTrophies(trophies, 99), Math.floor(Math.random() * 3000)],
         );
       }
       res.setHeader('Content-Type', 'application/json; charset=utf-8');

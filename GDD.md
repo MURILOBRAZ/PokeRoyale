@@ -173,10 +173,10 @@ Distribuição de custos: 1 (3 cartas) · 2 (17) · 3 (38) · 4 (23) · 5 (33) �
 
 ## 10. Comportamento das unidades (IA)
 
-1. **Procura alvo:** o inimigo mais próximo dentro do campo de visão que ela consiga atacar: 4,5 tiles (`MATCH.SIGHT`, era 5,5), ou o alcance dela + 0,5, se for maior. O que já dá para acertar vem antes do que ainda está chegando. Entre os ginásios, conta o da pista (abaixo) ou qualquer um que já esteja ao alcance do ataque. Para não ficar indo e voltando entre inimigos, só troca o alvo atual (Pokémon ou ginásio) por um que dê para acertar já ou que esteja pelo menos 1 tile mais perto: com um ginásio logo à frente, um Pokémon que vem chegando não tira o foco.
+1. **Procura alvo (v0.10):** o que estiver **mais perto**, como no Clash Royale: Pokémon, construção ou ginásio inimigo dentro do campo de visão que ela consiga atacar: 4,5 tiles (`MATCH.SIGHT`), ou o alcance dela + 0,5, se for maior. O **Ginásio Líder conta como 3 tiles mais longe** (`KING_BIAS`) enquanto houver lateral de pé, então no meio do caminho o lateral fica sempre mais perto que ele. Para não ficar indo e voltando, só troca o alvo atual por um que esteja meio tile mais perto, e o atual tem meio tile de folga no alcance e na visão. Nos mapas de água, o terrestre ignora quem está nadando ou numa ilha solta, a não ser que já esteja ao alcance.
 2. **Sem alvo por perto:** segue a pista, como no Clash Royale, dos dois lados do rio: vai ao ginásio lateral daquele lado e, se ele já caiu, ao Ginásio Líder, sem atravessar o mapa para a outra pista. A metade da arena em que ele foi invocado decide a pista: na metade do lateral que ainda está de pé, mesmo que pendendo só um pouco para aquele lado, vai a esse lateral; na metade do lateral que caiu, vai ao Líder. No centro exato (meio tile para cada lado, `CENTER_HALF`), vai ao lateral que ainda está de pé. Vale também no lado do adversário (por exemplo, invocado no bolsão depois de derrubar um lateral): perto do Líder, mas na metade do lateral que ainda está de pé, ele vai a esse lateral. O ginásio escolhido fica guardado: no caminho até o Líder ele passa pelo centro sem trocar pelo outro lateral, e depois de enfrentar um Pokémon volta ao mesmo ginásio. Só troca se esse ginásio cair ou se ele for parar bem dentro da outra metade (mais de 1,5 tile do centro, `LANE_SWITCH`), por exemplo perseguindo alguém. Terrestres passam pela ponte mais conveniente, e bandos atravessam lado a lado.
 3. **Contorna ginásios** que estejam no caminho (os próprios e os inimigos que não são o alvo).
-4. **Trava no alvo:** depois de começar a atacar, só troca de alvo se o atual morrer ou sair do alcance.
+4. **Revê o alvo atacando:** a cada 0,3 s confere se apareceu algo mais perto (com a mesma folga de meio tile); se sim, troca. Antes da v0.10 ele travava no alvo e, atacando um ginásio, ignorava um Pokémon que chegasse colado.
 5. Unidades se empurram (as mais pesadas empurram mais) e levam **1 s para entrar em campo**. Enquanto surgem, são **invulneráveis**: ninguém mira nelas e nenhum dano as atinge (nem golpes, dano em área ou projéteis já lançados). Inimigos que não podem atacar um ao outro (ex.: dois tanques de ginásio) passam sem se bloquear.
 
 ## 11. Bot (modo solo)
@@ -353,7 +353,7 @@ PokeRoyale/
 | **v0.9** | Golpes Surf, Terremoto e Nevasca; lendários raros com entrada especial; histórico de partidas; música do menu; correção de Pokémon parado (ver [19](#19-v09)) | ✅ Feito |
 | **v0.9.1** | Amigos: adicionar pelo nome, ver quem está online e desafiar direto para um X1, sem código (ver [20](#20-amigos-e-convite-para-x1-v091)) | ✅ Feito |
 | v0.9.2 | Mais animações do SpriteCollab (golpe próprio, levar golpe, surgir, desmaiar e comemorar), golpes à distância redesenhados por tipo, Meteoro dos ginásios, ruínas, Poké Ball arremessada, arena com vida, animações da interface e Pokémon de água nadando no rio (ver [5](#5-arena) e [14.1](#141-backlog-visual-para-a-v05)) | ✅ Feito |
-| v0.10 | Rotas entre os ginásios, desafio de ginásio em melhor de 3 contra o Líder e água de verdade nos mapas de mar (ver [22](#22-rotas-e-desafios-de-ginásio-planejado)) | 📋 Planejado |
+| **v0.10** | Rotas entre os ginásios, desafio de ginásio em melhor de 3 contra o Líder e água de verdade nos mapas de mar (ver [22](#22-rotas-e-desafios-de-ginásio-v010)) | ✅ Feito |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -381,7 +381,7 @@ O modo **Treino** (contra o bot, sem conta, com todas as cartas) continua existi
 
 ### 17.3 Troféus e arenas (ginásios de Kanto)
 
-> Planejado: rotas entre os ginásios e o ginásio como desafio em melhor de 3 contra o Líder (ver [22](#22-rotas-e-desafios-de-ginásio-planejado)).
+> Substituído na v0.10: rotas entre os ginásios e o ginásio como desafio em melhor de 3 contra o Líder (ver [22](#22-rotas-e-desafios-de-ginásio-v010)).
 
 Cada arena tem a cor/tema do ginásio e **libera os Pokémon do seu tipo** nas Premier Balls (além dos das arenas anteriores). A regra de qual Pokémon pertence a qual arena é pelo **primeiro tipo**; lendários ficam na Liga.
 
@@ -603,11 +603,12 @@ Nos ginásios, os golpes causam 30% a 45% do dano. O bot sabe que o Terremoto n�
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).
 - ~~Ranking entre amigos~~ → feito na v0.5 (ranking global, ao tocar nos troféus).
+- **Passo futuro — tela de vitória do desafio do Líder:** hoje é o card comum de fim de partida com 4 linhas de texto (insígnia, Great Ball, Fichas, rota nova) e a insígnia só aparece escrita. A ideia é a insígnia ser o destaque: desenho grande da insígnia (com animação de "ganhou"), nome dela e do Líder, e o resto (ball, Fichas, rota liberada) resumido embaixo, menor. Falta escolher a arte das 8 insígnias e do título de Campeão.
 - **Passo futuro — skin de ginásio "Tecnológico" (Silph Co.):** 6 desenhos em pixel art mecânica, vermelhos e azuis (recebidos em 21/10/2026, em `assets/originais/skin-tecnologico/`). Entram como skin cosmética comprada com Fichas, não como visual padrão: o traço futurista não combina com os mapas de natureza. Líder = `lider-vermelho` / `lider-azul` (os mais detalhados); laterais = `lateral-vermelho` / `lateral-azul` (há uma segunda opção de cada). Falta: vista de costas (ou o canhão separado da base) para os ginásios de baixo apontarem para cima, e versões com fundo transparente.
 
-## 22. Rotas e desafios de ginásio (planejado)
+## 22. Rotas e desafios de ginásio (v0.10)
 
-Combinado em 21/10/2026. Ainda não implementado (os mapas já chegaram). Substitui a progressão da [17.3](#173-troféus-e-arenas-ginásios-de-kanto), em que cada ginásio é uma faixa de troféus.
+Combinado e feito em 21/10/2026. Substitui a progressão da [17.3](#173-troféus-e-arenas-ginásios-de-kanto), em que cada ginásio é uma faixa de troféus.
 
 **Ideia:** o jogador sobe troféus andando pelas **rotas** (umas 2 antes de cada ginásio). No fim delas chega ao **ginásio**, que é um desafio contra o Líder, específico do tipo dele, e precisa vencer para seguir viagem.
 
@@ -637,22 +638,54 @@ Mapas recebidos em 21/10/2026, guardados em `assets/originais/<id>.png` (pasta f
 
 Tamanhos: os mapas de 1086 × 1448 usam o recorte dos ginásios e os de 1024 × 1536 o da Rota 1 e da Liga (`tools/build-arenas.py`). Zona Safári e Mansão Pokémon ficaram de fora por falta de mapa com a cara delas; dá para gerar e trocar depois.
 
-### 22.3 A decidir quando os mapas estiverem prontos
+### 22.3 Jornada, troféus e recompensas
 
-- **Pokémon de cada rota:** cada rota libera um grupo, de preferência os que aparecem nela no jogo original (ex.: insetos na Floresta de Viridian; Clefairy e Jigglypuff no Mt. Moon; Snorlax e Doduo na Ciclovia). Hoje a Rota 1 sozinha libera 42 cartas, então dá para espalhar.
-- **Faixas de troféus** de cada rota e quanto a insígnia vale (Fichas, ball, cosmético).
-- **Liga:** melhor de 3 contra cada membro da Elite dos Quatro, ou um único desafio final.
-- **Contas existentes:** os números das arenas mudam (entram rotas entre os ginásios), então as colunas `users.arena`, `balls.arena` e `matches.arena` precisam ser convertidas uma vez, e quem já passou de um ginásio ganha a insígnia dele.
+26 etapas (`ARENAS` em `js/progression.js`): o número da arena do jogador (`users.arena`) é a etapa mais longe liberada; ginásio vencido = arena ≥ ele. O portão de cada ginásio é o troféu dele; a rota seguinte começa no mesmo número.
+
+| Troféus | Etapa | Libera nas balls |
+|---|---|---|
+| 0 | Rota 1 | Iniciais, Pidgey, Rattata, Spearow (e evoluções), Choque do Trovão, Explosão de Fogo, Centro Pokémon |
+| 150 | Floresta de Viridian | Caterpie, Weedle (e evoluções) |
+| 300 | 🏅 Pewter (Brock) | Pedra |
+| 300 | Mt. Moon | Clefairy, Paras (e evoluções), Caverna Zubat |
+| 450 | Rota 4 | Jigglypuff, Meowth (e evoluções) |
+| 600 | 🏅 Cerulean (Misty) | Água (menos os do mar), Surf |
+| 600 | Ponte Pepita | Venonat, Oddish (e evoluções) |
+| 800 | Rota 6 | Farfetch'd, Bellsprout (e evoluções) |
+| 1000 | 🏅 Vermilion (Lt. Surge) | Elétrico |
+| 1000 | Túnel de Pedra | Machop, Cubone (e evoluções) |
+| 1200 | Rota 8 | Growlithe, Arcanine, Eevee, Torre Pokémon |
+| 1400 | 🏅 Celadon (Erika) | Planta |
+| 1400 | Rota 12 | Snorlax, Lickitung, Snorlax Dormindo |
+| 1600 | Ciclovia | Doduo, Dodrio |
+| 1800 | 🏅 Fuchsia (Koga) | Veneno |
+| 1800 | Rota 5 | Ditto, Porygon |
+| 2050 | Rota 7 | Scyther, Pinsir, Kangaskhan, Chansey |
+| 2300 | 🏅 Saffron (Sabrina) | Psíquico, Zapdos |
+| 2300 | Ilhas Seafoam | Seel, Shellder (e evoluções), Nevasca, Articuno |
+| 2550 | Rota 20 | Horsea, Tentacool (e evoluções) |
+| 2800 | 🏅 Cinnabar (Blaine) | Fogo, Moltres |
+| 2800 | Rota 21 | Tauros, Lapras |
+| 3050 | Rota 22 | Mankey, Primeape |
+| 3300 | 🏅 Viridian (Giovanni) | Terra, Terremoto, Mew |
+| 3300 | Estrada da Vitória | Hitmonlee, Hitmonchan |
+| 4000 | 🏅 Liga (Elite dos Quatro) | Gelo, Lutador, Fantasma, Dragão, Mewtwo, Laboratório do Mewtwo |
+
+- **Líder:** deck de 8 cartas só do tipo do ginásio (unidades que tenham o tipo, golpes do tipo, sem lendários), sempre com o Pokémon símbolo; cartas um nível acima das do bot daquela altura; difícil a partir de Celadon.
+- **Liga:** um desafio só (melhor de 3) contra a Elite dos Quatro, com deck dos tipos da Liga. Depois dela os troféus não têm mais teto.
+- **Recompensas:** rota nova +30 Fichas; insígnia +100 Fichas e uma Great Ball (se houver espaço). As partidas do desafio não dão troféus nem ball; a série perdida tira 15 troféus. As partidas do desafio não contam para a sequência de vitórias.
+- **Contas da v0.9:** convertidas uma vez (coluna `map_v`): a arena antiga vira a etapa do ginásio correspondente (quem estava em Cerulean ganha a insígnia de Cerulean), e os troféus levam às rotas depois dele.
+- **Bot das rotas:** fácil antes de Pewter, normal até Saffron, difícil depois. Balls ficam maiores ao longo da jornada (até +90% na Liga, como antes).
 
 ### 22.4 Água de verdade (terreno por mapa)
 
-Combinado em 21/10/2026. Hoje a água é só a faixa fixa do rio no meio (`ARENA.RIVER_TOP`/`RIVER_BOTTOM`), igual em todos os mapas, e os Pokémon de água atravessam nadando. Nos mapas 🌊 a água ocupa boa parte do campo, então cada mapa passa a ter o próprio terreno.
+Combinado e feito em 21/10/2026. Antes, a água era só a faixa fixa do rio no meio (`ARENA.RIVER_TOP`/`RIVER_BOTTOM`), igual em todos os mapas, e os Pokémon de água atravessam nadando. Nos mapas 🌊 a água ocupa boa parte do campo, então cada mapa passa a ter o próprio terreno.
 
-- **Terreno:** uma grade de 18 × 32 casas por mapa dizendo o que é terra e o que é água. Gerada a partir da cor azul da imagem em `tools/build-arenas.py` e ajustada à mão onde precisar (píeres, pontes, bordas). Os mapas sem 🌊 continuam só com o rio do meio.
-- **Terrestres:** só andam em terra (pistas, píeres, pontes, ilhas) e contornam a água por um caminho calculado na grade (hoje eles só procuram a ponte). Não podem ser soltos na água.
+- **Terreno:** uma grade de 18 × 32 casas por mapa (`js/terrain.js`) dizendo o que é terra e o que é água. Gerada por `tools/build-arenas.py` a partir da cor azul da imagem, com limpeza: pedras e ilhotas de até 4 casas viram água, poças de até 2 casas viram terra, e os ginásios ficam com uma volta de terra em torno (raio + 2,4), senão quem vem pela pista não consegue contorná-los. Os mapas sem 🌊 continuam só com o rio do meio.
+- **Terrestres:** só andam em terra (pistas, píeres, pontes) e contornam a água pelo menor caminho por terra na grade (indo reto quando dá), que já desvia dos ginásios de pé; na margem, deslizam como numa parede, olhando para onde querem ir. Só podem ser soltos na terra ligada aos ginásios (ilhas soltas no meio do mar ficam para voadores e nadadores). Não perseguem quem está nadando ou numa ilha solta (não chegam lá): só atacam esse alvo se ele já estiver ao alcance, senão seguem o caminho.
 - **Pokémon de água:** nadam em qualquer água, **30% mais rápido** que andando, e cortam caminho pelo meio. Podem ser soltos direto na água (do seu lado do campo).
 - **Voadores:** ignoram a água, como hoje.
-- **Elétricos conduzem na água:** quando o golpe de um Pokémon elétrico (ou o Choque do Trovão) acerta um alvo que está na água, o dano se espalha para os outros inimigos nadando perto dele.
+- **Elétricos conduzem na água:** quando o golpe de um Pokémon elétrico (ou o Choque do Trovão) acerta um alvo que está nadando, os outros inimigos nadando a até 2,5 tiles dele levam **metade do dano** (e ainda o dobro pela fraqueza da água ao elétrico). Vale também no rio dos mapas comuns.
 - **Ginásios:** sempre em terra, na posição de hoje.
-- **Efeito no jogo:** em mapa de mar o deck de água fica forte, e o elétrico vira a resposta natural. Os números (velocidade nadando, alcance e dano da condução) passam pela simulação de partidas antes de fechar.
+- **Efeito no jogo:** em mapa de mar o deck de água fica forte, e o elétrico vira a resposta natural. Na simulação (1040 partidas por todos os mapas), nenhum terrestre entrou na água e só 2 Pokémon ficaram parados nos mapas de mar; nenhuma carta de água ou elétrica ficou fora da curva.
 - **Futuro:** maré nos mapas de praia (a água sobe a cada ~40 s e cobre parte das ilhas e pistas), se a água de verdade funcionar bem.

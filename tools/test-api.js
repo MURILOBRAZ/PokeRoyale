@@ -179,25 +179,68 @@ async function main() {
   await botMatch('loss');
   ok('sequência de vitórias: 25, 26, 27; derrota ou empate volta para 25');
 
-  // Sobe de arena e respeita o piso
+  // Jornada (v0.10): nas rotas os troféus travam no portão do ginásio até vencer o Líder
+  const play = async (mode, result) => {
+    const s = await a('match-start', { mode });
+    assert.equal(s.status, 200, JSON.stringify(s.data));
+    await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [s.data.matchId]);
+    return (await a('match-finish', { matchId: s.data.matchId, result })).data;
+  };
+  const pewter = R.arenaIndex('pewter');
+  await pg.query("UPDATE users SET trophies = 140, arena = 0 WHERE email = 'ash@teste.local'");
+  r = { data: await play('online', 'win') };
+  assert.equal(r.data.arena, R.arenaIndex('florestaviridian'));
+  assert.equal(r.data.arenaUp, true);
   await pg.query("UPDATE users SET trophies = 295 WHERE email = 'ash@teste.local'");
-  r = await a('match-start', { mode: 'online' });
+  r = { data: await play('online', 'win') };
+  assert.equal(r.data.delta, 5); // 295 + 30, mas o portão de Pewter é 300
+  assert.equal(r.data.trophies, 300);
+  assert.equal(r.data.atGate, true);
+  assert.equal(r.data.arena, R.arenaIndex('florestaviridian')); // não passa do ginásio
+  assert.equal((await play('bot', 'win')).delta, 0);
+  ok('rotas: sobe de rota com troféus e trava no portão do ginásio (300)');
+
+  // Desafio do Líder em melhor de 3: 2 vitórias = insígnia, a próxima rota e uma Great Ball
+  await pg.query("DELETE FROM balls WHERE user_id = (SELECT id FROM users WHERE email = 'ash@teste.local')");
+  r = await a('match-start', { mode: 'gym' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.gym.id, pewter);
+  assert.equal(r.data.bot.leader, 'Brock');
+  assert.ok(r.data.bot.deck.every((id) => R.CARDS[id].kind !== 'unit' || R.CARDS[id].types.includes('rock')), r.data.bot.deck);
   await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [r.data.matchId]);
   r = await a('match-finish', { matchId: r.data.matchId, result: 'win' });
-  assert.equal(r.data.delta, 30);
-  assert.equal(r.data.arena, 1);
-  assert.equal(r.data.arenaUp, true);
-  r = await a('match-start', { mode: 'online' });
-  await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [r.data.matchId]);
-  r = await a('match-finish', { matchId: r.data.matchId, result: 'loss' });
-  assert.equal(r.data.trophies, 305); // 325 − 20
-  for (let i = 0; i < 3; i++) {
-    r = await a('match-start', { mode: 'online' });
-    await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [r.data.matchId]);
-    r = await a('match-finish', { matchId: r.data.matchId, result: 'loss' });
-  }
-  assert.equal(r.data.trophies, 300);
-  ok('online +30/−20, sobe para o Ginásio de Pewter e não cai abaixo de 300');
+  assert.deepEqual(r.data.gym, { id: pewter, wins: 1, losses: 0, done: null });
+  assert.equal(r.data.delta, 0);
+  assert.equal(r.data.ball, null);
+  assert.deepEqual((await play('gym', 'loss')).gym, { id: pewter, wins: 1, losses: 1, done: null });
+  r = { data: await play('gym', 'win') };
+  assert.deepEqual(r.data.gym, { id: pewter, wins: 2, losses: 1, done: 'won' });
+  assert.equal(r.data.badge, true);
+  assert.equal(r.data.arena, R.arenaIndex('mtmoon')); // a insígnia abre a próxima rota (300 troféus)
+  assert.equal(r.data.ball.tier, 'great');
+  assert.ok(r.data.fichas >= R.FICHAS.badge + R.FICHAS.routeUp);
+  assert.deepEqual(r.data.state.user.gym, { wins: 0, losses: 0 });
+  assert.equal((await a('match-start', { mode: 'gym' })).status, 409); // longe do portão de Cerulean
+  ok('desafio do Líder: melhor de 3, insígnia, próxima rota, Fichas e Great Ball');
+
+  // Perder o desafio tira 15 troféus; 2 desafios perdidos devolvem o jogador para dentro da rota
+  await pg.query("UPDATE users SET trophies = 600, arena = $1 WHERE email = 'ash@teste.local'", [R.arenaIndex('rota4')]);
+  await play('gym', 'loss');
+  r = { data: await play('gym', 'loss') };
+  assert.equal(r.data.gym.done, 'lost');
+  assert.equal(r.data.delta, R.GYM_LOSS);
+  assert.equal(r.data.trophies, 585);
+  assert.deepEqual(r.data.state.user.gym, { wins: 0, losses: 0 });
+  assert.equal((await a('match-start', { mode: 'gym' })).status, 409); // fora do portão: volta a jogar na rota
+  ok('desafio perdido: −15 troféus, a série recomeça e o jogador volta para a rota');
+
+  // Piso: não cai abaixo do começo da etapa alcançada
+  await pg.query("UPDATE users SET trophies = 310, arena = $1 WHERE email = 'ash@teste.local'", [R.arenaIndex('mtmoon')]);
+  let lost;
+  for (let i = 0; i < 3; i++) lost = await play('online', 'loss');
+  assert.equal(lost.trophies, 300);
+  assert.equal((await play('bot', 'win')).delta, 25); // e mais uma ball para o teste abaixo
+  ok('online −20 e não cai abaixo do começo do Mt. Moon (300)');
 
   // Balls: várias abrindo ao mesmo tempo, só abre quando pronta
   let st = (await a('me')).data;
@@ -435,7 +478,7 @@ async function main() {
   ok('Ultra Ball e Doce Raro com Fichas, 1 por semana cada');
 
   // Fichas por conquistas
-  await pg.query('UPDATE users SET fichas = 0, trophies = 290, arena = 0, xp = 18 WHERE id = $1', [ashId]);
+  await pg.query('UPDATE users SET fichas = 0, trophies = 140, arena = 0, xp = 18 WHERE id = $1', [ashId]);
   await pg.query("UPDATE matches SET result = 'loss' WHERE user_id = $1", [ashId]);
   r = await a('match-start', { mode: 'online' });
   await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [r.data.matchId]);
@@ -443,17 +486,17 @@ async function main() {
   assert.equal(r.data.arenaUp, true);
   assert.equal(r.data.firstWin, true);
   assert.equal(r.data.levelUp, true); // 18 + 5 XP passa de 20
-  assert.equal(r.data.fichas, R.FICHAS.arenaUp + R.FICHAS.firstWin + R.FICHAS.levelUp);
-  assert.equal(r.data.state.user.fichas, 130);
+  assert.equal(r.data.fichas, R.FICHAS.routeUp + R.FICHAS.firstWin + R.FICHAS.levelUp);
+  assert.equal(r.data.state.user.fichas, 60);
   r = await a('match-start', { mode: 'online' });
   await pg.query(`UPDATE matches SET started_at = now() - interval '3 minutes' WHERE id = $1`, [r.data.matchId]);
   r = await a('match-finish', { matchId: r.data.matchId, result: 'win' });
   assert.equal(r.data.firstWin, false);
   assert.equal(r.data.fichas, 0);
-  ok('Fichas: +100 arena nova, +20 nível de treinador, +10 só na 1ª vitória do dia');
+  ok('Fichas: +30 rota nova (+100 por insígnia), +20 nível de treinador, +10 só na 1ª vitória do dia');
 
   // Cosméticos
-  await pg.query('UPDATE users SET fichas = 100, arena = 1 WHERE id = $1', [ashId]);
+  await pg.query('UPDATE users SET fichas = 100, arena = $2 WHERE id = $1', [ashId, R.arenaIndex('pewter')]);
   r = await a('me');
   assert.equal(r.data.user.look.avatar, 'charmander'); // padrão: o inicial
   assert.equal(r.data.user.look.title, 'title:novato');
@@ -518,6 +561,17 @@ async function main() {
   assert.deepEqual(names, ['Red', 'red_2', 'RED_3', 'Blue']);
   await assert.rejects(pg2.query("INSERT INTO users (email, name, pass_hash) VALUES ('5@t.l', 'red', 'x')"));
   ok('contas antigas com nome repetido são renomeadas e o índice único é criado');
+
+  // Banco da v0.9 (arenas 0..9): cada conta, ball e partida é convertida uma vez para as etapas da v0.10
+  await pg2.query("INSERT INTO users (email, name, pass_hash, arena, trophies, map_v) VALUES ('6@t.l', 'Misty', 'x', 2, 700, 1)");
+  await pg2.query("INSERT INTO balls (user_id, tier, arena, map_v) SELECT id, 'premier', 2, 1 FROM users WHERE email = '6@t.l'");
+  await pg2.query("INSERT INTO users (email, name, pass_hash, arena) VALUES ('7@t.l', 'Nova', 'x', 2)"); // já na v0.10
+  db.setDb(q2);
+  await db.q('SELECT 1');
+  db.setDb(q2); // rodar o esquema de novo não converte duas vezes
+  const migrated = await db.q("SELECT u.email, u.arena, b.arena AS ball FROM users u LEFT JOIN balls b ON b.user_id = u.id WHERE u.email IN ('6@t.l', '7@t.l') ORDER BY u.email");
+  assert.deepEqual(migrated.map((x) => [x.arena, x.ball]), [[R.arenaIndex('cerulean'), R.arenaIndex('cerulean')], [2, null]]);
+  ok('contas da v0.9 convertidas uma vez: Cerulean (2) vira a etapa do ginásio de Cerulean');
 
   console.log(`\n${passed} testes passaram.`);
 }

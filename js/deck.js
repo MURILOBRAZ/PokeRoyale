@@ -227,7 +227,7 @@ class DeckEditor {
     const c = COSMETICS[id];
     if (Account.user.look.skin === id) return { key: 'equipped', label: '✔ Equipado' };
     if (ownsCosmetic(id)) return { key: 'owned', label: 'Equipar' };
-    if (c.arena !== undefined) return { key: 'arena', label: `🔒 Chegue a ${ARENAS[c.arena].name} (🏆 ${fmtNum(ARENAS[c.arena].trophies)})` };
+    if (c.arena !== undefined) return { key: 'arena', label: `🔒 Vença ${ARENAS[c.arena].leader} (${ARENAS[c.arena].short})` };
     return { key: 'buy', label: `Comprar · 🪙 ${fmtNum(c.fichas)}` };
   }
 
@@ -245,7 +245,7 @@ class DeckEditor {
     const fichas = Account.user.fichas || 0;
     const arena = ARENAS[Account.user.arena];
     const disabled = st.key === 'equipped' || st.key === 'arena' || (st.key === 'buy' && fichas < c.fichas);
-    const how = c.free ? 'Grátis.' : c.arena !== undefined ? `Conquistado ao chegar em ${ARENAS[c.arena].name}.` : `Vendido na Loja por 🪙 ${c.fichas}.`;
+    const how = c.free ? 'Grátis.' : c.arena !== undefined ? `Conquistado ao vencer ${ARENAS[c.arena].leader} (${ARENAS[c.arena].name}).` : `Vendido na Loja por 🪙 ${c.fichas}.`;
     this.el('#skin-preview').innerHTML = `
       <div class="skin-stage ${c.sparkle ? 'sparkle' : ''} ${st.key === 'arena' || st.key === 'buy' ? 'locked-preview' : ''}" style="--map:url('${new URL(arenaMapUrl(arena, true), document.baseURI).href}')">
         ${this.skinImg(focus, 'lateral')}${this.skinImg(focus, 'lider')}${this.skinImg(focus, 'lateral')}

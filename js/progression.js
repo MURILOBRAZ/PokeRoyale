@@ -2,46 +2,129 @@
 // Usado no navegador (interface) e no servidor (api/), que é quem aplica as recompensas.
 // Depende de CARDS e POKEDEX (js/pokedex.js + js/data.js).
 
-// short: nome curto; mascot: nº do Pokémon símbolo da arena (o principal do líder)
+// A jornada (v0.10): rotas entre os ginásios. Nas rotas se sobe troféus; no fim delas os troféus travam
+// no portão do ginásio (trophies do ginásio) até vencer o desafio do Líder em melhor de 3 (ver GDD 22).
+// O número da arena do jogador (users.arena) é a etapa mais longe já liberada: ginásio vencido = arena >= ele.
+// kind: 'route' ou 'gym'; short: nome curto; mascot: nº do Pokémon símbolo (nos ginásios, o principal do líder)
+// types: nos ginásios, os tipos que eles liberam nas balls (pelo primeiro tipo da carta); nas rotas, é
+// preenchido abaixo com os tipos dos Pokémon da rota (ROUTE_CARDS)
 // river: o que corre no meio do mapa desenhado (água deixa os Pokémon de água nadarem; lava e veneno
 // só mudam o brilho que passa por cima no desenho da arena)
 const ARENAS = [
-  { id: 0, name: 'Rota 1', short: 'Rota 1', mascot: 16, leader: null, trophies: 0, badge: null, types: ['normal', 'bug', 'flying', 'fairy'], ground: ['#74c255', '#6ab84c'], map: 'rota1', river: 'water' },
-  { id: 1, name: 'Ginásio de Pewter', short: 'Pewter', mascot: 95, leader: 'Brock', trophies: 300, badge: 'Insígnia da Rocha', types: ['rock'], ground: ['#b9a77c', '#ab996f'], map: 'pewter', river: null },
-  { id: 2, name: 'Ginásio de Cerulean', short: 'Cerulean', mascot: 121, leader: 'Misty', trophies: 600, badge: 'Insígnia da Cascata', types: ['water'], ground: ['#7cc3c9', '#6eb5bb'], map: 'cerulean', river: 'water' },
-  { id: 3, name: 'Ginásio de Vermilion', short: 'Vermilion', mascot: 26, leader: 'Lt. Surge', trophies: 1000, badge: 'Insígnia do Trovão', types: ['electric'], ground: ['#c9c26a', '#bbb45d'], map: 'vermilion', river: null },
-  { id: 4, name: 'Ginásio de Celadon', short: 'Celadon', mascot: 45, leader: 'Erika', trophies: 1400, badge: 'Insígnia do Arco-íris', types: ['grass'], ground: ['#5fae5a', '#54a04f'], map: 'celadon', river: 'water' },
-  { id: 5, name: 'Ginásio de Fuchsia', short: 'Fuchsia', mascot: 110, leader: 'Koga', trophies: 1800, badge: 'Insígnia da Alma', types: ['poison'], ground: ['#a98bb5', '#9b7ea7'], map: 'fuchsia', river: 'poison' },
-  { id: 6, name: 'Ginásio de Saffron', short: 'Saffron', mascot: 65, leader: 'Sabrina', trophies: 2300, badge: 'Insígnia do Pântano', types: ['psychic'], ground: ['#d79bb3', '#c98ea6'], map: 'saffron', river: null },
-  { id: 7, name: 'Ginásio de Cinnabar', short: 'Cinnabar', mascot: 59, leader: 'Blaine', trophies: 2800, badge: 'Insígnia do Vulcão', types: ['fire'], ground: ['#cf8f62', '#c18256'], map: 'cinnabar', river: 'lava' },
-  { id: 8, name: 'Ginásio de Viridian', short: 'Viridian', mascot: 112, leader: 'Giovanni', trophies: 3300, badge: 'Insígnia da Terra', types: ['ground'], ground: ['#a8906a', '#9a835e'], map: 'viridian', river: null },
-  { id: 9, name: 'Liga Pokémon', short: 'Liga', mascot: 149, leader: 'Elite dos Quatro', trophies: 4000, badge: null, types: ['ice', 'fighting', 'ghost', 'dragon'], ground: ['#8a93b8', '#7d86ab'], map: 'liga', river: 'water' },
+  { kind: 'route', name: 'Rota 1', short: 'Rota 1', mascot: 16, trophies: 0, ground: ['#74c255', '#6ab84c'], map: 'rota1', river: 'water' },
+  { kind: 'route', name: 'Floresta de Viridian', short: 'Floresta', mascot: 10, trophies: 150, ground: ['#5fa84a', '#56a043'], map: 'florestaviridian', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Pewter', short: 'Pewter', mascot: 95, leader: 'Brock', trophies: 300, badge: 'Insígnia da Rocha', types: ['rock'], ground: ['#b9a77c', '#ab996f'], map: 'pewter', river: null },
+  { kind: 'route', name: 'Mt. Moon', short: 'Mt. Moon', mascot: 35, trophies: 300, ground: ['#8d8278', '#82776d'], map: 'mtmoon', river: 'water' },
+  { kind: 'route', name: 'Rota 4', short: 'Rota 4', mascot: 39, trophies: 450, ground: ['#74c255', '#6ab84c'], map: 'rota4', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Cerulean', short: 'Cerulean', mascot: 121, leader: 'Misty', trophies: 600, badge: 'Insígnia da Cascata', types: ['water'], ground: ['#7cc3c9', '#6eb5bb'], map: 'cerulean', river: 'water' },
+  { kind: 'route', name: 'Ponte Pepita', short: 'Ponte Pepita', mascot: 43, trophies: 600, ground: ['#74c255', '#6ab84c'], map: 'pontepepita', river: 'water' },
+  { kind: 'route', name: 'Rota 6', short: 'Rota 6', mascot: 83, trophies: 800, ground: ['#6cbb52', '#62b148'], map: 'rota6', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Vermilion', short: 'Vermilion', mascot: 26, leader: 'Lt. Surge', trophies: 1000, badge: 'Insígnia do Trovão', types: ['electric'], ground: ['#c9c26a', '#bbb45d'], map: 'vermilion', river: null },
+  { kind: 'route', name: 'Túnel de Pedra', short: 'Túnel', mascot: 66, trophies: 1000, ground: ['#c9a66b', '#bd9a60'], map: 'tuneldepedra', river: 'water' },
+  { kind: 'route', name: 'Rota 8', short: 'Rota 8', mascot: 58, trophies: 1200, ground: ['#74c255', '#6ab84c'], map: 'rota8', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Celadon', short: 'Celadon', mascot: 45, leader: 'Erika', trophies: 1400, badge: 'Insígnia do Arco-íris', types: ['grass'], ground: ['#5fae5a', '#54a04f'], map: 'celadon', river: 'water' },
+  { kind: 'route', name: 'Rota 12', short: 'Rota 12', mascot: 143, trophies: 1400, ground: ['#8b8f96', '#80848b'], map: 'rota12', river: 'water' },
+  { kind: 'route', name: 'Ciclovia', short: 'Ciclovia', mascot: 84, trophies: 1600, ground: ['#6f747c', '#656a72'], map: 'ciclovia', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Fuchsia', short: 'Fuchsia', mascot: 110, leader: 'Koga', trophies: 1800, badge: 'Insígnia da Alma', types: ['poison'], ground: ['#a98bb5', '#9b7ea7'], map: 'fuchsia', river: 'poison' },
+  { kind: 'route', name: 'Rota 5', short: 'Rota 5', mascot: 132, trophies: 1800, ground: ['#74c255', '#6ab84c'], map: 'rota5', river: 'water' },
+  { kind: 'route', name: 'Rota 7', short: 'Rota 7', mascot: 123, trophies: 2050, ground: ['#74c255', '#6ab84c'], map: 'rota7', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Saffron', short: 'Saffron', mascot: 65, leader: 'Sabrina', trophies: 2300, badge: 'Insígnia do Pântano', types: ['psychic'], ground: ['#d79bb3', '#c98ea6'], map: 'saffron', river: null },
+  { kind: 'route', name: 'Ilhas Seafoam', short: 'Seafoam', mascot: 86, trophies: 2300, ground: ['#e4cf96', '#d8c38a'], map: 'seafoam', river: 'water' },
+  { kind: 'route', name: 'Rota 20', short: 'Rota 20', mascot: 116, trophies: 2550, ground: ['#e4cf96', '#d8c38a'], map: 'rota20', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Cinnabar', short: 'Cinnabar', mascot: 59, leader: 'Blaine', trophies: 2800, badge: 'Insígnia do Vulcão', types: ['fire'], ground: ['#cf8f62', '#c18256'], map: 'cinnabar', river: 'lava' },
+  { kind: 'route', name: 'Rota 21', short: 'Rota 21', mascot: 131, trophies: 2800, ground: ['#e4cf96', '#d8c38a'], map: 'rota21', river: 'water' },
+  { kind: 'route', name: 'Rota 22', short: 'Rota 22', mascot: 56, trophies: 3050, ground: ['#74c255', '#6ab84c'], map: 'rota22', river: 'water' },
+  { kind: 'gym', name: 'Ginásio de Viridian', short: 'Viridian', mascot: 112, leader: 'Giovanni', trophies: 3300, badge: 'Insígnia da Terra', types: ['ground'], ground: ['#a8906a', '#9a835e'], map: 'viridian', river: null },
+  { kind: 'route', name: 'Estrada da Vitória', short: 'Estrada', mascot: 106, trophies: 3300, ground: ['#c9a66b', '#bd9a60'], map: 'estradavitoria', river: 'water' },
+  { kind: 'gym', name: 'Liga Pokémon', short: 'Liga', mascot: 149, leader: 'Elite dos Quatro', trophies: 4000, badge: 'Título de Campeão', types: ['ice', 'fighting', 'ghost', 'dragon'], ground: ['#8a93b8', '#7d86ab'], map: 'liga', river: 'water' },
 ];
+ARENAS.forEach((a, i) => {
+  a.id = i;
+  a.leader ||= null;
+  a.badge ||= null;
+});
+
+// Etapa pelo id do mapa (ex.: 'cerulean'): cartas, cosméticos e lendários apontam para a etapa por ele
+function arenaIndex(map) {
+  const i = ARENAS.findIndex((a) => a.map === map);
+  if (i < 0) throw new Error(`Arena desconhecida: ${map}`);
+  return i;
+}
 
 // Mapa desenhado da arena (assets/arenas, gerado por tools/build-arenas.py)
 function arenaMapUrl(arena, mini = false) {
   return arena.map ? `assets/arenas/${arena.map}${mini ? '-mini' : ''}.webp` : null;
 }
 
-function arenaForTrophies(trophies) {
+// Próximo ginásio ainda não vencido por quem chegou à etapa `arena` (null depois da Liga)
+function nextGym(arena) {
+  return ARENAS.find((a) => a.kind === 'gym' && a.id > arena) || null;
+}
+
+// Etapa que os troféus alcançam, sem passar de um ginásio ainda não vencido
+function arenaForTrophies(trophies, arena = 0) {
   let a = 0;
-  for (const arena of ARENAS) if (trophies >= arena.trophies) a = arena.id;
+  for (const st of ARENAS) {
+    if (st.kind === 'gym' && st.id > arena) break;
+    if (trophies >= st.trophies) a = st.id;
+  }
   return a;
+}
+
+// Teto de troféus: o portão do próximo ginásio (Infinity depois da Liga)
+function trophyCap(arena) {
+  const gym = nextGym(arena);
+  return gym ? gym.trophies : Infinity;
 }
 
 const STARTER_IDS = ['bulbasaur', 'charmander', 'squirtle'];
 
-// Lendários: a partir de qual arena podem sair (bem raros: só em pilhas de 1 carta, ver rollBallContents)
-const LEGENDARY_ARENA = { articuno: 6, zapdos: 6, moltres: 7, mew: 8, mewtwo: 9 };
+// Pokémon que cada rota libera nas balls, de preferência os que aparecem nela no jogo original.
+// Os demais vão para o ginásio do seu primeiro tipo (ou ficam na Rota 1: normais, insetos e fadas que sobraram).
+const ROUTE_CARDS = {
+  florestaviridian: ['caterpie', 'metapod', 'butterfree', 'weedle', 'kakuna', 'beedrill'],
+  mtmoon: ['clefairy', 'clefable', 'paras', 'parasect'],
+  rota4: ['jigglypuff', 'wigglytuff', 'meowth', 'persian'],
+  pontepepita: ['venonat', 'venomoth', 'oddish', 'gloom', 'vileplume'],
+  rota6: ['farfetchd', 'bellsprout', 'weepinbell', 'victreebel'],
+  tuneldepedra: ['machop', 'machoke', 'machamp', 'cubone', 'marowak'],
+  rota8: ['growlithe', 'arcanine', 'eevee'],
+  rota12: ['snorlax', 'lickitung'],
+  ciclovia: ['doduo', 'dodrio'],
+  rota5: ['ditto', 'porygon'],
+  rota7: ['scyther', 'pinsir', 'kangaskhan', 'chansey'],
+  seafoam: ['seel', 'dewgong', 'shellder', 'cloyster'],
+  rota20: ['horsea', 'seadra', 'tentacool', 'tentacruel'],
+  rota21: ['tauros', 'lapras'],
+  rota22: ['mankey', 'primeape'],
+  estradavitoria: ['hitmonlee', 'hitmonchan'],
+};
+const ROUTE_OF_CARD = {};
+for (const [map, ids] of Object.entries(ROUTE_CARDS)) for (const id of ids) ROUTE_OF_CARD[id] = arenaIndex(map);
 
-// Arena em que a carta aparece nas Premier Balls (pelo primeiro tipo; golpes e construções têm a sua)
+// Lendários: a partir de qual etapa podem sair (bem raros: só em pilhas de 1 carta, ver rollBallContents)
+const LEGENDARY_ARENA = { articuno: 'seafoam', zapdos: 'saffron', moltres: 'cinnabar', mew: 'viridian', mewtwo: 'liga' };
+
+// Etapa em que a carta aparece nas Premier Balls (rota própria, senão pelo primeiro tipo; golpes e construções têm a sua)
 function arenaOfCard(card) {
-  if (card.arena !== undefined) return card.arena;
+  if (card.arena !== undefined) return arenaIndex(card.arena);
   if (card.kind === 'spell' || STARTER_IDS.includes(card.id)) return 0;
-  if (card.legendary) return LEGENDARY_ARENA[card.id] ?? 9;
-  const arena = ARENAS.find((a) => a.types.includes(card.types[0]));
+  if (card.legendary) return arenaIndex(LEGENDARY_ARENA[card.id] || 'liga');
+  if (ROUTE_OF_CARD[card.id] !== undefined) return ROUTE_OF_CARD[card.id];
+  const arena = ARENAS.find((a) => a.kind === 'gym' && a.types.includes(card.types[0]));
   return arena ? arena.id : 0;
 }
+
+// Tipos que cada rota mostra: os dos Pokémon que ela libera (a Rota 1 fica com os que sobraram nela)
+for (const a of ARENAS) {
+  if (a.kind !== 'route') continue;
+  const types = new Set();
+  for (const c of Object.values(CARDS)) if (c.kind === 'unit' && arenaOfCard(c) === a.id) types.add(c.types[0]);
+  a.types = [...types];
+}
+
+// Progresso de 0 (Rota 1) a 1 (Liga): força do bot e tamanho das balls acompanham a jornada
+const arenaProgress = (arena) => arena / (ARENAS.length - 1);
 
 // ---------- Raridade e níveis ----------
 
@@ -115,6 +198,9 @@ const TROPHIES = {
   online: { win: 30, loss: -20, draw: 0 },
 };
 const WIN_STREAK_BONUS = 1; // troféus extras na vitória por vitória seguida antes dela (derrota ou empate zera a sequência)
+// Desafio de ginásio: as partidas não mexem nos troféus; perder a melhor de 3 tira GYM_LOSS (2 desafios perdidos
+// devolvem o jogador para dentro da rota)
+const GYM_LOSS = -15;
 const MATCH_MIN_SECONDS = 30; // partidas mais curtas que isso não valem recompensa
 const MATCHES_PER_HOUR = 40;
 
@@ -187,7 +273,7 @@ function rollBallContents(tier, arena, rand = Math.random) {
     return 'common';
   };
 
-  const total = Math.round(ball.cards * (1 + 0.1 * arena));
+  const total = Math.round(ball.cards * (1 + 0.9 * arenaProgress(arena)));
   const cards = {};
   const add = (id) => id && (cards[id] = (cards[id] || 0) + 1);
   for (const rarity of ball.guaranteed || []) {
@@ -218,7 +304,7 @@ function rollBallContents(tier, arena, rand = Math.random) {
   }
 
   const [gMin, gMax] = ball.gold;
-  const gold = Math.round((gMin + rand() * (gMax - gMin)) * (1 + 0.1 * arena));
+  const gold = Math.round((gMin + rand() * (gMax - gMin)) * (1 + 0.9 * arenaProgress(arena)));
   const items = {};
   if (ball.itemChance && rand() < ball.itemChance) {
     const stones = Object.keys(ITEMS).filter((k) => k !== 'rarecandy');
@@ -239,15 +325,35 @@ function rollBallContents(tier, arena, rand = Math.random) {
 function botProfile(arena) {
   const pool = cardPool(arena).map((c) => c.id);
   const deck = randomDeck(pool);
-  const frac = arena / (ARENAS.length - 1);
+  const frac = arenaProgress(arena);
   const levels = {};
   for (const id of deck) {
     const start = startLevel(CARDS[id]);
     levels[id] = Math.min(MAX_CARD_LEVEL, start + Math.round(frac * (MAX_CARD_LEVEL - start)));
   }
   const trainer = 1 + Math.round(frac * (MAX_TRAINER_LEVEL - 1));
-  const difficulty = arena === 0 ? 'easy' : arena >= 6 ? 'hard' : 'normal';
+  const difficulty = arena < arenaIndex('pewter') ? 'easy' : arena >= arenaIndex('saffron') ? 'hard' : 'normal';
   return { deck, levels, trainer, difficulty };
+}
+
+// Líder do ginásio (desafio em melhor de 3): deck só do tipo do ginásio, com o Pokémon símbolo,
+// e cartas um nível acima das do bot da última rota antes dele
+function leaderProfile(gymId, rand = Math.random) {
+  const gym = ARENAS[gymId];
+  const mascot = POKEDEX[gym.mascot - 1].id;
+  const fits = (c) => !c.legendary && (c.kind === 'unit' ? c.types.some((t) => gym.types.includes(t)) : c.kind === 'spell' && gym.types.includes(c.type));
+  const pool = Object.values(CARDS).filter((c) => fits(c) && c.id !== mascot).map((c) => c.id);
+  const deck = [mascot];
+  while (deck.length < DECK_SIZE && pool.length) deck.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]);
+  const frac = arenaProgress(gymId);
+  const levels = {};
+  for (const id of deck) {
+    const start = startLevel(CARDS[id]);
+    levels[id] = Math.min(MAX_CARD_LEVEL, start + 1 + Math.round(frac * (MAX_CARD_LEVEL - start)));
+  }
+  const trainer = Math.min(MAX_TRAINER_LEVEL, 2 + Math.round(frac * (MAX_TRAINER_LEVEL - 1)));
+  const difficulty = gymId <= arenaIndex('vermilion') ? 'normal' : 'hard';
+  return { deck, levels, trainer, difficulty, leader: gym.leader };
 }
 
 const TRAINER_NAME_RE = /^[\p{L}\p{N} _.-]{3,16}$/u;
@@ -271,7 +377,7 @@ const GIFTS = {
 // Tudo com Pokédólares (ganhos jogando) ou Fichas (só por conquistas). Sem dinheiro de verdade.
 // As ofertas são geradas pelo servidor uma vez por dia (horário de Brasília) e guardadas.
 
-const FICHAS = { arenaUp: 100, levelUp: 20, firstWin: 10 };
+const FICHAS = { routeUp: 30, badge: 100, levelUp: 20, firstWin: 10 };
 
 const SHOP = {
   tzHours: -3, // as ofertas trocam à meia-noite de Brasília
@@ -358,15 +464,15 @@ const EMOTE_MOODS = [
 const COSMETICS = {
   // Títulos no ranking
   'title:novato': { kind: 'title', name: 'Treinador Novato', free: true },
-  'title:rochas': { kind: 'title', name: 'Quebra-Rochas', arena: 1 },
-  'title:surfista': { kind: 'title', name: 'Surfista de Cerulean', arena: 2 },
-  'title:raio': { kind: 'title', name: 'Raio de Vermilion', arena: 3 },
-  'title:jardineiro': { kind: 'title', name: 'Jardineiro de Celadon', arena: 4 },
-  'title:ninja': { kind: 'title', name: 'Ninja de Fuchsia', arena: 5 },
-  'title:mente': { kind: 'title', name: 'Mente de Saffron', arena: 6 },
-  'title:chama': { kind: 'title', name: 'Chama de Cinnabar', arena: 7 },
-  'title:terremoto': { kind: 'title', name: 'Terremoto de Viridian', arena: 8 },
-  'title:mestre': { kind: 'title', name: 'Mestre Pokémon', arena: 9 },
+  'title:rochas': { kind: 'title', name: 'Quebra-Rochas', arena: arenaIndex('pewter') },
+  'title:surfista': { kind: 'title', name: 'Surfista de Cerulean', arena: arenaIndex('cerulean') },
+  'title:raio': { kind: 'title', name: 'Raio de Vermilion', arena: arenaIndex('vermilion') },
+  'title:jardineiro': { kind: 'title', name: 'Jardineiro de Celadon', arena: arenaIndex('celadon') },
+  'title:ninja': { kind: 'title', name: 'Ninja de Fuchsia', arena: arenaIndex('fuchsia') },
+  'title:mente': { kind: 'title', name: 'Mente de Saffron', arena: arenaIndex('saffron') },
+  'title:chama': { kind: 'title', name: 'Chama de Cinnabar', arena: arenaIndex('cinnabar') },
+  'title:terremoto': { kind: 'title', name: 'Terremoto de Viridian', arena: arenaIndex('viridian') },
+  'title:mestre': { kind: 'title', name: 'Mestre Pokémon', arena: arenaIndex('liga') },
   'title:inseto': { kind: 'title', name: 'Caçador de Insetos', fichas: 30 },
   'title:montanhista': { kind: 'title', name: 'Montanhista', fichas: 30 },
   'title:nadador': { kind: 'title', name: 'Nadador', fichas: 30 },
@@ -381,7 +487,7 @@ const COSMETICS = {
   'skin:dourado': { kind: 'skin', name: 'Dourado', fichas: 120, filter: 'sepia(0.3) saturate(1.7) brightness(1.12)', glow: '#ffd84a' },
   'skin:cristal': { kind: 'skin', name: 'Cristal', fichas: 120, filter: 'saturate(1.4) brightness(1.18)', glow: '#9fe8ff', sparkle: true },
   'skin:sombrio': { kind: 'skin', name: 'Sombrio', fichas: 120, filter: 'brightness(0.72) saturate(1.25) contrast(1.1)', glow: '#b46bff' },
-  'skin:campeao': { kind: 'skin', name: 'Campeão', arena: 9, filter: 'saturate(1.35) brightness(1.08)', glow: '#fff3b0', sparkle: true },
+  'skin:campeao': { kind: 'skin', name: 'Campeão', arena: arenaIndex('liga'), filter: 'saturate(1.35) brightness(1.08)', glow: '#fff3b0', sparkle: true },
   // Pacotes de emotes (4 reações com os retratos do Pokémon)
   'emotes:pikachu': { kind: 'emotes', name: 'Pikachu', dex: 25, free: true },
   'emotes:charmander': { kind: 'emotes', name: 'Charmander', dex: 4, fichas: 40 },

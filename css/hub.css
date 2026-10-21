@@ -221,6 +221,27 @@ button.link { font-family: inherit; }
 }
 .battle-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #9c6b00; }
 .battle-sub { text-align: center; color: var(--text-dim); margin-top: -4px; }
+/* Desafio do Líder: aparece acima do Batalhar quando os troféus chegam ao portão do ginásio */
+.gym-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #e2463b, #b42318);
+  border: 3px solid #ffb4a8;
+  border-radius: 16px;
+  box-shadow: 0 6px 0 #6e1209, 0 10px 24px rgba(0, 0, 0, 0.45);
+  animation: gym-pulse 1.6s ease-in-out infinite;
+}
+.gym-btn img { width: 46px; height: 46px; border-radius: 50%; image-rendering: pixelated; background: rgba(0, 0, 0, 0.25); }
+.gym-btn span { text-align: left; }
+.gym-btn small { display: block; font-family: system-ui, sans-serif; font-size: 12px; font-weight: 600; opacity: 0.9; }
+.gym-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #6e1209; }
+@keyframes gym-pulse { 50% { box-shadow: 0 6px 0 #6e1209, 0 0 22px rgba(255, 120, 100, 0.7); } }
 
 /* Premier Balls */
 .balls-box { grid-area: balls; }
@@ -253,6 +274,10 @@ button.link { font-family: inherit; }
 .journey-step.current { background: linear-gradient(90deg, #f8c630, #e2a600); color: #2a1d00; border-color: #fff3b0; }
 .journey-step.current small { color: #4a3800; }
 .journey-step.viewing:not(.current) { border-color: #7fb0ff; }
+/* Ginásios se destacam das rotas na jornada */
+.journey-step.gym:not(.current) { background: linear-gradient(90deg, #3a2a52, var(--panel-2)); }
+.journey-step.gym .j-name { color: #ffd84a; }
+.journey-step.gym.current .j-name { color: inherit; }
 
 /* Deck ativo */
 .deck-box { grid-area: deck; display: flex; flex-direction: column; gap: 10px; }

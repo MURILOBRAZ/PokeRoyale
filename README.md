@@ -25,11 +25,11 @@ Os sprites são carregados da internet ([SpriteCollab](https://github.com/PMDCol
 ## O que já tem (v0.4)
 
 - Arena com rio, pontes, 2 ginásios laterais + Ginásio Líder por lado
-- **Conta com progressão**: escolha Bulbasaur, Charmander ou Squirtle, ganhe troféus, abra Premier Balls, suba o nível das cartas e avance pelos 8 ginásios de Kanto até a Liga
+- **Conta com progressão**: escolha Bulbasaur, Charmander ou Squirtle, ganhe troféus, abra Premier Balls, suba o nível das cartas e avance pelas rotas de Kanto, vencendo os 8 Líderes de ginásio (melhor de 3) até a Liga
 - **Os 151 Pokémon da 1ª geração** como cartas (stats gerados a partir dos oficiais) + 2 golpes
 - **Editor de deck** com busca, filtro por tipo e deck aleatório
 - **Sprites animados** em 8 direções (parado, andando, atacando)
-- **Mapas desenhados** para as 10 arenas (Rota 1, os 8 ginásios de Kanto e a Liga) e ginásios com design próprio
+- **Mapas desenhados** para as 26 etapas (17 rotas, os 8 ginásios de Kanto e a Liga), mapas de mar onde só os Pokémon de água nadam, e ginásios com design próprio
 - Energia com recarga dupla no último minuto, prorrogação com morte súbita
 - Tabela de tipos completa (18 tipos)
 - Evolução em batalha, inclusive em cadeia (Charmander → Charmeleon → Charizard) e Eevee aleatório
@@ -64,7 +64,8 @@ python tools/build-arenas.py   # converte a arte das arenas e ginásios (assets/
 | `js/pokedex.js` | Os 151 Pokémon (gerado da PokéAPI) |
 | `js/sprites.js` | Animações (gerado do SpriteCollab) |
 | `js/data.js` | Regras que geram as cartas, tipos e balanceamento |
-| `js/progression.js` | Regras de progressão (arenas, raridade, balls, níveis), usadas também pelo servidor |
+| `js/progression.js` | Regras de progressão (rotas e ginásios, raridade, balls, níveis), usadas também pelo servidor |
+| `js/terrain.js` | Terreno (terra/água) dos mapas de mar, gerado por `tools/build-arenas.py` |
 | `js/account.js` | Comunicação com a API de contas |
 | `js/hub.js` | Telas da conta: entrar, inicial, início, caminho dos troféus, recompensas |
 | `js/deck.js` | Coleção e editor de deck |

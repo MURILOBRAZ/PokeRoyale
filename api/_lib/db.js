@@ -120,6 +120,16 @@ const SCHEMA = [
   'ALTER TABLE matches ADD COLUMN IF NOT EXISTS arena INT',
   'CREATE INDEX IF NOT EXISTS balls_user ON balls (user_id)',
   'CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id)',
+  // Jornada com rotas (v0.10): as arenas 0..9 (Rota 1 + ginásios) viraram etapas 0..25 (rotas e ginásios).
+  // Cada linha antiga (map_v 1) é convertida uma vez; linhas novas já nascem na versão 2.
+  ...['users', 'balls', 'matches'].flatMap((t) => [
+    `ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS map_v INT NOT NULL DEFAULT 1`,
+    `ALTER TABLE ${t} ALTER COLUMN map_v SET DEFAULT 2`,
+    `UPDATE ${t} SET arena = (ARRAY[0, 2, 5, 8, 11, 14, 17, 20, 23, 25])[arena + 1], map_v = 2 WHERE map_v = 1`,
+  ]),
+  // Desafio do próximo ginásio em andamento (melhor de 3 contra o Líder)
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_wins INT NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_losses INT NOT NULL DEFAULT 0',
 ];
 
 function setDb(queryFn) {

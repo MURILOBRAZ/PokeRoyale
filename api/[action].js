@@ -47,6 +47,13 @@ function decksOf(u) {
 async function loadState(userId) {
   const u = await one('SELECT *, now() AS server_now FROM users WHERE id = $1', [userId]);
   if (!u) fail(401, 'Sessão inválida. Entre de novo.');
+  // Contas convertidas para a jornada com rotas (v0.10) ficam no ginásio que já tinham: os troféus
+  // podem levar a rotas depois dele
+  const reach = R.arenaForTrophies(u.trophies, u.arena);
+  if (reach > u.arena) {
+    await q('UPDATE users SET arena = GREATEST(arena, $2) WHERE id = $1', [userId, reach]);
+    u.arena = reach;
+  }
   const [collection, items, balls, cosmetics] = await Promise.all([
     q('SELECT card_id, level, copies FROM collection WHERE user_id = $1', [userId]),
     q('SELECT item, qty FROM user_items WHERE user_id = $1 AND qty > 0', [userId]),
@@ -63,6 +70,8 @@ async function loadState(userId) {
       trophies: u.trophies,
       bestTrophies: u.best_trophies,
       arena: u.arena,
+      // Desafio do próximo ginásio em andamento (melhor de 3)
+      gym: { wins: u.gym_wins, losses: u.gym_losses },
       xp: u.xp,
       level: R.trainerLevel(u.xp),
       gold: u.gold,
@@ -274,21 +283,33 @@ const ACTIONS = {
 
   async 'match-start'({ req, body }) {
     const userId = await requireUser(req);
-    const mode = body.mode === 'online' ? 'online' : 'bot';
+    const mode = ['online', 'gym'].includes(body.mode) ? body.mode : 'bot';
     const recent = await one(
       `SELECT count(*)::int AS n FROM matches WHERE user_id = $1 AND started_at > now() - interval '1 hour'`,
       [userId],
     );
     if (recent.n >= R.MATCHES_PER_HOUR) fail(429, 'Muitas partidas na última hora. Descanse um pouco!');
-    const u = await one('SELECT arena, starter, deck FROM users WHERE id = $1', [userId]);
+    const u = await one('SELECT arena, starter, deck, trophies, gym_wins, gym_losses FROM users WHERE id = $1', [userId]);
     if (!u.starter) fail(409, 'Escolha seu inicial primeiro.');
     const id = crypto.randomUUID();
-    const bot = mode === 'bot' ? R.botProfile(u.arena) : null;
+    let bot = null;
+    let arena = u.arena;
+    let gym = null;
+    if (mode === 'gym') {
+      // Desafio do Líder: só no portão (troféus no limite da última rota antes do ginásio)
+      const next = R.nextGym(u.arena);
+      if (!next || u.trophies < next.trophies) fail(409, 'Chegue ao fim da rota para desafiar o Líder.');
+      bot = R.leaderProfile(next.id);
+      arena = next.id;
+      gym = { id: next.id, wins: u.gym_wins, losses: u.gym_losses };
+    } else if (mode === 'bot') {
+      bot = R.botProfile(u.arena);
+    }
     // Histórico: deck usado e arena; contra o bot, o adversário já é conhecido
-    const opponent = bot ? `Bot (${{ easy: 'fácil', normal: 'normal', hard: 'difícil' }[bot.difficulty]})` : null;
+    const opponent = mode === 'gym' ? bot.leader : bot ? `Bot (${{ easy: 'fácil', normal: 'normal', hard: 'difícil' }[bot.difficulty]})` : null;
     await q('INSERT INTO matches (id, user_id, mode, deck, arena, opponent) VALUES ($1, $2, $3, $4::jsonb, $5, $6)',
-      [id, userId, mode, JSON.stringify(u.deck), u.arena, opponent]);
-    return { matchId: id, bot };
+      [id, userId, mode, JSON.stringify(u.deck), arena, opponent]);
+    return { matchId: id, bot, gym };
   },
 
   async 'match-finish'({ req, body }) {
@@ -300,31 +321,61 @@ const ACTIONS = {
        WHERE id = $1 AND user_id = $2 AND finished_at IS NULL
          AND ($3 = 'loss' OR started_at < now() - make_interval(secs => $4)) -- derrota vale sempre (sair cedo não escapa)
          AND started_at > now() - interval '20 minutes'
-       RETURNING mode`,
+       RETURNING mode, arena`,
       [String(body.matchId || ''), userId, result, R.MATCH_MIN_SECONDS],
     );
     if (!match) fail(409, 'Partida não registrada (muito curta, antiga ou já contada).');
 
-    const u = await one('SELECT trophies, best_trophies, arena FROM users WHERE id = $1', [userId]);
-    // Sequência: vitórias desde a última derrota ou empate; cada uma vale +1 troféu nesta vitória
-    let streak = 0;
-    if (result === 'win') {
-      streak = (await one(
-        `SELECT count(*)::int AS n FROM matches
-         WHERE user_id = $1 AND id <> $2 AND result = 'win'
-           AND finished_at > COALESCE((SELECT max(finished_at) FROM matches WHERE user_id = $1 AND result IN ('loss', 'draw')), '-infinity')`,
-        [userId, body.matchId],
-      )).n;
-    }
+    const u = await one('SELECT trophies, best_trophies, arena, gym_wins, gym_losses FROM users WHERE id = $1', [userId]);
     const floor = R.ARENAS[u.arena].trophies; // não cai abaixo do início da arena alcançada
-    const gain = R.TROPHIES[match.mode][result] + streak * R.WIN_STREAK_BONUS;
-    const trophies = Math.max(floor, u.trophies + gain);
+    let trophies = u.trophies;
+    let arena = u.arena;
+    let gym = null;
+    if (match.mode === 'gym') {
+      // Desafio do Líder (melhor de 3): a partida não mexe nos troféus. 2 vitórias = insígnia; 2 derrotas = GYM_LOSS
+      const next = R.nextGym(u.arena);
+      let wins = u.gym_wins;
+      let losses = u.gym_losses;
+      let done = null;
+      if (next && next.id === match.arena) {
+        if (result === 'win') wins += 1;
+        if (result === 'loss') losses += 1;
+        if (wins >= 2) {
+          done = 'won';
+          arena = Math.max(next.id, R.arenaForTrophies(trophies, next.id));
+        } else if (losses >= 2) {
+          done = 'lost';
+          trophies = Math.max(floor, trophies + R.GYM_LOSS);
+        }
+      }
+      // Placar mostrado é o da série; terminada, o próximo desafio começa do zero
+      gym = { id: match.arena, wins, losses, done };
+      await q('UPDATE users SET trophies = $2, arena = $3, gym_wins = $4, gym_losses = $5 WHERE id = $1',
+        [userId, trophies, arena, done ? 0 : wins, done ? 0 : losses]);
+    } else {
+      // Sequência: vitórias desde a última derrota ou empate; cada uma vale +1 troféu nesta vitória
+      let streak = 0;
+      if (result === 'win') {
+        streak = (await one(
+          `SELECT count(*)::int AS n FROM matches
+           WHERE user_id = $1 AND id <> $2 AND result = 'win' AND mode <> 'gym'
+             AND finished_at > COALESCE((SELECT max(finished_at) FROM matches
+               WHERE user_id = $1 AND mode <> 'gym' AND result IN ('loss', 'draw')), '-infinity')`,
+          [userId, body.matchId],
+        )).n;
+      }
+      const gain = R.TROPHIES[match.mode][result] + streak * R.WIN_STREAK_BONUS;
+      // Teto: o portão do próximo ginásio (quem já passou dele numa versão antiga não perde nada)
+      const cap = Math.max(u.trophies, R.trophyCap(u.arena));
+      trophies = Math.min(cap, Math.max(floor, u.trophies + gain));
+      arena = Math.max(u.arena, R.arenaForTrophies(trophies, u.arena));
+      await q(
+        `UPDATE users SET trophies = $2, best_trophies = GREATEST(best_trophies, $2), arena = $3 WHERE id = $1`,
+        [userId, trophies, arena],
+      );
+    }
     const delta = trophies - u.trophies;
-    const arena = Math.max(u.arena, R.arenaForTrophies(trophies));
-    await q(
-      `UPDATE users SET trophies = $2, best_trophies = GREATEST(best_trophies, $2), arena = $3 WHERE id = $1`,
-      [userId, trophies, arena],
-    );
+    const atGate = !!R.nextGym(arena) && trophies >= R.nextGym(arena).trophies;
     // Histórico: coroas (minhas, do adversário) e, no online, o nome do amigo (vem do cliente, só texto curto)
     const crowns = Array.isArray(body.crowns) && body.crowns.length === 2
       && body.crowns.every((n) => Number.isInteger(n) && n >= 0 && n <= 3) ? body.crowns : null;
@@ -334,7 +385,7 @@ const ACTIONS = {
       [body.matchId, delta, JSON.stringify(crowns), opponent],
     );
 
-    // Fichas: arena nova, nível de treinador novo e primeira vitória do dia
+    // Fichas: rota nova, insígnia, nível de treinador novo e primeira vitória do dia
     const levels = await grantXp(userId, result === 'win' ? 5 : 1);
     let firstWin = false;
     if (result === 'win') {
@@ -344,14 +395,22 @@ const ACTIONS = {
         [userId, body.matchId, dayStart],
       ));
     }
-    const fichas = (arena - u.arena) * R.FICHAS.arenaUp + (firstWin ? R.FICHAS.firstWin : 0);
+    let reached = 0;
+    let badges = 0;
+    for (let i = u.arena + 1; i <= arena; i++) {
+      if (R.ARENAS[i].kind === 'gym') badges += 1;
+      else reached += 1;
+    }
+    const fichas = reached * R.FICHAS.routeUp + badges * R.FICHAS.badge + (firstWin ? R.FICHAS.firstWin : 0);
     if (fichas) await q('UPDATE users SET fichas = fichas + $2 WHERE id = $1', [userId, fichas]);
     const fichasGained = fichas + levels * R.FICHAS.levelUp;
 
+    // Ball: a cada vitória nas rotas; no ginásio, só ao ganhar a insígnia (e aí uma Great Ball)
     let ball = null;
     let slotsFull = false;
-    if (result === 'win') {
-      const tier = R.rollBallTier();
+    const earnsBall = match.mode === 'gym' ? gym.done === 'won' : result === 'win';
+    if (earnsBall) {
+      const tier = match.mode === 'gym' ? 'great' : R.rollBallTier();
       ball = await one(
         `INSERT INTO balls (user_id, tier, arena)
          SELECT $1, $2, $3 WHERE (SELECT count(*) FROM balls WHERE user_id = $1) < $4
@@ -361,7 +420,7 @@ const ACTIONS = {
       slotsFull = !ball;
     }
     return {
-      delta, trophies, arena, arenaUp: arena > u.arena, ball, slotsFull,
+      delta, trophies, arena, arenaUp: arena > u.arena, badge: badges > 0, atGate, gym, ball, slotsFull,
       fichas: fichasGained, firstWin, levelUp: levels > 0, state: await loadState(userId),
     };
   },

@@ -3,10 +3,15 @@
 // Usa funções do main.js (beginMatch, showScreen, hostRoom...) e o Account (account.js).
 
 let hubBusy = false;
+let gymSeriesOver = false; // a última partida do desafio do Líder fechou a melhor de 3
 
 const fmtNum = (n) => Number(n).toLocaleString('pt-BR');
-// Barra do topo: de 10 mil para cima (ou do limite pedido) vira "15.2k" para caber no celular (o valor inteiro fica no title)
-const fmtShort = (n, from = 10000) => (n >= from ? `${Math.floor(n / 100) / 10}k` : fmtNum(n));
+// Barra do topo: de 10 mil para cima (ou do limite pedido) vira "15.2k" (e "10.4M" a partir de 1 milhão)
+// para caber no celular (o valor inteiro fica no title)
+const fmtShort = (n, from = 10000) => {
+  if (n >= 1e6) return `${Math.floor(n / 1e5) / 10}M`;
+  return n >= from ? `${Math.floor(n / 100) / 10}k` : fmtNum(n);
+};
 
 function fmtDuration(secs) {
   secs = Math.max(0, Math.ceil(secs));
@@ -176,6 +181,20 @@ function renderHub() {
   renderBalls();
 }
 
+// Próximo ginásio e se o jogador já está no portão dele (troféus no limite da rota)
+function gymGate() {
+  const u = Account.user;
+  const gym = nextGym(u.arena);
+  return { gym, atGate: !!gym && u.trophies >= gym.trophies };
+}
+
+// Como se libera uma etapa ainda trancada
+function unlockHint(a) {
+  if (a.kind === 'gym') return `Chegue a 🏆 ${fmtNum(a.trophies)} e vença ${a.leader} em melhor de 3`;
+  const gym = [...ARENAS].reverse().find((g) => g.kind === 'gym' && g.id < a.id);
+  return `Chegue a 🏆 ${fmtNum(a.trophies)}${gym && Account.user.arena < gym.id ? ` depois de vencer ${gym.leader}` : ''}`;
+}
+
 function renderShowcase() {
   const u = Account.user;
   const a = ARENAS[viewArena];
@@ -189,12 +208,24 @@ function renderShowcase() {
   preview.classList.toggle('current', mine);
   const lock = $('#hub-arena-lock');
   lock.classList.toggle('hidden', !locked);
-  if (locked) lock.innerHTML = `<b>🔒</b>Chegue a 🏆 ${fmtNum(a.trophies)} para liberar`;
+  if (locked) lock.innerHTML = `<b>🔒</b>${unlockHint(a)}`;
   $('#arena-prev').disabled = viewArena === 0;
   $('#arena-next').disabled = viewArena === ARENAS.length - 1;
-  $('#hub-battle-sub').textContent = mine
-    ? 'Contra o bot · vale troféus e Premier Balls'
-    : `Você batalha na sua arena: ${ARENAS[u.arena].name}`;
+  // No portão: o desafio do Líder aparece acima do Batalhar (que continua dando balls na rota)
+  const { gym, atGate } = gymGate();
+  const gymBtn = $('#hub-gym');
+  gymBtn.classList.toggle('hidden', !atGate);
+  if (atGate) {
+    const { wins, losses } = u.gym || { wins: 0, losses: 0 };
+    const score = wins || losses ? ` · ${wins}–${losses}` : '';
+    gymBtn.innerHTML = `<img src="${mascotImg(gym)}" alt=""><span>Desafiar ${gym.leader}<small>${gym.name} · melhor de 3${score}</small></span>`;
+  }
+  const toGate = gym && !atGate ? ` · faltam ${fmtNum(gym.trophies - u.trophies)} 🏆 para o desafio de ${gym.short}` : '';
+  $('#hub-battle-sub').textContent = atGate
+    ? `Troféus no limite da rota: vença ${gym.leader} para seguir viagem`
+    : mine
+      ? `Contra o bot · vale troféus e Premier Balls${toGate}`
+      : `Você batalha na sua etapa: ${ARENAS[u.arena].name}`;
   document.querySelectorAll('.journey-step').forEach((el) => el.classList.toggle('viewing', Number(el.dataset.arena) === viewArena));
 }
 
@@ -202,10 +233,11 @@ function renderJourney() {
   const u = Account.user;
   $('#hub-journey').innerHTML = ARENAS.map((a) => {
     const reached = u.arena >= a.id;
-    const cls = [reached ? '' : 'locked', u.arena === a.id ? 'current' : '', viewArena === a.id ? 'viewing' : ''].join(' ');
+    const cls = [a.kind, reached ? '' : 'locked', u.arena === a.id ? 'current' : '', viewArena === a.id ? 'viewing' : ''].join(' ');
+    const sub = a.kind === 'gym' ? `${a.leader} · ${reached ? '🏅' : `🏆 ${fmtNum(a.trophies)}`}` : a.id === 0 ? 'Começo da jornada' : `🏆 ${fmtNum(a.trophies)}`;
     return `<button class="journey-step ${cls}" data-arena="${a.id}">
       <img src="${mascotImg(a)}" alt="">
-      <span class="j-name">${a.short}<small>${a.leader || 'Começo da jornada'} · 🏆 ${fmtNum(a.trophies)}</small></span>
+      <span class="j-name">${a.short}<small>${sub}</small></span>
       ${reached ? '' : '🔒'}<span class="type-dot" style="background:${TYPE_COLORS[a.types[0]]}" title="${TYPE_NAMES[a.types[0]]}"></span>
     </button>`;
   }).join('');
@@ -505,6 +537,7 @@ $('#hub-free').addEventListener('click', async () => {
 });
 
 $('#hub-battle').addEventListener('click', () => startRankedBot());
+$('#hub-gym').addEventListener('click', () => startGymMatch());
 $('#hub-collection').addEventListener('click', openCollection);
 $('#hub-training').addEventListener('click', openTraining);
 $('#hub-arena').addEventListener('click', () => showRoad());
@@ -629,7 +662,7 @@ async function loadHistory() {
           <b>${label[m.result] || '—'}</b> <span>${crowns ? `👑 ${crowns} · ` : ''}contra ${escapeHtml(rival)}</span>
           <span class="history-delta">${delta}</span>
         </div>
-        <small>${m.mode === 'online' ? '🌐 Online' : '🤖 Bot'} · ${ARENAS[m.arena] ? ARENAS[m.arena].short : ''} · ${timeAgo(m.at)}</small>
+        <small>${{ online: '🌐 Online', gym: '🏅 Ginásio' }[m.mode] || '🤖 Bot'} · ${ARENAS[m.arena] ? ARENAS[m.arena].short : ''} · ${timeAgo(m.at)}</small>
         ${deck ? `<div class="mini-deck">${deck}</div>` : ''}
       </div>`;
     }).join('');
@@ -722,12 +755,13 @@ function showRoad() {
     const current = u.arena === a.id;
     const count = Object.values(CARDS).filter((c) => arenaOfCard(c) === a.id).length;
     const types = a.types.map(typeChip).join('');
-    return `<div class="road-step ${reached ? 'reached' : ''} ${current ? 'current' : ''}" style='--arena:${a.ground[0]};--map:${cssUrl(arenaMapUrl(a, true))}'>
+    const what = a.kind === 'gym' ? `Desafio em melhor de 3 · ${reached ? '🏅' : '🔒'} ${a.badge}` : 'Rota';
+    return `<div class="road-step ${a.kind} ${reached ? 'reached' : ''} ${current ? 'current' : ''}" style='--arena:${a.ground[0]};--map:${cssUrl(arenaMapUrl(a, true))}'>
       <div class="road-trophies">🏆 ${fmtNum(a.trophies)}</div>
       <div class="road-body">
         <b>${a.name}</b>${a.leader ? ` <small>· ${a.leader}</small>` : ''}
         <div>${types}</div>
-        <small>${count} Pokémon novos nas balls${a.badge ? ` · ${reached ? '🏅' : '🔒'} ${a.badge}` : ''}</small>
+        <small>${what} · ${count} Pokémon novos nas balls</small>
       </div>
       ${current ? '<div class="road-you">Você</div>' : ''}
     </div>`;
@@ -745,14 +779,15 @@ $('#road-close').addEventListener('click', () => showHome());
 // Abre uma vez por aparelho depois de cada atualização (troque o id para mostrar de novo a todos)
 
 const NEWS = {
-  id: '2026-10-21',
+  id: '2026-10-21b',
   title: '📰 Novidades',
-  sub: 'Atualização de 21/10',
+  sub: 'v0.10 · A jornada por Kanto',
   items: [
-    ['🏰', 'Ginásios com alcance menor', 'Os ginásios só começam a atirar quando o Pokémon já atravessou a ponte (alcance 7,5 → 5,5; o do Líder 7 → 5).'],
-    ['🏆', 'Mais troféus contra o bot', 'Vitória agora vale 25 troféus (antes 20).'],
-    ['🔥', 'Sequência de vitórias', 'Cada vitória seguida vale +1 troféu: 25, 26, 27… Derrota ou empate volta para 25.'],
-    ['👀', 'Barra do topo mais fácil de ler', 'Números maiores, nível ao lado do nome e valores grandes encurtados no celular (15.2k).'],
+    ['🗺️', 'Rotas entre os ginásios', '16 rotas novas, cada uma com mapa próprio e Pokémon próprios nas balls (insetos na Floresta de Viridian, Clefairy no Mt. Moon, Snorlax na Rota 12…).'],
+    ['🏅', 'Desafio do Líder', 'No fim das rotas os troféus travam: vença o Líder numa melhor de 3, com um deck só do tipo dele, para ganhar a insígnia, 100 Fichas e uma Great Ball.'],
+    ['🌊', 'Mapas de mar', 'Na Rota 20, Rota 21, Seafoam e outras, quem não é de água só anda pelos píeres. Os de água nadam 30% mais rápido e podem ser soltos no mar.'],
+    ['⚡', 'Elétrico conduz na água', 'Golpe elétrico em quem está nadando dá choque também em quem nada perto.'],
+    ['🏆', 'Mais troféus e ginásios mais perto', 'Vitória contra o bot vale 25 troféus, +1 por vitória seguida. Os ginásios atiram de mais perto.'],
   ],
 };
 
@@ -1215,6 +1250,41 @@ async function startRankedBot() {
   }
 }
 
+// Desafio do Líder: cada partida da melhor de 3 começa aqui (o servidor guarda o placar da série)
+async function startGymMatch() {
+  if (hubBusy) return;
+  hubBusy = true;
+  $('#hub-error').textContent = '';
+  try {
+    const r = await Account.api('match-start', { mode: 'gym' });
+    gymSeriesOver = false;
+    const deck = Account.user.deck;
+    level = r.bot.difficulty;
+    beginMatch('bot', 0, [deck, r.bot.deck], {
+      levels: [Account.levelsFor(deck), r.bot.levels],
+      trainers: [Account.user.level, r.bot.trainer],
+      ranked: { matchId: r.matchId, mode: 'gym' },
+      arena: r.gym.id,
+    });
+    const game = r.gym.wins + r.gym.losses + 1;
+    showBanner(`${ARENAS[r.gym.id].name}: ${r.bot.leader} · partida ${game} (${r.gym.wins}–${r.gym.losses})`);
+  } catch (err) {
+    showHome(err.message);
+  } finally {
+    hubBusy = false;
+  }
+}
+
+// Fim de uma partida do desafio: placar da série e o que ela deu
+function gymResultHtml(out) {
+  const g = out.gym;
+  const gym = ARENAS[g.id];
+  const dots = `${'🏅'.repeat(g.wins)}${'✖️'.repeat(g.losses)}`;
+  if (g.done === 'won') return `<div class="arena-up">🏅 Você venceu ${gym.leader} (${g.wins}–${g.losses}) e ganhou a <b>${gym.badge}</b>!</div>`;
+  if (g.done === 'lost') return `<div class="trophy-delta down">${gym.leader} venceu o desafio (${g.wins}–${g.losses}) · 🏆 ${out.delta} <small>(${fmtNum(out.trophies)})</small></div>`;
+  return `<div class="gym-score">${dots} <b>${g.wins}–${g.losses}</b> contra ${gym.leader} · melhor de 3</div>`;
+}
+
 // Online: cada jogador registra a própria partida no servidor
 function registerOnlineMatch() {
   if (!ranked || !Account.loggedIn) {
@@ -1240,18 +1310,23 @@ async function finishRanked(result) {
     const crowns = game ? [game.crowns[mySide], game.crowns[1 - mySide]] : null;
     const out = await Account.api('match-finish', { matchId: r.matchId, result, crowns, opponent: rivalName });
     const lines = [];
-    const sign = out.delta > 0 ? '+' : '';
-    lines.push(`<div class="trophy-delta ${out.delta >= 0 ? 'up' : 'down'}">🏆 ${sign}${out.delta} <small>(${fmtNum(out.trophies)})</small></div>`);
+    if (out.gym) {
+      lines.push(gymResultHtml(out));
+      // Série terminada: o "de novo" volta a batalhar na rota
+      gymSeriesOver = !!out.gym.done;
+      $('#btn-again').textContent = gymSeriesOver ? 'Batalhar na rota' : 'Próxima partida';
+    } else {
+      const sign = out.delta > 0 ? '+' : '';
+      lines.push(`<div class="trophy-delta ${out.delta >= 0 ? 'up' : 'down'}">🏆 ${sign}${out.delta} <small>(${fmtNum(out.trophies)})</small></div>`);
+      if (out.atGate) lines.push(`<div class="won-ball">🏅 Troféus no limite: desafie ${nextGym(out.arena).leader} para seguir!</div>`);
+    }
     if (out.ball) lines.push(`<div class="won-ball">${ballImg(out.ball.tier)} Você ganhou uma <b>${BALLS[out.ball.tier].name}</b>!</div>`);
     else if (out.slotsFull) lines.push('<div class="won-ball muted">Espaços de ball cheios: abra uma para ganhar a próxima.</div>');
     if (out.fichas > 0) {
-      const why = [out.arenaUp && 'arena nova', out.levelUp && 'nível de treinador novo', out.firstWin && '1ª vitória do dia'].filter(Boolean).join(' · ');
+      const why = [out.badge && 'insígnia', out.arenaUp && !out.badge && 'rota nova', out.levelUp && 'nível de treinador novo', out.firstWin && '1ª vitória do dia'].filter(Boolean).join(' · ');
       lines.push(`<div class="won-ball">🪙 <b>+${out.fichas} Fichas</b> <small>(${why})</small></div>`);
     }
-    if (out.arenaUp) {
-      const a = ARENAS[out.arena];
-      lines.push(`<div class="arena-up">🎉 Nova arena: <b>${a.name}</b>!${a.badge ? ` Você ganhou a ${a.badge}.` : ''}</div>`);
-    }
+    if (out.arenaUp && ARENAS[out.arena].kind === 'route') lines.push(`<div class="arena-up">🎉 Nova rota: <b>${ARENAS[out.arena].name}</b>!</div>`);
     return lines.join('');
   } catch (err) {
     return `<div class="won-ball muted">${err.message}</div>`;

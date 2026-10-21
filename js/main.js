@@ -109,7 +109,8 @@ function showEnd(title) {
   const again = $('#btn-again');
   const connected = net && net.conn;
   again.disabled = mode === 'guest' || ((mode === 'host') && !connected);
-  again.textContent = mode === 'bot' ? (lastRankedMode ? 'Batalhar de novo' : 'Jogar de novo') : mode === 'host' ? 'Revanche' : 'Aguardando anfitrião…';
+  const botAgain = lastRankedMode === 'gym' ? (gymSeriesOver ? 'Batalhar na rota' : 'Próxima partida') : lastRankedMode ? 'Batalhar de novo' : 'Jogar de novo';
+  again.textContent = mode === 'bot' ? botAgain : mode === 'host' ? 'Revanche' : 'Aguardando anfitrião…';
   again.style.display = mode !== 'bot' && !connected ? 'none' : '';
   const box = $('#end-reward');
   box.innerHTML = endReward ? '<div class="won-ball muted">Registrando resultado…</div>' : '';
@@ -186,6 +187,7 @@ $('#emote-menu').addEventListener('click', (e) => {
 // Valendo troféus conta como derrota; online, o amigo vence; no treino só encerra.
 
 function leaveWarning() {
+  if (ranked && ranked.mode === 'gym') return 'Desafio do Líder: sair conta como <b>derrota</b> nesta partida da melhor de 3.';
   if (ranked) {
     const loss = TROPHIES[ranked.mode] ? TROPHIES[ranked.mode].loss : 0;
     return `A partida vale troféus: sair conta como <b>derrota</b> (${loss} 🏆).`;
@@ -295,7 +297,8 @@ document.querySelectorAll('#menu [data-level]').forEach((b) =>
   }));
 
 $('#btn-again').addEventListener('click', () => {
-  if (mode === 'bot' && lastRankedMode) startRankedBot();
+  if (mode === 'bot' && lastRankedMode === 'gym' && !gymSeriesOver) startGymMatch();
+  else if (mode === 'bot' && lastRankedMode) startRankedBot();
   else if (mode === 'bot') beginMatch('bot', 0, [loadDeck(), randomDeck()], { arena: randomArena() });
   else if (mode === 'host' && net && net.conn) startOnlineAsHost();
 });
@@ -418,9 +421,12 @@ function joinRoom(text) {
   net.join(code);
 }
 
-// No treino, o visual da arena é sorteado entre todos os mapas
+// No treino, o visual da arena é sorteado entre todos os mapas. No servidor local, ?mapa=rota20 fixa um
+// mapa (para testar mapas novos, como os de água)
 function randomArena() {
-  return Math.floor(Math.random() * ARENAS.length);
+  const fixed = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).get('mapa');
+  const i = fixed ? ARENAS.findIndex((a) => a.map === fixed) : -1;
+  return i >= 0 ? i : Math.floor(Math.random() * ARENAS.length);
 }
 
 // Deck de quem está jogando: o da conta (se logado) ou o de treino

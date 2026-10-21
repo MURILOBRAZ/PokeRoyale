@@ -257,3 +257,7 @@ button.link:active { transform: none; }
   #deck-info .info-actions button { flex: 1; }
   #deck-grid { min-height: 150px; }
 }
+
+/* Placar do desafio do Líder (melhor de 3) na tela de fim */
+.gym-score { padding: 8px; border-radius: 10px; background: rgba(226, 70, 59, 0.15); border: 1px solid #e2463b; font-size: 15px; }
+.road-step.gym .road-body b { color: #ffd84a; }

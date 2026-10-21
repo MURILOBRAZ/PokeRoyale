@@ -201,53 +201,53 @@ const SPELLS = {
   // v0.9
   surf: {
     id: 'surf', name: 'Surf', kind: 'spell', icon: itemIcon('mystic-water'), cost: 3,
-    type: 'water', radius: 2.8, dmg: 220, towerMult: 0.3, knockback: 1.8, delay: 0.3, arena: 2,
+    type: 'water', radius: 2.8, dmg: 220, towerMult: 0.3, knockback: 1.8, delay: 0.3, arena: 'cerulean',
     desc: 'Golpe: uma onda que molha a área e empurra os Pokémon no chão para trás.',
   },
   earthquake: {
     id: 'earthquake', name: 'Terremoto', kind: 'spell', icon: itemIcon('soft-sand'), cost: 4,
-    type: 'ground', radius: 3.3, dmg: 340, towerMult: 0.45, buildingMult: 2, groundOnly: true, delay: 0.5, arena: 8,
+    type: 'ground', radius: 3.3, dmg: 340, towerMult: 0.45, buildingMult: 2, groundOnly: true, delay: 0.5, arena: 'viridian',
     desc: 'Golpe: a terra treme em área. Não acerta voadores, mas faz o dobro de dano em construções.',
   },
   blizzard: {
     id: 'blizzard', name: 'Nevasca', kind: 'spell', icon: itemIcon('never-melt-ice'), cost: 4,
-    type: 'ice', radius: 3.0, dmg: 190, towerMult: 0.3, slow: 0.45, slowTime: 4, delay: 0.4, arena: 5,
+    type: 'ice', radius: 3.0, dmg: 190, towerMult: 0.3, slow: 0.45, slowTime: 4, delay: 0.4, arena: 'seafoam',
     desc: 'Golpe: neve em área que deixa os Pokémon 45% mais lentos por 4 s.',
   },
 };
 
 // Construções (v0.8): ficam paradas no próprio lado, perdem vida com o tempo (life, em segundos)
 // e somem no fim. Quem "só ataca ginásios" também ataca construções — servem para puxar o inimigo.
-// arena: a partir de qual arena aparecem nas balls; rarity: raridade fixa.
+// arena: mapa da etapa a partir da qual aparecem nas balls (ver ARENAS); rarity: raridade fixa.
 const BUILDINGS = {
   pokecenter: {
     id: 'pokecenter', name: 'Centro Pokémon', kind: 'building', icon: 'assets/construcoes/pokecenter.png', cost: 4,
     type: 'normal', types: ['normal'], hp: 1000, life: 40, radius: 0.95, mass: 1000,
-    heal: 70, healRadius: 3, arena: 0, rarity: 'rare',
+    heal: 70, healRadius: 3, arena: 'rota1', rarity: 'rare',
     desc: 'Construção: cura 70 de vida por segundo dos seus Pokémon num raio de 3. Dura 40 s.',
   },
   pokemontower: {
     id: 'pokemontower', name: 'Torre Pokémon', kind: 'building', icon: 'assets/construcoes/pokemontower.png', cost: 4,
     type: 'ghost', types: ['ghost'], hp: 1000, life: 35, radius: 0.85, mass: 1000,
-    dmg: 110, hitSpeed: 1.1, range: 5.5, targets: 'all', arena: 1, rarity: 'rare',
+    dmg: 110, hitSpeed: 1.1, range: 5.5, targets: 'all', arena: 'rota8', rarity: 'rare',
     desc: 'Construção: a torre assombrada de Lavender atira Bolas Sombrias. Acerta voadores. Dura 35 s.',
   },
   zubatcave: {
     id: 'zubatcave', name: 'Caverna Zubat', kind: 'building', icon: 'assets/construcoes/zubatcave.png', cost: 5,
     type: 'poison', types: ['rock'], hp: 800, life: 40, radius: 1.0, mass: 1000,
-    spawn: 'zubat', spawnEvery: 7, arena: 4, rarity: 'epic',
+    spawn: 'zubat', spawnEvery: 7, arena: 'mtmoon', rarity: 'epic',
     desc: 'Construção: solta um Zubat a cada 7 s. Dura 40 s.',
   },
   sleepingsnorlax: {
     id: 'sleepingsnorlax', name: 'Snorlax Dormindo', kind: 'building', dex: 143, cost: 3,
     type: 'normal', types: ['normal'], hp: 2800, life: 30, radius: 1.0, mass: 1000,
-    arena: 1, rarity: 'rare',
+    arena: 'rota12', rarity: 'rare',
     desc: 'Construção: não ataca. Bloqueia o caminho e atrai os inimigos enquanto dorme. Dura 30 s.',
   },
   mewtwolab: {
     id: 'mewtwolab', name: 'Laboratório do Mewtwo', kind: 'building', icon: 'assets/construcoes/mewtwolab.png', cost: 6,
     type: 'psychic', types: ['psychic'], hp: 1300, life: 40, radius: 1.0, mass: 1000,
-    dmg: 160, hitSpeed: 2.0, range: 6, splash: 1.2, targets: 'ground', arena: 9, rarity: 'legendary', legendary: true,
+    dmg: 160, hitSpeed: 2.0, range: 6, splash: 1.2, targets: 'ground', arena: 'liga', rarity: 'legendary', legendary: true,
     desc: 'Construção lendária: canhão psíquico com dano em área. Só alvos no chão. Dura 40 s.',
   },
 };

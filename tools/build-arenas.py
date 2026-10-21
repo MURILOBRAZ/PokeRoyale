@@ -11,6 +11,7 @@ Uso: python tools/build-arenas.py [--debug pasta]
 - --debug: salva os mapas com as linhas do jogo desenhadas por cima, para conferir o alinhamento.
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -24,17 +25,24 @@ OUT_GYMS = ROOT / 'assets' / 'ginasios'
 # Recorte (esquerda, topo, direita, base, em pixels do original) que leva cada desenho para a grade
 # 18 x 32 do jogo, com a mesma escala na horizontal e na vertical (nada esticado): as pontes do desenho
 # caem nas pistas do jogo e o meio do rio na linha 16.
-CROP_GYMS = (154, 5, 924, 1375)  # mapas dos ginásios (originais 1086 x 1448)
+CROP_GYMS = (154, 5, 924, 1375)  # mapas dos ginásios e rotas em 1086 x 1448
+CROP_TALL = (150, 64, 874, 1351)  # mapas em 1024 x 1536 (o mesmo da Rota 1), salvo os ajustados abaixo
 CROPS = {
     'rota1': (150, 64, 874, 1351),  # original 1024 x 1536
     'liga': (150, 97, 874, 1384),  # original 1024 x 1536
+    'rota5': (196, 159, 825, 1277),  # pontes mais para dentro que nos outros mapas: recorte mais estreito
 }
 GRID_W, GRID_H = 18, 32
+# Mapas com muita água: ganham um terreno próprio (js/terrain.js), em vez de só o rio do meio (GDD 22.4)
+WATER_MAPS = ['rota8', 'rota12', 'seafoam', 'rota20', 'rota21']
 OUT_SIZE = (720, 1280)
 THUMB_SIZE = (180, 320)
 FULL_WIDTH = 1000  # versão completa (com as bordas decorativas) para preencher a tela além da arena
 
-MAPS = ['rota1', 'pewter', 'cerulean', 'vermilion', 'celadon', 'saffron', 'fuchsia', 'cinnabar', 'viridian', 'liga']
+MAPS = ['rota1', 'pewter', 'cerulean', 'vermilion', 'celadon', 'saffron', 'fuchsia', 'cinnabar', 'viridian', 'liga',
+        # Rotas entre os ginásios (v0.10)
+        'florestaviridian', 'mtmoon', 'rota4', 'pontepepita', 'rota6', 'tuneldepedra', 'rota8', 'rota12', 'ciclovia',
+        'rota5', 'rota7', 'seafoam', 'rota20', 'rota21', 'rota22', 'estradavitoria']
 
 # Geometria do jogo (manter igual a ARENA e às torres em js/data.js / js/game.js)
 BRIDGES = (2.35, 15.65)
@@ -46,9 +54,10 @@ TOWERS = [(2.35, 6.5, 1.4), (15.65, 6.5, 1.4), (9, 3, 1.9), (2.35, 25.5, 1.4), (
 def build_maps(debug_dir=None):
     OUT_ARENAS.mkdir(parents=True, exist_ok=True)
     art = {}
+    terrain = {}
     for name in MAPS:
         original = Image.open(SRC / f'{name}.png').convert('RGB')
-        crop = CROPS.get(name, CROP_GYMS)
+        crop = CROPS.get(name) or (CROP_TALL if original.size == (1024, 1536) else CROP_GYMS)
         # Mapa completo + onde a arena fica dentro dele (em frações, independente da resolução)
         ow, oh = original.size
         full = original.resize((FULL_WIDTH, round(oh * FULL_WIDTH / ow)), Image.LANCZOS)
@@ -58,14 +67,98 @@ def build_maps(debug_dir=None):
         full = im.resize(OUT_SIZE, Image.LANCZOS)
         full.save(OUT_ARENAS / f'{name}.webp', 'WEBP', quality=82, method=6)
         im.resize(THUMB_SIZE, Image.LANCZOS).save(OUT_ARENAS / f'{name}-mini.webp', 'WEBP', quality=75, method=6)
+        if name in WATER_MAPS:
+            terrain[name] = water_grid(full)
         if debug_dir:
             draw_debug(full).save(Path(debug_dir) / f'{name}-debug.png')
+            if name in terrain:
+                draw_terrain(full, terrain[name]).save(Path(debug_dir) / f'{name}-terrain.png')
         print(f'  {name}: {(OUT_ARENAS / f"{name}.webp").stat().st_size // 1024} KB · completo {(OUT_ARENAS / f"{name}-full.webp").stat().st_size // 1024} KB')
     nl = chr(10)
     body = (',' + nl).join(f"  {n}: [{', '.join(str(v) for v in c)}]" for n, c in art.items())
     header = ('// Gerado por tools/build-arenas.py. Onde a arena (18 x 32) fica dentro de cada mapa completo:' + nl
               + '// [esquerda, topo, direita, base] em frações da imagem assets/arenas/<mapa>-full.webp.' + nl + nl)
     (ROOT / 'js' / 'arena-art.js').write_text(header + 'const ARENA_ART = {' + nl + body + ',' + nl + '};' + nl, encoding='utf-8')
+    grids = (',' + nl).join(f"  {n}: [{nl}" + ''.join(f"    '{r}',{nl}" for r in rows) + '  ]' for n, rows in terrain.items())
+    (ROOT / 'js' / 'terrain.js').write_text(
+        '// Gerado por tools/build-arenas.py. Terreno dos mapas com muita água (GDD 22.4): 32 linhas de 18 casas,' + nl
+        + "// de cima para baixo; '~' = água (só Pokémon de água nadam e voadores passam por cima), '.' = terra." + nl
+        + '// Os outros mapas têm só o rio do meio (ARENA em js/data.js).' + nl + nl
+        + 'const TERRAIN = {' + nl + grids + ',' + nl + '};' + nl, encoding='utf-8')
+
+
+def is_water(c):
+    r, g, b = c[:3]
+    return b > 120 and b > r + 45 and g > r  # azul e turquesa (rio, mar, água rasa da praia)
+
+
+def water_grid(im):
+    """Grade 18 x 32 da arena: casa de água ('~') se boa parte dela é água no desenho, senão terra ('.').
+    Depois limpa o ruído do desenho: pedras e ilhotas pequenas no meio da água viram água (dá para nadar
+    em volta delas), poças pequenas no meio da terra viram terra, e os ginásios ficam sempre em terra."""
+    px = im.load()
+    cw, ch = im.width / GRID_W, im.height / GRID_H
+    # Ginásio e uma faixa de terra em volta dele (uma casa nos laterais, para quem vem pela pista contorná-los;
+    # quase nada no Líder, que fica no fundo)
+    tower = [[any(math.hypot(gx + 0.5 - tx, gy + 0.5 - ty) < r + (2.0 if r < 1.5 else 1.6) for tx, ty, r in TOWERS)
+              for gx in range(GRID_W)] for gy in range(GRID_H)]
+    wet = [[False] * GRID_W for _ in range(GRID_H)]
+    for gy in range(GRID_H):
+        for gx in range(GRID_W):
+            pts = [(int((gx + (i + 0.5) / 6) * cw), int((gy + (j + 0.5) / 6) * ch)) for i in range(6) for j in range(6)]
+            wet[gy][gx] = not tower[gy][gx] and sum(is_water(px[x, y]) for x, y in pts) / len(pts) > 0.45
+
+    def neighbors(gx, gy, diag):
+        steps = [(1, 0), (-1, 0), (0, 1), (0, -1)] + ([(1, 1), (1, -1), (-1, 1), (-1, -1)] if diag else [])
+        for dx, dy in steps:
+            if 0 <= gx + dx < GRID_W and 0 <= gy + dy < GRID_H:
+                yield gx + dx, gy + dy
+
+    # Terra quase cercada de água (pedras, pontas de ilha) vira água
+    for _ in range(2):
+        flip = [(gx, gy) for gy in range(GRID_H) for gx in range(GRID_W) if not wet[gy][gx] and not tower[gy][gx]
+                and sum(wet[ny][nx] for nx, ny in neighbors(gx, gy, True)) >= 6]
+        for gx, gy in flip:
+            wet[gy][gx] = True
+
+    def components(value):
+        seen, comps = set(), []
+        for gy in range(GRID_H):
+            for gx in range(GRID_W):
+                if wet[gy][gx] != value or (gx, gy) in seen:
+                    continue
+                comp, stack = [], [(gx, gy)]
+                seen.add((gx, gy))
+                while stack:
+                    cx, cy = stack.pop()
+                    comp.append((cx, cy))
+                    for nx, ny in neighbors(cx, cy, False):
+                        if wet[ny][nx] == value and (nx, ny) not in seen:
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+                comps.append(comp)
+        return comps
+
+    for comp in components(False):  # ilhotas de até 4 casas sem ginásio
+        if len(comp) <= 4 and not any(tower[y][x] for x, y in comp):
+            for x, y in comp:
+                wet[y][x] = True
+    for comp in components(True):  # poças de até 2 casas
+        if len(comp) <= 2:
+            for x, y in comp:
+                wet[y][x] = False
+    return [''.join('~' if wet[gy][gx] else '.' for gx in range(GRID_W)) for gy in range(GRID_H)]
+
+
+def draw_terrain(img, rows):
+    img = img.copy()
+    d = ImageDraw.Draw(img, 'RGBA')
+    sx, sy = img.width / GRID_W, img.height / GRID_H
+    for gy, row in enumerate(rows):
+        for gx, ch in enumerate(row):
+            color = (0, 120, 255, 90) if ch == '~' else (255, 160, 0, 40)
+            d.rectangle([gx * sx, gy * sy, (gx + 1) * sx - 1, (gy + 1) * sy - 1], fill=color, outline=(0, 0, 0, 60))
+    return img
 
 
 def draw_debug(img):
