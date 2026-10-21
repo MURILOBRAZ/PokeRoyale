@@ -92,6 +92,29 @@ async function main() {
       await pg.query(`UPDATE users SET gifts = '[]' WHERE id = $1`, [userId]);
       return res.end(JSON.stringify({ ok: true }));
     }
+    // Só no desenvolvimento: entra na conta de teste (teste@teste.local / teste123), criando se preciso,
+    // e enche Pokédólares e Fichas. Contra o bot, essa conta joga com energia infinita (ver js/main.js).
+    if (url.pathname === '/__dev/conta-teste') {
+      const R = require('../api/_lib/rules');
+      const auth = require('../api/_lib/auth');
+      let user = (await pg.query(`SELECT id FROM users WHERE email = 'teste@teste.local'`)).rows[0];
+      if (!user) {
+        const deck = R.STARTERS.charmander.deck;
+        user = (await pg.query(
+          `INSERT INTO users (email, name, pass_hash, starter, deck) VALUES ('teste@teste.local', 'Testador', $1, 'charmander', $2::jsonb) RETURNING id`,
+          [auth.hashPassword('teste123'), JSON.stringify(deck)],
+        )).rows[0];
+        for (const id of deck) {
+          await pg.query('INSERT INTO collection (user_id, card_id, level, copies) VALUES ($1, $2, $3, 0) ON CONFLICT DO NOTHING',
+            [user.id, id, R.startLevel(R.CARDS[id])]);
+        }
+      }
+      await pg.query('UPDATE users SET gold = 9999999, fichas = 999999 WHERE id = $1', [user.id]);
+      await auth.createSession(res, user.id);
+      res.statusCode = 302;
+      res.setHeader('Location', '/');
+      return res.end();
+    }
     // Só no desenvolvimento: cria treinadores de mentira para testar o ranking (/__dev/treinadores?n=15)
     if (url.pathname === '/__dev/treinadores') {
       const n = Math.min(200, Number(url.searchParams.get('n')) || 15);

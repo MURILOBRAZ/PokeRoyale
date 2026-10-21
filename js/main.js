@@ -247,6 +247,11 @@ function checkBotReactions() {
   battleLook.crowns = [me, bot];
 }
 
+// Só no servidor local: a conta de teste (/__dev/conta-teste) joga contra o bot com energia infinita
+function devInfiniteEnergy() {
+  return ['localhost', '127.0.0.1'].includes(location.hostname) && Account.loggedIn && Account.user.email === 'teste@teste.local';
+}
+
 // opts: levels/trainers (níveis das cartas e dos ginásios), ranked (vale troféus), arena (visual),
 // skins/packs (visual dos ginásios e emotes de cada lado)
 function beginMatch(newMode, side, decks, opts = {}) {
@@ -723,6 +728,7 @@ function simulate() {
       accumulator -= STEP;
       game.update(STEP);
       if (bot) bot.update(STEP);
+      if (bot && devInfiniteEnergy()) game.players[mySide].energy = MATCH.ENERGY_MAX;
     }
     const events = game.events.splice(0);
     for (const ev of events) showBanner(ev.text);
