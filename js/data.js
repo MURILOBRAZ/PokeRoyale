@@ -24,8 +24,8 @@ const MATCH = {
 };
 
 const TOWERS = {
-  princess: { hp: 1500, dmg: 55, hitSpeed: 0.8, range: 7.5, radius: 1.4 },
-  king: { hp: 2600, dmg: 70, hitSpeed: 1.0, range: 7.0, radius: 1.9 },
+  princess: { hp: 1500, dmg: 55, hitSpeed: 0.8, range: 5.5, radius: 1.4 },
+  king: { hp: 2600, dmg: 70, hitSpeed: 1.0, range: 5.0, radius: 1.9 },
 };
 
 // ---------- Tipos ----------

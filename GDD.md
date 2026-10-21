@@ -395,7 +395,8 @@ Cada arena tem a cor/tema do ginásio e **libera os Pokémon do seu tipo** nas P
 | 8 | Ginásio de Viridian | Giovanni | 3300 | Terra | 8 |
 | 9 | Liga Pokémon | Elite dos Quatro + Campeão | 4000 | Gelo, Lutador, Fantasma, Dragão + lendários | 19 |
 
-- **Troféus por partida:** vitória online +30 / derrota −20; vitória contra o bot +20 / derrota −10.
+- **Troféus por partida:** vitória online +30 / derrota −20; vitória contra o bot +25 / derrota −10.
+- **Sequência de vitórias:** cada vitória seguida vale +1 troféu a mais que a anterior (bot: 25, 26, 27...). Derrota ou empate zera a sequência.
 - **Piso da arena:** depois de chegar a uma arena, não se cai abaixo do troféu inicial dela (como no Clash Royale).
 - Ao chegar numa arena nova: tela de **insígnia** do ginásio (Insígnia da Rocha, da Cascata...). As 8 insígnias aparecem no perfil.
 - **Bot por arena:** o bot usa Pokémon das arenas liberadas e fica mais forte (nível das cartas acompanha a arena). Na Liga, cada "membro da Elite" tem um deck temático.

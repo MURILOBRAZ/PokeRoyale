@@ -306,8 +306,19 @@ const ACTIONS = {
     if (!match) fail(409, 'Partida não registrada (muito curta, antiga ou já contada).');
 
     const u = await one('SELECT trophies, best_trophies, arena FROM users WHERE id = $1', [userId]);
+    // Sequência: vitórias desde a última derrota ou empate; cada uma vale +1 troféu nesta vitória
+    let streak = 0;
+    if (result === 'win') {
+      streak = (await one(
+        `SELECT count(*)::int AS n FROM matches
+         WHERE user_id = $1 AND id <> $2 AND result = 'win'
+           AND finished_at > COALESCE((SELECT max(finished_at) FROM matches WHERE user_id = $1 AND result IN ('loss', 'draw')), '-infinity')`,
+        [userId, body.matchId],
+      )).n;
+    }
     const floor = R.ARENAS[u.arena].trophies; // não cai abaixo do início da arena alcançada
-    const trophies = Math.max(floor, u.trophies + R.TROPHIES[match.mode][result]);
+    const gain = R.TROPHIES[match.mode][result] + streak * R.WIN_STREAK_BONUS;
+    const trophies = Math.max(floor, u.trophies + gain);
     const delta = trophies - u.trophies;
     const arena = Math.max(u.arena, R.arenaForTrophies(trophies));
     await q(

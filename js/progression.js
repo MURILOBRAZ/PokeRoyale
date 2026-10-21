@@ -111,9 +111,10 @@ const STARTERS = {
 // ---------- Troféus ----------
 
 const TROPHIES = {
-  bot: { win: 20, loss: -10, draw: 0 },
+  bot: { win: 25, loss: -10, draw: 0 },
   online: { win: 30, loss: -20, draw: 0 },
 };
+const WIN_STREAK_BONUS = 1; // troféus extras na vitória por vitória seguida antes dela (derrota ou empate zera a sequência)
 const MATCH_MIN_SECONDS = 30; // partidas mais curtas que isso não valem recompensa
 const MATCHES_PER_HOUR = 40;
 

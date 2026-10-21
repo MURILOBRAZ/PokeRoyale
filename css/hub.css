@@ -96,7 +96,7 @@ button.link { font-family: inherit; }
 .lvl-badge b { color: #fff; }
 .hub .xp-bar { width: 120px; height: 12px; margin: 0; background: #0b1230; border: 1px solid var(--line-soft); }
 .hub .xp-bar i { background: linear-gradient(#5aa9ff, #2f6fdb); }
-.hub .xp-bar span { line-height: 12px; font-size: 9px; }
+.hub .xp-bar > span { line-height: 12px; font-size: 9px; }
 
 .stats { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .stat-chip {
@@ -110,6 +110,18 @@ button.link { font-family: inherit; }
   font-size: 18px;
   white-space: nowrap;
 }
+/* Números das moedas: fonte comum (na pixel o 2 e o 5 se confundem), grossos, com sombra e uma cor por moeda */
+.stat-chip b {
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 800;
+  font-size: 1.05em;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.75);
+}
+#hub-trophies { color: var(--gold); }
+#hub-gold { color: #8ff0a4; }
+#hub-fichas { color: #ffc46b; }
 .icon-btn { flex: 0 0 auto; width: 42px; height: 42px; padding: 0; font-size: 20px; }
 
 .hub-body { flex: 1; min-height: 0; display: flex; }
@@ -340,11 +352,17 @@ button.link { font-family: inherit; }
   .mode b { font-size: 16px; }
 }
 
-.hub .xp-bar span { position: absolute; inset: 0; }
+.hub .xp-bar > span { position: absolute; inset: 0; }
 @media (max-width: 760px) { .hub .xp-bar { flex: 1; width: auto; min-width: 60px; } .lvl-line { min-width: 0; } }
 .hub .xp-bar { position: relative; overflow: hidden; border-radius: 6px; }
 .hub .xp-bar i { position: absolute; inset: 0 auto 0 0; }
-.hub .xp-bar span { display: block; text-align: center; font-weight: 700; text-shadow: 0 1px 1px #000; }
+/* Texto do XP na fonte comum: na pixel, em tamanho pequeno, a barra do "2/30" quase some */
+.hub .xp-bar > span {
+  display: flex; align-items: center; justify-content: center;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif; font-size: 10px; font-weight: 800; letter-spacing: 0.3px;
+  text-shadow: 0 1px 1px #000;
+}
+.hub .xp-short { display: none; }
 
 /* ---------- Abas dentro do início (Coleção, Arenas, Amigos, Treino, sala) ---------- */
 .hub-content { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; }
@@ -480,8 +498,18 @@ button.link { font-family: inherit; }
 @media (max-width: 760px) {
   #hub-logout { display: none; }
   .hub-bar .stats { gap: 4px; }
-  .hub-bar .stat-chip { padding: 5px 7px; font-size: 13px; gap: 3px; }
+  .hub-bar .stat-chip { padding: 5px 6px; font-size: 14px; gap: 3px; }
+  .hub-bar .stat-chip b { font-size: 1em; }
+  /* Nome e nível na primeira linha (o nome corta com "…", o nível fica sempre visível)
+     e a barra de XP ocupa a linha toda embaixo, sem vazar do card */
   .trainer-chip { min-width: 0; }
+  .trainer-info { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 5px; row-gap: 3px; }
+  .lvl-line { display: contents; }
+  .trainer-chip .lvl-badge { font-size: 12px; }
+  .hub .xp-bar { grid-column: 1 / -1; min-width: 0; height: 15px; }
+  .hub .xp-bar > span { letter-spacing: 0; }
+  .hub .xp-full { display: none; }
+  .hub .xp-short { display: inline; }
   .trainer-info b#hub-name { font-size: 14px; }
 }
 

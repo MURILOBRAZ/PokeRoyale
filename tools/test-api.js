@@ -140,11 +140,11 @@ async function main() {
   await pg.query(`UPDATE matches SET started_at = now() - interval '2 minutes' WHERE id = $1`, [m1]);
   r = await a('match-finish', { matchId: m1, result: 'win', crowns: [2, 1], opponent: '<b>Gary</b>' });
   assert.equal(r.status, 200, JSON.stringify(r.data));
-  assert.equal(r.data.delta, 20);
-  assert.equal(r.data.trophies, 20);
+  assert.equal(r.data.delta, 25);
+  assert.equal(r.data.trophies, 25);
   assert.ok(r.data.ball && R.BALLS[r.data.ball.tier]);
   assert.equal((await a('match-finish', { matchId: m1, result: 'win' })).status, 409);
-  ok('vitória contra o bot: +20 troféus e uma ball; não conta duas vezes');
+  ok('vitória contra o bot: +25 troféus e uma ball; não conta duas vezes');
 
   // Histórico: a vitória aparece primeiro, com coroas, adversário (o bot, não o texto do cliente) e deck
   r = await a('history', {});
@@ -152,7 +152,7 @@ async function main() {
   const last = r.data.matches[0];
   assert.equal(last.result, 'win');
   assert.deepEqual(last.crowns, [2, 1]);
-  assert.equal(last.trophies, 20);
+  assert.equal(last.trophies, 25);
   assert.ok(/^Bot/.test(last.opponent), last.opponent);
   assert.equal(last.deck.length, 8);
   ok('histórico de partidas com coroas, adversário e deck');
@@ -161,8 +161,23 @@ async function main() {
   r = await a('match-start', { mode: 'bot' });
   await pg.query(`UPDATE matches SET started_at = now() - interval '2 minutes' WHERE id = $1`, [r.data.matchId]);
   r = await a('match-finish', { matchId: r.data.matchId, result: 'loss' });
-  assert.equal(r.data.trophies, 10);
+  assert.equal(r.data.trophies, 15);
   ok('derrota: −10 troféus');
+
+  // Sequência de vitórias: +1 por vitória seguida; a derrota volta para a base
+  const botMatch = async (result) => {
+    const s = await a('match-start', { mode: 'bot' });
+    await pg.query(`UPDATE matches SET started_at = now() - interval '2 minutes' WHERE id = $1`, [s.data.matchId]);
+    return (await a('match-finish', { matchId: s.data.matchId, result })).data.delta;
+  };
+  assert.deepEqual([await botMatch('win'), await botMatch('win'), await botMatch('win')], [25, 26, 27]);
+  assert.equal(await botMatch('loss'), -10);
+  assert.equal(await botMatch('win'), 25);
+  assert.equal(await botMatch('win'), 26);
+  assert.equal(await botMatch('draw'), 0);
+  assert.equal(await botMatch('win'), 25);
+  await botMatch('loss');
+  ok('sequência de vitórias: 25, 26, 27; derrota ou empate volta para 25');
 
   // Sobe de arena e respeita o piso
   await pg.query("UPDATE users SET trophies = 295 WHERE email = 'ash@teste.local'");

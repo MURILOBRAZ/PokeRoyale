@@ -5,6 +5,8 @@
 let hubBusy = false;
 
 const fmtNum = (n) => Number(n).toLocaleString('pt-BR');
+// Barra do topo: de 10 mil para cima (ou do limite pedido) vira "15.2k" para caber no celular (o valor inteiro fica no title)
+const fmtShort = (n, from = 10000) => (n >= from ? `${Math.floor(n / 100) / 10}k` : fmtNum(n));
 
 function fmtDuration(secs) {
   secs = Math.max(0, Math.ceil(secs));
@@ -156,10 +158,15 @@ function renderHub() {
   const cur = TRAINER_XP[u.level - 1];
   const next = TRAINER_XP[u.level];
   $('#hub-xp').style.width = next ? `${((u.xp - cur) / (next - cur)) * 100}%` : '100%';
-  $('#hub-xp-text').textContent = next ? `${fmtNum(u.xp - cur)}/${fmtNum(next - cur)} XP` : 'Máximo';
-  $('#hub-gold').textContent = fmtNum(u.gold);
-  $('#hub-fichas').textContent = fmtNum(u.fichas || 0);
-  $('#hub-trophies').textContent = fmtNum(u.trophies);
+  // Duas versões do texto: inteira ("1.499/1.500 XP") e curta para a barra estreita do celular ("1,4k/1,5k")
+  const [have, need] = [u.xp - cur, next - cur];
+  $('#hub-xp-text').innerHTML = next
+    ? `<span class="xp-full">${fmtNum(have)}/${fmtNum(need)} XP</span><span class="xp-short">${fmtShort(have, 1000)}/${fmtShort(need, 1000)}</span>`
+    : 'Máximo';
+  for (const [id, n] of [['#hub-gold', u.gold], ['#hub-fichas', u.fichas || 0], ['#hub-trophies', u.trophies]]) {
+    $(id).textContent = fmtShort(n);
+    $(id).title = fmtNum(n);
+  }
   $('#hub').style.setProperty('--map-full', cssUrl(arenaMapUrl(ARENAS[u.arena])));
   renderShowcase();
   renderJourney();
