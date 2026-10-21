@@ -603,6 +603,7 @@ Nos ginásios, os golpes causam 30% a 45% do dano. O bot sabe que o Terremoto n�
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).
 - ~~Ranking entre amigos~~ → feito na v0.5 (ranking global, ao tocar nos troféus).
+- **Passo futuro — skin de ginásio "Tecnológico" (Silph Co.):** 6 desenhos em pixel art mecânica, vermelhos e azuis (recebidos em 21/10/2026, em `assets/originais/skin-tecnologico/`). Entram como skin cosmética comprada com Fichas, não como visual padrão: o traço futurista não combina com os mapas de natureza. Líder = `lider-vermelho` / `lider-azul` (os mais detalhados); laterais = `lateral-vermelho` / `lateral-azul` (há uma segunda opção de cada). Falta: vista de costas (ou o canhão separado da base) para os ginásios de baixo apontarem para cima, e versões com fundo transparente.
 
 ## 22. Rotas e desafios de ginásio (planejado)
 
