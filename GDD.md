@@ -353,7 +353,7 @@ PokeRoyale/
 | **v0.9** | Golpes Surf, Terremoto e Nevasca; lendários raros com entrada especial; histórico de partidas; música do menu; correção de Pokémon parado (ver [19](#19-v09)) | ✅ Feito |
 | **v0.9.1** | Amigos: adicionar pelo nome, ver quem está online e desafiar direto para um X1, sem código (ver [20](#20-amigos-e-convite-para-x1-v091)) | ✅ Feito |
 | v0.9.2 | Mais animações do SpriteCollab (golpe próprio, levar golpe, surgir, desmaiar e comemorar), golpes à distância redesenhados por tipo, Meteoro dos ginásios, ruínas, Poké Ball arremessada, arena com vida, animações da interface e Pokémon de água nadando no rio (ver [5](#5-arena) e [14.1](#141-backlog-visual-para-a-v05)) | ✅ Feito |
-| v0.10 | Rotas entre os ginásios e desafio de ginásio em melhor de 3 contra o Líder (ver [22](#22-rotas-e-desafios-de-ginásio-planejado)) | 🎨 Esperando mapas |
+| v0.10 | Rotas entre os ginásios, desafio de ginásio em melhor de 3 contra o Líder e água de verdade nos mapas de mar (ver [22](#22-rotas-e-desafios-de-ginásio-planejado)) | 📋 Planejado |
 
 ## 17. Contas e progressão (v0.4)
 
@@ -607,7 +607,7 @@ Nos ginásios, os golpes causam 30% a 45% do dano. O bot sabe que o Terremoto n�
 
 ## 22. Rotas e desafios de ginásio (planejado)
 
-Combinado em 21/10/2026. Ainda não implementado: espera os mapas que faltam (abaixo). Substitui a progressão da [17.3](#173-troféus-e-arenas-ginásios-de-kanto), em que cada ginásio é uma faixa de troféus.
+Combinado em 21/10/2026. Ainda não implementado (os mapas já chegaram). Substitui a progressão da [17.3](#173-troféus-e-arenas-ginásios-de-kanto), em que cada ginásio é uma faixa de troféus.
 
 **Ideia:** o jogador sobe troféus andando pelas **rotas** (umas 2 antes de cada ginásio). No fim delas chega ao **ginásio**, que é um desafio contra o Líder, específico do tipo dele, e precisa vencer para seguir viagem.
 
@@ -621,21 +621,21 @@ Combinado em 21/10/2026. Ainda não implementado: espera os mapas que faltam (ab
 
 ### 22.2 Rotas (ordem de Kanto)
 
-✅ = mapa pronto (recebido em 21/10/2026) · 🎨 = falta gerar
+Mapas recebidos em 21/10/2026, guardados em `assets/originais/<id>.png` (pasta fora do git). 🌊 = mapa com muita água, usa o terreno da [22.4](#224-água-de-verdade-terreno-por-mapa).
 
 | Antes de | 1ª rota | 2ª rota |
 |---|---|---|
-| Pewter (Brock) | Rota 1 ✅ (já no jogo) | Floresta de Viridian ✅ (floresta com rio) |
-| Cerulean (Misty) | Mt. Moon ✅ (caverna com cristais) | Rota 4 ✅ (campo com capim alto) |
-| Vermilion (Lt. Surge) | Ponte Pepita ✅ (campo com árvores e água dos lados) | Rota 6 ✅ (parque com laguinhos) |
-| Celadon (Erika) | Túnel de Pedra ✅ (cânion) | Rota 8 🎨 |
-| Fuchsia (Koga) | Ciclovia ✅ (pista de bicicleta) | Rota 15 🎨 |
-| Saffron (Sabrina) | Zona Safári 🎨 | Rota 5 🎨 |
-| Cinnabar (Blaine) | Ilhas Seafoam ✅ (praia) | Rota 20 🎨 (mar aberto) |
-| Viridian (Giovanni) | Mansão Pokémon 🎨 | Rota 21 🎨 |
-| Liga | Rota 22 🎨 | Estrada da Vitória 🎨 (caverna) |
+| Pewter (Brock) | Rota 1 (`rota1`, já no jogo) | Floresta de Viridian (`florestaviridian`: floresta com cercas e rio) |
+| Cerulean (Misty) | Mt. Moon (`mtmoon`: caverna com cristais) | Rota 4 (`rota4`: campo com capim alto e água dos lados) |
+| Vermilion (Lt. Surge) | Ponte Pepita (`pontepepita`: campo com árvores e água dos lados) | Rota 6 (`rota6`: parque com laguinhos) |
+| Celadon (Erika) | Túnel de Pedra (`tuneldepedra`: cânion) | Rota 8 🌊 (`rota8`: vila com casinhas e lago no centro) |
+| Fuchsia (Koga) | Rota 12 🌊 (`rota12`: ciclovia sobre canais) | Ciclovia (`ciclovia`: pista de bicicleta) |
+| Saffron (Sabrina) | Rota 5 (`rota5`: parque urbano com calçadas) | Rota 7 (`rota7`: jardim florido) |
+| Cinnabar (Blaine) | Ilhas Seafoam 🌊 (`seafoam`: praia) | Rota 20 🌊 (`rota20`: mar aberto com píeres) |
+| Viridian (Giovanni) | Rota 21 🌊 (`rota21`: praia tropical com píeres) | Rota 22 (`rota22`: campo com rochas e cachoeiras) |
+| Liga | Estrada da Vitória (`estradavitoria`: deserto com entradas de caverna) | — (falta 1 mapa, ou a Liga fica com uma rota só) |
 
-Os mapas novos devem ter o mesmo tamanho dos mapas de ginásio (1086 × 1448), com o rio e as pontes na mesma altura, para usar o mesmo recorte de `tools/build-arenas.py`.
+Tamanhos: os mapas de 1086 × 1448 usam o recorte dos ginásios e os de 1024 × 1536 o da Rota 1 e da Liga (`tools/build-arenas.py`). Zona Safári e Mansão Pokémon ficaram de fora por falta de mapa com a cara delas; dá para gerar e trocar depois.
 
 ### 22.3 A decidir quando os mapas estiverem prontos
 
@@ -643,3 +643,16 @@ Os mapas novos devem ter o mesmo tamanho dos mapas de ginásio (1086 × 1448), c
 - **Faixas de troféus** de cada rota e quanto a insígnia vale (Fichas, ball, cosmético).
 - **Liga:** melhor de 3 contra cada membro da Elite dos Quatro, ou um único desafio final.
 - **Contas existentes:** os números das arenas mudam (entram rotas entre os ginásios), então as colunas `users.arena`, `balls.arena` e `matches.arena` precisam ser convertidas uma vez, e quem já passou de um ginásio ganha a insígnia dele.
+
+### 22.4 Água de verdade (terreno por mapa)
+
+Combinado em 21/10/2026. Hoje a água é só a faixa fixa do rio no meio (`ARENA.RIVER_TOP`/`RIVER_BOTTOM`), igual em todos os mapas, e os Pokémon de água atravessam nadando. Nos mapas 🌊 a água ocupa boa parte do campo, então cada mapa passa a ter o próprio terreno.
+
+- **Terreno:** uma grade de 18 × 32 casas por mapa dizendo o que é terra e o que é água. Gerada a partir da cor azul da imagem em `tools/build-arenas.py` e ajustada à mão onde precisar (píeres, pontes, bordas). Os mapas sem 🌊 continuam só com o rio do meio.
+- **Terrestres:** só andam em terra (pistas, píeres, pontes, ilhas) e contornam a água por um caminho calculado na grade (hoje eles só procuram a ponte). Não podem ser soltos na água.
+- **Pokémon de água:** nadam em qualquer água, **30% mais rápido** que andando, e cortam caminho pelo meio. Podem ser soltos direto na água (do seu lado do campo).
+- **Voadores:** ignoram a água, como hoje.
+- **Elétricos conduzem na água:** quando o golpe de um Pokémon elétrico (ou o Choque do Trovão) acerta um alvo que está na água, o dano se espalha para os outros inimigos nadando perto dele.
+- **Ginásios:** sempre em terra, na posição de hoje.
+- **Efeito no jogo:** em mapa de mar o deck de água fica forte, e o elétrico vira a resposta natural. Os números (velocidade nadando, alcance e dano da condução) passam pela simulação de partidas antes de fechar.
+- **Futuro:** maré nos mapas de praia (a água sobe a cada ~40 s e cobre parte das ilhas e pistas), se a água de verdade funcionar bem.
