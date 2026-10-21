@@ -40,7 +40,7 @@ function showScreen(id) {
   const tab = Account.loggedIn && TAB_SCREENS.includes(id);
   dockTabs(Account.loggedIn);
   const keepHub = tab || (Account.loggedIn && ['#reward', '#ranking', '#settings'].includes(id));
-  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends', '#ranking', '#settings', '#shop', '#safari', '#leave']) {
+  for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends', '#ranking', '#settings', '#shop', '#safari', '#leave', '#news']) {
     $(s).classList.toggle('hidden', s !== id && !(keepHub && s === '#hub'));
   }
   $('.hub-main').classList.toggle('hidden', tab);

@@ -36,7 +36,9 @@ function showHome(error = '') {
     Account.refresh().then(() => {
       if (!$('#hub').classList.contains('hidden') && Account.loggedIn) {
         renderHub();
-        openPendingGift();
+        // Presente de versão primeiro; as novidades ficam para quando não houver presente
+        if (Account.user.pendingGift) openPendingGift();
+        else openNews();
         socialPoll();
       }
     });
@@ -738,6 +740,43 @@ function showRoad() {
 }
 
 $('#road-close').addEventListener('click', () => showHome());
+
+// ---------- Novidades da atualização ----------
+// Abre uma vez por aparelho depois de cada atualização (troque o id para mostrar de novo a todos)
+
+const NEWS = {
+  id: '2026-10-21',
+  title: '📰 Novidades',
+  sub: 'Atualização de 21/10',
+  items: [
+    ['🏰', 'Ginásios com alcance menor', 'Os ginásios só começam a atirar quando o Pokémon já atravessou a ponte (alcance 7,5 → 5,5; o do Líder 7 → 5).'],
+    ['🏆', 'Mais troféus contra o bot', 'Vitória agora vale 25 troféus (antes 20).'],
+    ['🔥', 'Sequência de vitórias', 'Cada vitória seguida vale +1 troféu: 25, 26, 27… Derrota ou empate volta para 25.'],
+    ['👀', 'Barra do topo mais fácil de ler', 'Números maiores, nível ao lado do nome e valores grandes encurtados no celular (15.2k).'],
+  ],
+};
+
+function openNews(force = false) {
+  try {
+    if (!force && localStorage.getItem('news-seen') === NEWS.id) return;
+  } catch {
+    // sem armazenamento (aba anônima): mostra mesmo assim
+  }
+  $('#news-title').textContent = NEWS.title;
+  $('#news-sub').textContent = NEWS.sub;
+  $('#news-list').innerHTML = NEWS.items
+    .map(([icon, title, text]) => `<li><span class="news-icon">${icon}</span><div><b>${title}</b><p>${text}</p></div></li>`)
+    .join('');
+  $('#news').classList.remove('hidden');
+}
+$('#news-ok').addEventListener('click', () => {
+  $('#news').classList.add('hidden');
+  try {
+    localStorage.setItem('news-seen', NEWS.id);
+  } catch {
+    // sem armazenamento: aparece de novo na próxima vez
+  }
+});
 
 // ---------- Recompensas ----------
 

@@ -560,6 +560,8 @@ Aprovado em 19/10/2026. Os números abaixo já passaram pela simulação de part
 
 **Presente para quem já joga:** cada conta recebe **uma construção aleatória**, uma vez só. Pode vir qualquer uma menos a lendária, mesmo que ainda não tenha chegado na arena dela. O presente abre sozinho, com a animação da ball, na primeira vez que o jogador entra depois da atualização. Contas novas recebem depois de escolher o inicial. Os presentes de versão ficam em `GIFTS` (`js/progression.js`), e os já recebidos na coluna `users.gifts`, o que permite dar presentes em versões futuras.
 
+**Novidades da atualização:** ao entrar logado depois de uma atualização, um pop-up "📰 Novidades" lista o que mudou para o jogador. Abre uma vez por aparelho (guardado no navegador); se houver presente de versão, o presente vem primeiro e as novidades na próxima entrada. O texto fica em `NEWS` (`js/hub.js`); trocar o `id` mostra o pop-up de novo para todos.
+
 ## 19. v0.9
 
 **Golpes novos** (liberados nas arenas, como os Pokémon)
