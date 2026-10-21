@@ -20,7 +20,7 @@ const MATCH = {
   ENERGY_START: 5,
   ENERGY_REGEN: 2.8, // segundos por ponto de energia
   DEPLOY_TIME: 1.0,
-  SIGHT: 5.5,
+  SIGHT: 4.5, // alcance de foco: a que distância um Pokémon nota um inimigo (no mínimo o alcance dele + 0,5)
 };
 
 const TOWERS = {

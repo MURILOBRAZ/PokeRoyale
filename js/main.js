@@ -102,6 +102,7 @@ function showEnd(title) {
       c.style.background = colors[i % colors.length];
       c.style.animationDuration = `${2.2 + Math.random() * 1.8}s`;
       c.style.animationDelay = `${Math.random() * 0.8}s`;
+      c.addEventListener('animationend', () => c.remove());
       $('#end').appendChild(c);
     }
   }

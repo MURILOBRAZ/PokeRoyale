@@ -40,6 +40,9 @@ const inWater = (x, y) => y > ARENA.RIVER_TOP && y < ARENA.RIVER_BOTTOM && !AREN
 // Centro exato da arena: quem é invocado ali (sem pender para nenhuma pista) vai ao ginásio lateral que
 // ainda está de pé; fora dele, vale a metade em que caiu
 const CENTER_HALF = 0.5;
+// Depois de escolher o ginásio, o Pokémon só troca de pista se for parar bem dentro da outra metade
+// (ex.: perseguindo alguém); a caminho do Líder, no centro, ele não troca pelo lateral
+const LANE_SWITCH = 1.5;
 
 function edgeDist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y) - a.radius - b.radius;
@@ -394,14 +397,16 @@ class Game {
   _acquireTarget(u) {
     const ignored = u.ignore && this.time < u.ignore.until ? u.ignore.id : null;
     const tower = this._laneTower(u, ignored);
-    // À vista (5,5 tiles): o Pokémon ou construção inimiga mais perto. Entre os ginásios, só o da pista
-    // dele — passar perto do Líder a caminho do lateral não faz ele mudar de alvo
+    // À vista (MATCH.SIGHT, ou o alcance + 0,5 para quem ataca de longe): o Pokémon ou construção inimiga
+    // mais perto. Entre os ginásios, só o da pista dele — passar perto do Líder a caminho do lateral não
+    // faz ele mudar de alvo
+    const sight = Math.max(MATCH.SIGHT, u.def.range + 0.5);
     let best = null;
     let bestD = Infinity;
     for (const t of [...this.units, tower]) {
       if (!t || !this._canTarget(u, t) || t.id === ignored) continue;
       const d = edgeDist(u, t);
-      if (d <= MATCH.SIGHT && d < bestD) {
+      if (d <= sight && d < bestD) {
         best = t;
         bestD = d;
       }
@@ -412,10 +417,21 @@ class Game {
   // Ginásio que o Pokémon persegue: o da pista da metade da arena em que está, dos dois lados do rio —
   // o lateral dela e, se ele já caiu, o Líder; não atravessa o mapa para o lateral da outra pista.
   // No centro exato, vai ao lateral de pé mais próximo. Se desistiu desse (preso atrás de algo), o mais perto.
+  // A escolha fica guardada (laneTarget) até o ginásio cair ou o Pokémon ir para a outra metade.
   _laneTower(u, ignored) {
     const middle = Math.abs(u.x - ARENA.W / 2) < CENTER_HALF;
     const lane = u.x < ARENA.W / 2 ? 0 : 1;
     const ok = (t) => this._canTarget(u, t) && t.id !== ignored;
+    // Mantém o ginásio já escolhido enquanto ele estiver de pé e o Pokémon não mudar de metade
+    const prev = u.laneTarget;
+    if (prev && ok(prev) && !(lane !== u.laneSide && Math.abs(u.x - ARENA.W / 2) > LANE_SWITCH)) return prev;
+    const pick = this._pickLaneTower(u, lane, middle, ok);
+    u.laneTarget = pick;
+    u.laneSide = pick && pick.kind === 'princess' ? pick.lane : lane;
+    return pick;
+  }
+
+  _pickLaneTower(u, lane, middle, ok) {
     // No meio, empate na distância fica com a pista do lado em que ele está
     const cost = (t) => edgeDist(u, t) + (t.lane === lane ? 0 : 0.01);
     let best = null;
