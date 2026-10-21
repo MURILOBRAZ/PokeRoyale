@@ -398,18 +398,32 @@ class Game {
     const ignored = u.ignore && this.time < u.ignore.until ? u.ignore.id : null;
     const tower = this._laneTower(u, ignored);
     // À vista (MATCH.SIGHT, ou o alcance + 0,5 para quem ataca de longe): o Pokémon ou construção inimiga
-    // mais perto. Entre os ginásios, só o da pista dele — passar perto do Líder a caminho do lateral não
-    // faz ele mudar de alvo
+    // mais perto. Entre os ginásios, só o da pista dele (passar perto do Líder a caminho do lateral não faz
+    // ele mudar de alvo) ou um que já esteja ao alcance do ataque
     const sight = Math.max(MATCH.SIGHT, u.def.range + 0.5);
+    const reach = u.def.range + 0.3;
     let best = null;
     let bestD = Infinity;
-    for (const t of [...this.units, tower]) {
-      if (!t || !this._canTarget(u, t) || t.id === ignored) continue;
+    let bestReach = false;
+    for (const t of [...this.units, ...this.towers]) {
+      if (!this._canTarget(u, t) || t.id === ignored) continue;
       const d = edgeDist(u, t);
-      if (d <= sight && d < bestD) {
+      const inReach = d <= reach;
+      if (t.isTower && t !== tower && !inReach) continue;
+      if (d > sight) continue;
+      // O que ele já consegue acertar vem antes do que ainda está chegando
+      if (inReach !== bestReach ? inReach : d < bestD) {
         best = t;
         bestD = d;
+        bestReach = inReach;
       }
+    }
+    // Não fica trocando de alvo à toa: só larga o atual (Pokémon ou ginásio) por um que dê para acertar já
+    // ou que esteja pelo menos 1 tile mais perto — com um ginásio logo à frente, quem vem chegando não tira o foco
+    const cur = u.target;
+    if (cur && cur !== best && this._canTarget(u, cur) && cur.id !== ignored) {
+      const d = edgeDist(u, cur);
+      if (d <= sight && !bestReach && bestD > d - 1) return cur;
     }
     return best || tower;
   }

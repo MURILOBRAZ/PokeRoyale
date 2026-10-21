@@ -116,6 +116,8 @@ Ajustes gerais: quem ataca à distância tem 85% da vida e 80% do dano; voadores
 | Papel | Pokémon | Efeito |
 |---|---|---|
 | Tanque de ginásio | Onix, Graveler, Golem, Rhyhorn, Rhydon, Snorlax | Só ataca ginásios; 2,2× vida |
+| Voa sem ser Voador | Gastly, Haunter, Koffing, Weezing, Beedrill, Venomoth | Voadores (`FLOATING`): passam por cima do rio e acertam voadores |
+| Ave que anda | Doduo, Dodrio, Farfetch'd | Ficam no chão (`GROUNDED_BIRDS`); o Farfetch'd não tem animação de voo |
 | Bando | Caterpie, Weedle, Rattata, Spearow, Zubat, Diglett, Exeggcute | Vêm 3 de uma vez (cada um mais fraco); evoluem com 1 abate |
 | Explosão | Voltorb, Electrode | Explodem no primeiro ataque: dano em área (raio 2) e saem de campo |
 | Piada | Magikarp | Custo 1, quase sem dano… mas evolui em **Gyarados** com 1 abate |
@@ -171,7 +173,7 @@ Distribuição de custos: 1 (3 cartas) · 2 (17) · 3 (38) · 4 (23) · 5 (33) �
 
 ## 10. Comportamento das unidades (IA)
 
-1. **Procura alvo:** o inimigo mais próximo dentro do campo de visão que ela consiga atacar: 4,5 tiles (`MATCH.SIGHT`, era 5,5), ou o alcance dela + 0,5, se for maior.
+1. **Procura alvo:** o inimigo mais próximo dentro do campo de visão que ela consiga atacar: 4,5 tiles (`MATCH.SIGHT`, era 5,5), ou o alcance dela + 0,5, se for maior. O que já dá para acertar vem antes do que ainda está chegando. Entre os ginásios, conta o da pista (abaixo) ou qualquer um que já esteja ao alcance do ataque. Para não ficar indo e voltando entre inimigos, só troca o alvo atual (Pokémon ou ginásio) por um que dê para acertar já ou que esteja pelo menos 1 tile mais perto: com um ginásio logo à frente, um Pokémon que vem chegando não tira o foco.
 2. **Sem alvo por perto:** segue a pista, como no Clash Royale, dos dois lados do rio: vai ao ginásio lateral daquele lado e, se ele já caiu, ao Ginásio Líder, sem atravessar o mapa para a outra pista. A metade da arena em que ele foi invocado decide a pista: na metade do lateral que ainda está de pé, mesmo que pendendo só um pouco para aquele lado, vai a esse lateral; na metade do lateral que caiu, vai ao Líder. No centro exato (meio tile para cada lado, `CENTER_HALF`), vai ao lateral que ainda está de pé. Vale também no lado do adversário (por exemplo, invocado no bolsão depois de derrubar um lateral): perto do Líder, mas na metade do lateral que ainda está de pé, ele vai a esse lateral. O ginásio escolhido fica guardado: no caminho até o Líder ele passa pelo centro sem trocar pelo outro lateral, e depois de enfrentar um Pokémon volta ao mesmo ginásio. Só troca se esse ginásio cair ou se ele for parar bem dentro da outra metade (mais de 1,5 tile do centro, `LANE_SWITCH`), por exemplo perseguindo alguém. Terrestres passam pela ponte mais conveniente, e bandos atravessam lado a lado.
 3. **Contorna ginásios** que estejam no caminho (os próprios e os inimigos que não são o alvo).
 4. **Trava no alvo:** depois de começar a atacar, só troca de alvo se o atual morrer ou sair do alcance.
@@ -280,7 +282,7 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
 - [x] **Dano no quadro do golpe** (v0.7, `hitDelay` em `js/game.js`): o dano sai no quadro em que o golpe acerta (`hit` em `js/sprites.js`), em média 0,13 s depois do início da animação, no máximo 0,35 s. Nesse meio-tempo o Pokémon fica parado. Se for atordoado, perde o golpe. Se o alvo sumir, procura outro logo.
 - [x] **Desmaio** (v0.7): o Pokémon derrotado fica cinza, achata e some (voadores caem). Feito no desenho, sem depender da animação `Faint`, que nem todo Pokémon tem
 - [x] **Mais animações do SpriteCollab** (v0.9.2, `tools/build-sprites.mjs`, `_unitFrame` em `js/render.js`):
-  - **Golpe próprio:** a cada 3 ataques, o Pokémon usa uma animação só dele, se tiver: corpo a corpo (`strike`: Kick, Punch, Slam, MultiScratch...) ou à distância (`special`: Shock, Emit, SpAttack...). 91 dos 151 têm. O dano sai no quadro de acerto dessa animação.
+  - **Golpe próprio:** a cada 3 ataques, o Pokémon usa uma animação só dele, se tiver: corpo a corpo (`strike`: Kick, Punch, Slam, MultiScratch...) ou à distância (`special`: Shock, Emit, SpAttack...). 49 dos 151 têm. As que giram o corpo ficam de fora (`Strike`, o giro de cauda do Kangaskhan e do Charizard, `Twirl`, `Kick`, `Punch`, `Stomp` e alguns casos medidos em `SPINNING`): no meio da partida parecia que o Pokémon trocava de alvo sem atacar. O dano sai no quadro de acerto dessa animação.
   - **Levou golpe:** animação `Hurt` (todos têm), no máximo uma vez por segundo para não travar o andar.
   - **Surgindo em campo:** animação `Charge` (todos têm); os lendários fazem `Pose`.
   - **Comemorar:** `Pose` logo depois de evoluir e, no fim da partida, em loop para quem venceu. Sem `Pose` (só 30 têm), usa `Hop`.

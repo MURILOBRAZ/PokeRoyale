@@ -14,15 +14,19 @@ const WANTED = {
   idle: ['Idle', 'Walk'], walk: ['Walk'], attack: ['Attack'], shoot: ['Shoot', 'Charge', 'Attack'], fly: ['Hover'],
   hurt: ['Hurt'], charge: ['Charge'], faint: ['Faint'], pose: ['Pose', 'Hop'],
 };
-// Golpe próprio: animações que só alguns Pokémon têm (ex.: Shock do Pikachu, Kick do Charmander).
-// strike: corpo a corpo; special: à distância. Só vale se for própria (não CopyOf) e tiver quadro de acerto.
 // Voo escolhido à mão: a linha do Pidgey não tem Hover e a parada dela é de pé, com as asas fechadas;
 // a Shoot dela é um bater de asas no lugar
 const FLY_FROM = { 16: 'Shoot', 17: 'Shoot', 18: 'Shoot' };
+// Golpe próprio: animações que só alguns Pokémon têm (ex.: Shock do Pikachu, MultiScratch do Sandshrew).
+// strike: corpo a corpo; special: à distância. Só vale se for própria (não CopyOf) e tiver quadro de acerto.
+// Ficam de fora as que giram o corpo (Strike é o giro de cauda, Twirl rodopia, Kick/Punch viram de lado,
+// Stomp rola): no meio da partida parecia que o Pokémon trocava de alvo sem atacar
 const SIGNATURE = {
-  strike: ['QuickStrike', 'MultiStrike', 'MultiScratch', 'Punch', 'Kick', 'Slam', 'Jab', 'Stomp', 'Slice', 'Uppercut', 'Slap', 'Lick', 'TailWhip', 'Strike', 'Twirl'],
+  strike: ['QuickStrike', 'MultiStrike', 'MultiScratch', 'Slam', 'Jab', 'Slice', 'Uppercut', 'Slap', 'Lick', 'TailWhip'],
   special: ['Shock', 'Emit', 'SpAttack', 'Gas', 'Ricochet'],
 };
+// Casos que também giram, medidos comparando cada quadro com as poses de cada direção
+const SPINNING = { 15: ['Jab'], 31: ['MultiScratch'], 64: ['SpAttack'], 75: ['SpAttack'], 109: ['Gas'], 148: ['Ricochet'] };
 
 async function get(url, as = 'text') {
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -75,7 +79,7 @@ function parseAnimData(xml, dex) {
   }
   if (FLY_FROM[dex]) out.fly = resolve(FLY_FROM[dex]);
   for (const [key, names] of Object.entries(SIGNATURE)) {
-    const n = names.find((x) => anims[x] && !anims[x].copyOf && anims[x].hit !== undefined && anims[x].d.length);
+    const n = names.find((x) => anims[x] && !anims[x].copyOf && anims[x].hit !== undefined && anims[x].d.length && !(SPINNING[dex] || []).includes(x));
     if (n) out[key] = resolve(n);
   }
   return out;

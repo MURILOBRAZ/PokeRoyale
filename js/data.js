@@ -92,8 +92,10 @@ const RANGED_TYPES = { fire: 3, water: 3.5, grass: 3, electric: 4.5, ice: 4, psy
 const SPLASH_TYPES = new Set(['fire', 'ice', 'ground', 'rock']);
 
 // Exceções de papel na arena
-const FLOATING = new Set(['gastly', 'haunter', 'koffing', 'weezing']);
-const GROUNDED_BIRDS = new Set(['doduo', 'dodrio']);
+// Voam sem ser do tipo Voador (no SpriteCollab o Beedrill paira e o Venomoth bate as asas)
+const FLOATING = new Set(['gastly', 'haunter', 'koffing', 'weezing', 'beedrill', 'venomoth']);
+// Aves que andam: o Farfetch'd não tem animação de voo e a parada dele é de pé, com o alho-poró
+const GROUNDED_BIRDS = new Set(['doduo', 'dodrio', 'farfetchd']);
 const BUILDING_TARGETERS = new Set(['onix', 'graveler', 'golem', 'rhyhorn', 'rhydon', 'snorlax']);
 const SWARMS = { caterpie: 3, weedle: 3, rattata: 3, spearow: 3, zubat: 3, diglett: 3, exeggcute: 3 };
 const KAMIKAZE = new Set(['voltorb', 'electrode']);
