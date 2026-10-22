@@ -690,9 +690,17 @@ function timeAgo(iso) {
 // Estojo de insígnias: os 8 ginásios e a Liga, acesos quando vencidos (ter a insígnia = etapa >= ginásio)
 function renderBadgeCase() {
   const u = Account.user;
-  const gyms = ARENAS.filter((a) => a.kind === 'gym');
+  const league = ARENAS[ARENAS.length - 1];
+  const gyms = ARENAS.filter((a) => a.kind === 'gym' && a !== league);
   const won = gyms.filter((g) => u.arena >= g.id).length;
   $('#badge-count').textContent = `${won}/${gyms.length}`;
+  const champ = u.arena >= league.id;
+  const champAt = champ && u.badges && u.badges[league.map];
+  $('#league-title').className = `league-title ${champ ? 'won' : 'locked'}`;
+  $('#league-title').innerHTML = `<img src="${badgeUrl(league)}" alt="">${champ ? '' : '<span class="badge-lock">🔒</span>'}
+    <span><b>${league.badge}</b><small>${champ
+      ? `Campeão de Kanto${champAt ? ` desde ${new Date(champAt).toLocaleDateString('pt-BR')}` : ''}`
+      : `Junte as ${gyms.length} insígnias e vença a ${league.leader}`}</small></span>`;
   $('#badge-case').innerHTML = gyms.map((g) => {
     const have = u.arena >= g.id;
     const at = have && u.badges && u.badges[g.map];
@@ -816,8 +824,8 @@ $('#set-logout').addEventListener('click', async () => {
 function showRoad() {
   setNav('road');
   const u = Account.user;
-  const won = ARENAS.filter((a) => a.kind === 'gym' && u.arena >= a.id).length;
-  const gyms = ARENAS.filter((a) => a.kind === 'gym').length;
+  const won = ARENAS.filter((a) => a.kind === 'gym' && a.map !== 'liga' && u.arena >= a.id).length;
+  const gyms = ARENAS.filter((a) => a.kind === 'gym' && a.map !== 'liga').length;
   $('#road-summary').innerHTML = `🏆 ${fmtNum(u.trophies)} · recorde ${fmtNum(u.bestTrophies)} · 🏅 ${won}/${gyms} insígnias`;
   renderRoadNext();
   $('#stage-info').classList.add('hidden');

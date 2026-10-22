@@ -804,7 +804,7 @@ button.link { font-family: inherit; }
 .news-list p { margin: 3px 0 0; font-size: 13px; line-height: 1.35; color: var(--text-dim); }
 
 /* ---------- Estojo de insígnias (Minha conta) ---------- */
-.badge-case { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.badge-case { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .badge-slot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; text-align: center; background: var(--panel-2); border: 1px solid var(--line-soft); }
 .badge-slot .badge-icon { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
 .badge-slot .badge-lock { position: absolute; top: 18px; font-size: 16px; }
@@ -814,6 +814,18 @@ button.link { font-family: inherit; }
 .badge-slot.won .badge-icon { filter: drop-shadow(0 0 6px rgba(255, 216, 74, 0.7)); }
 .badge-slot.locked { opacity: 0.6; }
 .badge-slot.locked .badge-icon { filter: grayscale(1) brightness(0.45); }
+/* Título de Campeão: faixa larga e dourada embaixo do estojo, separada das 8 insígnias */
+.league-title { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 14px; border-radius: 14px; background: var(--panel-2); border: 2px solid var(--line-soft); }
+.league-title img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+.league-title .badge-lock { position: absolute; left: 30px; top: 22px; font-size: 16px; }
+.league-title > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.league-title b { font-family: var(--pixel); font-size: 16px; color: var(--gold); }
+.league-title small { font-size: 12px; color: var(--text-dim); }
+.league-title.won { background: linear-gradient(90deg, rgba(248, 198, 48, 0.35), rgba(248, 198, 48, 0.08)); border-color: var(--gold); box-shadow: 0 0 12px rgba(248, 198, 48, 0.35); }
+.league-title.won img { filter: drop-shadow(0 0 8px rgba(255, 216, 74, 0.9)); }
+.league-title.locked { opacity: 0.7; }
+.league-title.locked img { filter: grayscale(1) brightness(0.45); }
+@media (max-width: 420px) { .badge-slot b { font-size: 11px; } .badge-slot small { font-size: 10px; } }
 
 /* ---------- Barra de baixo: Batalhar em destaque no meio ---------- */
 .nav-btn.nav-main { color: #2a1d00; background: linear-gradient(180deg, #ffe066, #f5b800); border-color: #fff3b0; }
