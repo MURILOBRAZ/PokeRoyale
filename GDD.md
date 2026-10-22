@@ -360,6 +360,7 @@ PokeRoyale/
 | **v0.9.1** | Amigos: adicionar pelo nome, ver quem está online e desafiar direto para um X1, sem código (ver [20](#20-amigos-e-convite-para-x1-v091)) | ✅ Feito |
 | v0.9.2 | Mais animações do SpriteCollab (golpe próprio, levar golpe, surgir, desmaiar e comemorar), golpes à distância redesenhados por tipo, Meteoro dos ginásios, ruínas, Poké Ball arremessada, arena com vida, animações da interface e Pokémon de água nadando no rio (ver [5](#5-arena) e [14.1](#141-backlog-visual-para-a-v05)) | ✅ Feito |
 | **v0.10** | Rotas entre os ginásios, desafio de ginásio em melhor de 3 contra o Líder e água de verdade nos mapas de mar (ver [22](#22-rotas-e-desafios-de-ginásio-v010)) | ✅ Feito |
+| **v0.11** | Nova interface em 5 fases: tela inicial numa tela só (deck como time, metas com barra, balls em faixa); barra com 5 abas e Batalhar no meio, contadores e selo NOVO; aba Mapa com o caminho da jornada; ícones em pixel art, duas fontes e moldura única nas cartas; golpes viram TMs com efeitos novos (ver [13](#13-controles-e-interface) e [14.1](#141-backlog-visual-para-a-v05)) | ✅ Feito |
 
 ## 17. Contas e progressão (v0.4)
 
