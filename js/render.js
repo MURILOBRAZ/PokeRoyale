@@ -221,6 +221,7 @@ class Renderer {
     this._drawAmbient();
     if (ui.selected) this._drawDeployZone(game, ui);
 
+    for (const e of game.effects) if (e.ground) this._drawEffect(e);
     for (const s of game.spells) this._drawPendingSpell(s);
 
     const drawables = [...game.towers, ...game.units].sort((a, b) => this.w2s(a.x, a.y)[1] - this.w2s(b.x, b.y)[1]);
@@ -229,7 +230,7 @@ class Renderer {
       else this._drawUnit(d, game);
     }
     for (const p of game.projectiles) this._drawProjectile(p);
-    for (const e of game.effects) this._drawEffect(e);
+    for (const e of game.effects) if (!e.ground) this._drawEffect(e);
     this._drawSparkles(game);
     if (ui.bubbles) this._drawBubbles(game, ui.bubbles);
     if (ui.selected && ui.hover) this._drawGhost(game, ui);
@@ -980,6 +981,40 @@ class Renderer {
   }
 
   // Raio em zigue-zague entre dois pontos (tela)
+  // Cristal de gelo (Nevasca): três lascas apontando para cima, com brilho de um lado
+  _iceCrystal(x, y, h, alpha) {
+    if (h <= 0 || alpha <= 0) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    for (const [dx, hh, w] of [[-0.3, 0.65, 0.22], [0.3, 0.55, 0.2], [0, 1, 0.28]]) {
+      const bx = x + dx * h;
+      const top = y - hh * h;
+      ctx.fillStyle = '#bfe9ff';
+      ctx.beginPath();
+      ctx.moveTo(bx - w * h, y);
+      ctx.lineTo(bx, top);
+      ctx.lineTo(bx + w * h, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(bx - w * h * 0.6, y);
+      ctx.lineTo(bx, top);
+      ctx.lineTo(bx, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#5aa8d8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx - w * h, y);
+      ctx.lineTo(bx, top);
+      ctx.lineTo(bx + w * h, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   _zigzag(x1, y1, x2, y2, jitter, parts = 5) {
     const ctx = this.ctx;
     const dx = x2 - x1;
@@ -1401,7 +1436,24 @@ class Renderer {
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    // Bola de fogo caindo
+    const s = this.scale;
+    if (sp.card.id === 'thunderbolt') {
+      // Nuvem de tempestade escurecendo em cima da área, com faíscas
+      ctx.globalAlpha = 0.45 + 0.45 * k;
+      ctx.fillStyle = '#3b3f5c';
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.arc(x + (i - 2) * s * 0.7, y - s * 4 - (i % 2) * s * 0.3, s * (0.7 + (i % 2) * 0.3), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      if (Math.random() < 0.5) {
+        ctx.strokeStyle = '#fff59d';
+        ctx.lineWidth = s * 0.06;
+        const a = Math.random() * Math.PI;
+        this._zigzag(x, y - s * 3.8, x + Math.cos(a) * s * 1.4, y - s * 3.8 + Math.sin(a) * s * 0.6, s * 0.15, 3);
+      }
+    }
     if (sp.card.id === 'blizzard') {
       // Nuvem de neve se formando em cima da área
       ctx.globalAlpha = 0.5 + 0.4 * k;
@@ -1414,15 +1466,52 @@ class Renderer {
       ctx.globalAlpha = 1;
     }
     if (sp.card.id === 'fireblast') {
-      const fy = y - (1 - k) * this.scale * 8;
-      ctx.fillStyle = '#ff7a1a';
+      // Bola de fogo caindo em diagonal, com rastro de chamas, e a sombra crescendo no chão
+      const fx = x + (1 - k) * s * 2.5;
+      const fy = y - (1 - k) * s * 9;
+      ctx.globalAlpha = 0.25 + 0.35 * k;
+      ctx.fillStyle = '#000';
       ctx.beginPath();
-      ctx.arc(x, fy, this.scale * 0.7, 0, Math.PI * 2);
+      ctx.ellipse(x, y, s * (0.4 + 0.9 * k), s * (0.25 + 0.5 * k), 0, 0, Math.PI * 2);
       ctx.fill();
+      for (let i = 6; i >= 1; i--) {
+        ctx.globalAlpha = 0.5 * (1 - i / 7);
+        ctx.fillStyle = i > 3 ? '#c62828' : '#ff7a1a';
+        ctx.beginPath();
+        ctx.arc(fx + i * s * 0.32, fy - i * s * 1.1, s * (0.75 - i * 0.08), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.save();
+      ctx.shadowColor = '#ff9800';
+      ctx.shadowBlur = s * 1.2;
+      ctx.fillStyle = '#ff5a1a';
+      ctx.beginPath();
+      ctx.arc(fx, fy, s * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
       ctx.fillStyle = '#ffd54a';
       ctx.beginPath();
-      ctx.arc(x, fy, this.scale * 0.35, 0, Math.PI * 2);
+      ctx.arc(fx - s * 0.1, fy - s * 0.1, s * 0.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = '#fffbe0';
+      ctx.beginPath();
+      ctx.arc(fx - s * 0.2, fy - s * 0.2, s * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (sp.card.id === 'surf') {
+      // A onda se erguendo antes de quebrar na área
+      ctx.globalAlpha = 0.35 + 0.5 * k;
+      ctx.fillStyle = '#2f6fe0';
+      ctx.beginPath();
+      ctx.ellipse(x, y - r * 0.2, r * (0.6 + 0.4 * k), s * (0.4 + 1.4 * k), 0, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#e8f6ff';
+      ctx.lineWidth = s * 0.18;
+      ctx.beginPath();
+      ctx.ellipse(x, y - r * 0.2, r * (0.6 + 0.4 * k), s * (0.4 + 1.4 * k), 0, Math.PI * 1.1, -Math.PI * 0.1);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -1451,6 +1540,77 @@ class Renderer {
         const ty = y - k * s * 0.9;
         ctx.strokeText(e.text, x, ty);
         ctx.fillText(e.text, x, ty);
+        break;
+      }
+      case 'mark': {
+        // Marca no chão depois do TM (embaixo dos Pokémon); some aos poucos no último terço
+        const fade = Math.min(1, (1 - k) * 3);
+        const rx = e.radius * this.sx;
+        const ry = e.radius * this.sy * 0.8;
+        if (e.spell === 'blizzard') {
+          // Chão congelado enquanto dura a lentidão: gelo azulado, rachaduras brancas e cristais
+          ctx.globalAlpha = 0.45 * fade;
+          const g = ctx.createRadialGradient(x, y, 0, x, y, rx);
+          g.addColorStop(0, '#e8f8ff');
+          g.addColorStop(0.7, '#9fd8ff');
+          g.addColorStop(1, 'rgba(159,216,255,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.7 * fade;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          for (let i = 0; i < 6; i++) {
+            const a = rnd(i + 200) * Math.PI * 2;
+            const d = rnd(i + 210) * 0.7;
+            ctx.beginPath();
+            ctx.moveTo(x + Math.cos(a) * rx * d, y + Math.sin(a) * ry * d);
+            ctx.lineTo(x + Math.cos(a + 0.5) * rx * (d + 0.25), y + Math.sin(a + 0.5) * ry * (d + 0.25));
+            ctx.stroke();
+          }
+          for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2 + rnd(i + 220);
+            const d = 0.35 + rnd(i + 230) * 0.5;
+            this._iceCrystal(x + Math.cos(a) * rx * d, y + Math.sin(a) * ry * d, s * 0.8, 0.9 * fade);
+          }
+          break;
+        }
+        if (e.spell === 'earthquake') {
+          ctx.globalAlpha = 0.6 * fade;
+          ctx.strokeStyle = '#3d2914';
+          ctx.lineWidth = s * 0.09;
+          for (let i = 0; i < 7; i++) {
+            const a = (i / 7) * Math.PI * 2 + rnd(i);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            for (let j = 1; j <= 3; j++) {
+              const d = (e.radius * s * j) / 3;
+              ctx.lineTo(x + Math.cos(a + (rnd(i * 3 + j) - 0.5) * 0.6) * d, y + Math.sin(a + (rnd(i * 3 + j) - 0.5) * 0.6) * d * 0.75);
+            }
+            ctx.stroke();
+          }
+          break;
+        }
+        // Fogo e raio: chão queimado
+        ctx.globalAlpha = (e.spell === 'fireblast' ? 0.5 : 0.35) * fade;
+        const burn = ctx.createRadialGradient(x, y, 0, x, y, rx * (e.spell === 'fireblast' ? 0.8 : 0.45));
+        burn.addColorStop(0, '#1a0f08');
+        burn.addColorStop(0.6, 'rgba(40,24,12,0.7)');
+        burn.addColorStop(1, 'rgba(40,24,12,0)');
+        ctx.fillStyle = burn;
+        ctx.beginPath();
+        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (e.spell === 'fireblast') {
+          ctx.fillStyle = '#ff8a3a';
+          for (let i = 0; i < 6; i++) {
+            ctx.globalAlpha = fade * (0.5 + 0.5 * Math.sin(k * 30 + i * 2));
+            const a = rnd(i + 240) * Math.PI * 2;
+            const d = rnd(i + 250) * 0.6;
+            ctx.fillRect(x + Math.cos(a) * rx * d, y + Math.sin(a) * ry * d, s * 0.1, s * 0.1);
+          }
+        }
         break;
       }
       case 'cast':
@@ -1529,8 +1689,9 @@ class Renderer {
       }
       case 'blast': {
         // Área: clarão, anel e estilhaços (raio e fogo têm desenho próprio)
-        if (e.spell === 'thunderbolt' && k < 0.12) {
-          ctx.globalAlpha = 0.28 * (1 - k / 0.12);
+        if (e.spell === 'thunderbolt' && (k < 0.1 || (k > 0.16 && k < 0.22))) {
+          // Clarão que pisca duas vezes, como um raio de verdade
+          ctx.globalAlpha = k < 0.1 ? 0.55 * (1 - k / 0.1) : 0.3;
           ctx.fillStyle = '#fffbe0';
           ctx.fillRect(-50, -50, this.canvas.width + 100, this.canvas.height + 100);
         }
@@ -1565,6 +1726,31 @@ class Renderer {
             ctx.beginPath();
             ctx.ellipse(x, y, e.radius * this.sx * kk, e.radius * this.sy * kk * 0.8, 0, 0, Math.PI * 2);
             ctx.stroke();
+          }
+        }
+        if (e.spell === 'surf') {
+          // Gotas espirrando para cima
+          ctx.fillStyle = '#cfe8ff';
+          for (let i = 0; i < 16; i++) {
+            const a = rnd(i + 130) * Math.PI * 2;
+            const d = e.radius * s * out * (0.4 + rnd(i + 140) * 0.7);
+            const up = Math.sin(k * Math.PI) * s * (0.8 + rnd(i + 150) * 1.2);
+            ctx.globalAlpha = 1 - k;
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.75 - up, s * 0.1 + 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        if (e.spell === 'earthquake') {
+          // Poeira subindo da borda
+          ctx.fillStyle = '#b9925a';
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + rnd(i + 160);
+            const d = e.radius * s * (0.6 + 0.4 * out);
+            ctx.globalAlpha = 0.35 * (1 - k);
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.75 - k * s * 0.6, s * (0.4 + 0.6 * out), 0, Math.PI * 2);
+            ctx.fill();
           }
         }
         if (e.spell === 'earthquake') {
@@ -1603,16 +1789,81 @@ class Renderer {
             ctx.globalAlpha = (1 - k) * 0.9;
             this._star(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.75 - (1 - k) * s * 0.8, s * 0.13);
           }
+          const grow = Math.min(1, k * 3);
+          for (let i = 0; i < 7; i++) {
+            const a = (i / 7) * Math.PI * 2 + rnd(i + 170);
+            const d = e.radius * s * (0.2 + rnd(i + 180) * 0.6);
+            this._iceCrystal(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.75, s * (0.8 + rnd(i + 190) * 0.7) * grow, 1 - k * k);
+          }
         }
-        if (e.spell === 'thunderbolt' && k < 0.6) {
-          ctx.globalAlpha = 1 - k / 0.6;
-          ctx.strokeStyle = '#fff7a8';
-          ctx.lineCap = 'round';
-          ctx.lineWidth = s * 0.22;
-          this._zigzag(x + s * 0.2, y - s * 9, x, y, s * 0.6, 7);
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = s * 0.08;
-          this._zigzag(x + s * 0.2, y - s * 9, x, y, s * 0.4, 7);
+        if (e.spell === 'thunderbolt') {
+          if (k < 0.55) {
+            // Raio grosso descendo do céu: brilho amarelo, corpo e miolo branco, com dois galhos
+            const fade = 1 - k / 0.55;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.save();
+            ctx.shadowColor = '#ffe74a';
+            ctx.shadowBlur = s * 1.5;
+            ctx.globalAlpha = 0.6 * fade;
+            ctx.strokeStyle = '#ffe74a';
+            ctx.lineWidth = s * 0.6;
+            this._zigzag(x + s * 0.4, y - s * 12, x, y, s * 0.7, 8);
+            ctx.restore();
+            ctx.globalAlpha = fade;
+            ctx.strokeStyle = '#fff7a8';
+            ctx.lineWidth = s * 0.3;
+            this._zigzag(x + s * 0.4, y - s * 12, x, y, s * 0.6, 8);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = s * 0.12;
+            this._zigzag(x + s * 0.4, y - s * 12, x, y, s * 0.4, 8);
+            ctx.strokeStyle = '#fff59d';
+            ctx.lineWidth = s * 0.1;
+            for (const side of [-1, 1]) {
+              const by = y - s * (3 + rnd(side + 5) * 3);
+              this._zigzag(x + s * 0.2, by, x + side * s * (1.2 + rnd(side + 9)), by + s * 1.8, s * 0.3, 4);
+            }
+          }
+          // Faíscas saltando do ponto do impacto
+          ctx.globalAlpha = 1 - k;
+          ctx.strokeStyle = '#fff59d';
+          ctx.lineWidth = s * 0.07;
+          for (let i = 0; i < 10; i++) {
+            const a = rnd(i + 60) * Math.PI * 2;
+            const d0 = e.radius * s * out * 0.3;
+            const d1 = e.radius * s * out * (0.6 + rnd(i + 70) * 0.5);
+            this._zigzag(x + Math.cos(a) * d0, y + Math.sin(a) * d0 * 0.75, x + Math.cos(a) * d1, y + Math.sin(a) * d1 * 0.75, s * 0.15, 3);
+          }
+        }
+        if (e.spell === 'fireblast') {
+          // Colunas de chama subindo do impacto, e brasas
+          for (let i = 0; i < 9; i++) {
+            const a = (i / 9) * Math.PI * 2 + rnd(i + 80);
+            const d = e.radius * s * (0.25 + rnd(i + 90) * 0.6);
+            const fx = x + Math.cos(a) * d;
+            const fy = y + Math.sin(a) * d * 0.75;
+            const h = s * (1.2 + rnd(i + 100) * 1.2) * Math.sin(Math.min(1, k * 1.6) * Math.PI);
+            ctx.globalAlpha = 0.85 * (1 - k);
+            ctx.fillStyle = '#ff5a1a';
+            ctx.beginPath();
+            ctx.moveTo(fx - s * 0.35, fy);
+            ctx.quadraticCurveTo(fx - s * 0.25, fy - h * 0.6, fx, fy - h);
+            ctx.quadraticCurveTo(fx + s * 0.25, fy - h * 0.6, fx + s * 0.35, fy);
+            ctx.fill();
+            ctx.fillStyle = '#ffd54a';
+            ctx.beginPath();
+            ctx.moveTo(fx - s * 0.17, fy);
+            ctx.quadraticCurveTo(fx - s * 0.1, fy - h * 0.35, fx, fy - h * 0.55);
+            ctx.quadraticCurveTo(fx + s * 0.1, fy - h * 0.35, fx + s * 0.17, fy);
+            ctx.fill();
+          }
+          ctx.fillStyle = '#ffb74a';
+          for (let i = 0; i < 12; i++) {
+            ctx.globalAlpha = 1 - k;
+            const a = rnd(i + 110) * Math.PI * 2;
+            const d = e.radius * s * rnd(i + 120);
+            ctx.fillRect(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.75 - k * s * (1.5 + rnd(i) * 2), s * 0.1, s * 0.1);
+          }
         }
         break;
       }

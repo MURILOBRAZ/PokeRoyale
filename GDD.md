@@ -265,7 +265,13 @@ Decidido em 19/10/2026: primeiro funcionalidade (v0.3 e v0.4), depois um passe d
 **Como está hoje (v0.2)**
 - Ataques à distância: uma bolinha da cor do tipo voa até o alvo (igual para todos).
 - Ataques corpo a corpo (Squirtle, Onix, Zubat): sem efeito; o atacante dá um pulinho e o alvo pisca branco.
-- Golpes: Choque do Trovão (raio em zigue-zague simples + clarão amarelo) e Explosão de Fogo (bola caindo + círculo laranja).
+- Golpes viram **TMs** (v0.11): ícone do disco de TM da PokeAPI (`items/tm-<tipo>.png`; o Surf é o HM03, `hm-water`), número do TM do Red/Blue no detalhe da carta e filtro "TMs" na Pokédex. As pedras de evolução continuam só como itens. Efeitos:
+  - **Choque do Trovão (TM24):** nuvem de tempestade com faíscas antes; raio grosso do céu com brilho e dois galhos, clarão que pisca duas vezes, faíscas saindo do chão e marca queimada.
+  - **Explosão de Fogo (TM38):** bola de fogo caindo em diagonal com rastro e a sombra crescendo; no impacto, colunas de chama, brasas e chão queimado com brasas piscando.
+  - **Nevasca (TM14):** nuvem de neve antes; flocos e cristais de gelo brotando; o chão fica congelado (gelo, rachaduras brancas e cristais) enquanto dura a lentidão.
+  - **Surf (HM03):** a onda se ergue antes de quebrar; anéis de água e gotas espirrando.
+  - **Terremoto (TM26):** rachaduras, pedrinhas pulando, poeira na borda e as rachaduras ficam no chão por um tempo.
+  - As marcas no chão são efeitos `mark` com `ground: true`, desenhados embaixo dos Pokémon.
 - ~~Sprites estáticos~~ → resolvido na v0.3 com o SpriteCollab (parado, andar, atacar, 8 direções).
 
 **A fazer**

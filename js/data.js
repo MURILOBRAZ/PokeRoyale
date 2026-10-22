@@ -187,32 +187,34 @@ function describeCard(c) {
   return text.charAt(0).toUpperCase() + text.slice(1) + '.';
 }
 
+// Golpes de área (v0.11: viram TMs, com o disco da PokeAPI; tm = número do TM no Red/Blue,
+// o Surf é o HM03). As pedras de evolução continuam sendo itens.
 const SPELLS = {
   thunderbolt: {
-    id: 'thunderbolt', name: 'Choque do Trovão', kind: 'spell', icon: itemIcon('thunder-stone'), cost: 3,
+    id: 'thunderbolt', name: 'Choque do Trovão', kind: 'spell', tm: 24, icon: itemIcon('tm-electric'), cost: 3,
     type: 'electric', radius: 2.5, dmg: 280, towerMult: 0.35, stun: 0.6, delay: 0.25,
-    desc: 'Golpe: raio em área que atordoa por 0,6 s.',
+    desc: 'TM: raio em área que atordoa por 0,6 s.',
   },
   fireblast: {
-    id: 'fireblast', name: 'Explosão de Fogo', kind: 'spell', icon: itemIcon('fire-stone'), cost: 4,
+    id: 'fireblast', name: 'Explosão de Fogo', kind: 'spell', tm: 38, icon: itemIcon('tm-fire'), cost: 4,
     type: 'fire', radius: 3.0, dmg: 420, towerMult: 0.35, delay: 0.7,
-    desc: 'Golpe: grande explosão em área, cai depois de um instante.',
+    desc: 'TM: grande explosão em área, cai depois de um instante.',
   },
   // v0.9
   surf: {
-    id: 'surf', name: 'Surf', kind: 'spell', icon: itemIcon('mystic-water'), cost: 3,
+    id: 'surf', name: 'Surf', kind: 'spell', tm: 3, icon: itemIcon('hm-water'), cost: 3,
     type: 'water', radius: 2.8, dmg: 220, towerMult: 0.3, knockback: 1.8, delay: 0.3, arena: 'cerulean',
-    desc: 'Golpe: uma onda que molha a área e empurra os Pokémon no chão para trás.',
+    desc: 'TM: uma onda que molha a área e empurra os Pokémon no chão para trás.',
   },
   earthquake: {
-    id: 'earthquake', name: 'Terremoto', kind: 'spell', icon: itemIcon('soft-sand'), cost: 4,
+    id: 'earthquake', name: 'Terremoto', kind: 'spell', tm: 26, icon: itemIcon('tm-ground'), cost: 4,
     type: 'ground', radius: 3.3, dmg: 340, towerMult: 0.45, buildingMult: 2, groundOnly: true, delay: 0.5, arena: 'viridian',
-    desc: 'Golpe: a terra treme em área. Não acerta voadores, mas faz o dobro de dano em construções.',
+    desc: 'TM: a terra treme em área. Não acerta voadores, mas faz o dobro de dano em construções.',
   },
   blizzard: {
-    id: 'blizzard', name: 'Nevasca', kind: 'spell', icon: itemIcon('never-melt-ice'), cost: 4,
+    id: 'blizzard', name: 'Nevasca', kind: 'spell', tm: 14, icon: itemIcon('tm-ice'), cost: 4,
     type: 'ice', radius: 3.0, dmg: 190, towerMult: 0.3, slow: 0.45, slowTime: 4, delay: 0.4, arena: 'seafoam',
-    desc: 'Golpe: neve em área que deixa os Pokémon 45% mais lentos por 4 s.',
+    desc: 'TM: neve em área que deixa os Pokémon 45% mais lentos por 4 s.',
   },
 };
 

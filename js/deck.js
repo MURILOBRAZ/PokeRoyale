@@ -108,7 +108,7 @@ class DeckEditor {
     typeSel.innerHTML = (account ? '<option value="owned">Meus Pokémon</option>' : '')
       + '<option value="">Todos os tipos</option>'
       + Object.keys(TYPE_NAMES).map((t) => `<option value="${t}">${TYPE_NAMES[t]}</option>`).join('')
-      + '<option value="spell">Golpes</option>'
+      + '<option value="spell">TMs</option>'
       + '<option value="building">Construções</option>';
     this.el('#deck-title').textContent = account ? 'Pokédex' : 'Deck de treino';
     // Com conta o deck é salvo sozinho: sem Aleatório / Inicial / Salvar (só no deck de treino)
@@ -648,7 +648,7 @@ class DeckEditor {
       <button id="deck-info-close" class="icon info-close" title="Fechar detalhes" aria-label="Fechar detalhes">✕</button>
       ${cardImgTag(c)}
       <div class="info-body">
-        <h3>${c.name} ${c.dex ? `<small>#${c.dex}</small>` : ''} ${types}</h3>
+        <h3>${c.tm ? `<small>${c.id === 'surf' ? 'HM' : 'TM'}${String(c.tm).padStart(2, '0')}</small> ` : ''}${c.name} ${c.dex ? `<small>#${c.dex}</small>` : ''} ${types}</h3>
         <div class="stats"><span class="rarity" style="color:${rarity.color}">${rarity.name}</span>${level ? ` · <b>Nível ${level}</b>` : ''} · ⚡ ${c.cost} de energia${atk}</div>
         <div class="stats">${stats}</div>
         <div class="desc">${c.desc}</div>

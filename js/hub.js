@@ -912,15 +912,14 @@ $('#road-close').addEventListener('click', () => showHome());
 // Abre uma vez por aparelho depois de cada atualização (troque o id para mostrar de novo a todos)
 
 const NEWS = {
-  id: '2026-10-21b',
+  id: '2026-10-22',
   title: '📰 Novidades',
-  sub: 'v0.10 · A jornada por Kanto',
+  sub: 'v0.11 · Visual novo e TMs',
   items: [
-    ['🗺️', 'Rotas entre os ginásios', '16 rotas novas, cada uma com mapa próprio e Pokémon próprios nas balls (insetos na Floresta de Viridian, Clefairy no Mt. Moon, Snorlax na Rota 12…).'],
-    ['🏅', 'Desafio do Líder', 'No fim das rotas os troféus travam: vença o Líder numa melhor de 3, com um deck só do tipo dele, para ganhar a insígnia, 100 Fichas e uma Great Ball.'],
-    ['🌊', 'Mapas de mar', 'Na Rota 20, Rota 21, Seafoam e outras, quem não é de água só anda pelos píeres. Os de água nadam 30% mais rápido e podem ser soltos no mar.'],
-    ['⚡', 'Elétrico conduz na água', 'Golpe elétrico em quem está nadando dá choque também em quem nada perto.'],
-    ['🏆', 'Mais troféus e ginásios mais perto', 'Vitória contra o bot vale 25 troféus, +1 por vitória seguida. Os ginásios atiram de mais perto.'],
+    ['🏠', 'Tela inicial nova', 'Tudo numa tela só: deck, Batalhar, o próximo ginásio e a próxima Poké Ball grátis. Menu embaixo com 5 abas e avisos em vermelho do que tem para fazer.'],
+    ['🗺️', 'Mapa de Kanto', 'A aba Mapa mostra o caminho da jornada até a Liga. Toque numa etapa para ver os Pokémon que ela libera nas balls.'],
+    ['⚡', 'Golpes viraram TMs', 'Choque do Trovão, Explosão de Fogo, Surf, Terremoto e Nevasca agora são TMs, com efeitos novos: raio caindo do céu, bola de fogo, chão congelado e mais.'],
+    ['✨', 'Cartas e ícones', 'Toda carta com a borda da cor da raridade (também na Loja), ícones em pixel art no lugar dos emojis e a insígnia em destaque quando vence um Líder.'],
   ],
 };
 

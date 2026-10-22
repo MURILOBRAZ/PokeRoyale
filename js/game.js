@@ -1136,8 +1136,13 @@ class Game {
       }
     }
     if (c.type === 'electric') this._conduct(s.side, hit, c.dmg * (s.mult || 1));
-    const shake = { fireblast: 0.3, earthquake: 0.45, surf: 0.12 }[c.id] || 0.15;
-    this._fx({ kind: 'blast', type: c.type, x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl: c.id === 'earthquake' ? 0.9 : 0.6, total: c.id === 'earthquake' ? 0.9 : 0.6, spell: c.id, shake });
+    const shake = { fireblast: 0.35, earthquake: 0.5, surf: 0.15, thunderbolt: 0.25 }[c.id] || 0.15;
+    const ttl = { earthquake: 0.9, thunderbolt: 0.75, fireblast: 0.8, surf: 0.8 }[c.id] || 0.6;
+    this._fx({ kind: 'blast', type: c.type, x: s.x, y: s.y, radius: c.radius, color: TYPE_COLORS[c.type], ttl, total: ttl, spell: c.id, shake });
+    // Marca que fica no chão (desenhada embaixo dos Pokémon): gelo enquanto dura a lentidão da Nevasca,
+    // queimado do fogo e do raio, rachaduras do Terremoto
+    const mark = { blizzard: c.slowTime, fireblast: 2.5, thunderbolt: 1.5, earthquake: 2.5 }[c.id];
+    if (mark) this._fx({ kind: 'mark', spell: c.id, x: s.x, y: s.y, radius: c.radius, ttl: mark, total: mark, ground: true });
   }
 
   // ---------- Rede ----------
