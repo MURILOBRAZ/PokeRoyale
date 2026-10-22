@@ -886,7 +886,7 @@ function showStageInfo(id) {
   $('#stage-info').innerHTML = `<div class="stage-box">
     <div class="stage-head">${head}<button class="icon stage-close" title="Fechar" aria-label="Fechar">✕</button></div>
     <p class="sub small">${cards.length
-      ? `${reached ? 'Já caem' : 'Vão cair'} nas balls, na Loja e no Safari a partir daqui.${cards.some((c) => !Account.card(c.id)) ? '<br>Em cinza: os que você ainda não tem.' : ''}`
+      ? `${reached ? 'Podem aparecer' : 'Vão poder aparecer'} nas balls, na Loja e no Safari a partir daqui.${cards.some((c) => !Account.card(c.id)) ? '<br>Em cinza: os que você ainda não tem.' : ''}`
       : 'Nenhum Pokémon novo nesta etapa.'}</p>
     <div class="stage-grid">${grid}</div>
   </div>`;
