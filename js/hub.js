@@ -831,7 +831,7 @@ function showRoad() {
       ? `<img class="map-badge" src="${badgeUrl(a)}" alt="">`
       : `<img class="map-mascot" src="${mascotImg(a)}" alt="">`;
     return `<div class="map-step ${a.kind} ${side} ${reached ? 'reached' : 'locked'} ${current ? 'current' : ''}" data-arena="${a.id}">
-      <div class="map-node" style='--map:${cssUrl(arenaMapUrl(a, true))}'>${art}${reached ? '' : '<span class="map-lock">🔒</span>'}
+      <div class="map-node">${art}${reached ? '' : '<span class="map-lock">🔒</span>'}
         ${current ? `<img class="map-you" src="${$('#hub-avatar').src}" alt="Você">` : ''}</div>
       <div class="map-label"><b>${a.name}</b><small>${sub}</small><span class="map-types">${a.types.map(typeChip).join('')}</span></div>
     </div>`;
