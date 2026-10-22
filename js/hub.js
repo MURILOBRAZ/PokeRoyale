@@ -826,7 +826,7 @@ function showRoad() {
     const count = Object.values(CARDS).filter((c) => arenaOfCard(c) === a.id).length;
     const sub = a.kind === 'gym'
       ? `${a.leader} · ${reached ? a.badge : `🏆 ${fmtNum(a.trophies)} + melhor de 3`}`
-      : `🏆 ${fmtNum(a.trophies)} · ${count} Pokémon`;
+      : `🏆 ${fmtNum(a.trophies)} · libera ${count} Pokémon`;
     const art = a.kind === 'gym'
       ? `<img class="map-badge" src="${badgeUrl(a)}" alt="">`
       : `<img class="map-mascot" src="${mascotImg(a)}" alt="">`;

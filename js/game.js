@@ -625,7 +625,15 @@ class Game {
   }
 
   _acquireTarget(u) {
-    const ignored = u.ignore && this.time < u.ignore.until ? u.ignore.id : null;
+    // Alvo deixado de lado (não conseguiu chegar nele): volta a valer se já estiver ao alcance do ataque
+    let ignored = u.ignore && this.time < u.ignore.until ? u.ignore.id : null;
+    if (ignored !== null) {
+      const it = [...this.towers, ...this.units].find((t) => t.id === ignored);
+      if (it && edgeDist(u, it) <= u.def.range + 0.3) {
+        u.ignore = null;
+        ignored = null;
+      }
+    }
     const tower = this._laneTower(u, ignored);
     // À vista (MATCH.SIGHT, ou o alcance + 0,5 para quem ataca de longe): o Pokémon ou construção inimiga
     // mais perto. Entre os ginásios, só o da pista dele (passar perto do Líder a caminho do lateral não faz
@@ -739,6 +747,7 @@ class Game {
 
     // Pequena tolerância: unidades empurradas por outras ficam a centésimos do alcance
     if (edgeDist(u, t) <= u.def.range + 0.3) {
+      u.chase = null; // atacando: lutar não conta como "não conseguiu chegar" no alvo de antes
       if (u.cooldown <= 0) {
         u.cooldown = u.def.hitSpeed;
         u.attackAnim = 0.2;
