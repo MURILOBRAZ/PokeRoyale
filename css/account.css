@@ -261,3 +261,41 @@ button.link:active { transform: none; }
 /* Placar do desafio do Líder (melhor de 3) na tela de fim */
 .gym-score { padding: 8px; border-radius: 10px; background: rgba(226, 70, 59, 0.15); border: 1px solid #e2463b; font-size: 15px; }
 .road-step.gym .road-body b { color: #ffd84a; }
+
+/* Vitória no desafio do Líder: a insígnia em destaque, com brilho girando atrás */
+.badge-win { display: grid; justify-items: center; gap: 4px; }
+.badge-win-art { position: relative; width: 120px; height: 120px; display: grid; place-items: center; }
+.badge-win-rays {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 216, 74, 0.35) 0 12deg, transparent 12deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%);
+  mask: radial-gradient(circle, #000 30%, transparent 70%);
+  animation: badge-spin 8s linear infinite;
+}
+.badge-win-art img {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(255, 216, 74, 0.8));
+  animation: badge-pop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.badge-win-name { font-family: var(--pixel); font-size: 22px; color: #ffd84a; text-shadow: 0 2px 0 #7a5a00; }
+.badge-win > small { font-size: 13px; opacity: 0.85; }
+.badge-win-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px; }
+.reward-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 12px;
+}
+.reward-chip img { width: 18px; height: 18px; image-rendering: pixelated; }
+.reward-chip.muted { opacity: 0.7; }
+@keyframes badge-spin { to { transform: rotate(360deg); } }
+@keyframes badge-pop { 0% { transform: scale(0) rotate(-30deg); } 100% { transform: scale(1) rotate(0); } }

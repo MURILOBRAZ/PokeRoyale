@@ -1338,12 +1338,30 @@ async function startGymMatch() {
   }
 }
 
+// Tela de vitória do desafio: insígnia grande com brilho girando, nome dela e do Líder, e as recompensas
+// (ball, Fichas, rota liberada) em etiquetas pequenas
+function badgeWinHtml(out) {
+  const gym = ARENAS[out.gym.id];
+  const chips = [];
+  if (out.ball) chips.push(`<span class="reward-chip">${ballImg(out.ball.tier)} ${BALLS[out.ball.tier].name}</span>`);
+  else if (out.slotsFull) chips.push('<span class="reward-chip muted">Espaços de ball cheios</span>');
+  if (out.fichas > 0) chips.push(`<span class="reward-chip"><img src="assets/icones/coin.png" alt=""> +${out.fichas} Fichas</span>`);
+  if (ARENAS[out.arena] && ARENAS[out.arena].kind === 'route' && out.arena > gym.id) {
+    chips.push(`<span class="reward-chip">Nova rota: <b>${ARENAS[out.arena].name}</b></span>`);
+  }
+  return `<div class="badge-win">
+    <div class="badge-win-art"><span class="badge-win-rays"></span><img src="${badgeUrl(gym)}" alt="${gym.badge}"></div>
+    <b class="badge-win-name">${gym.badge}</b>
+    <small>Você venceu ${gym.leader} por ${out.gym.wins}–${out.gym.losses}</small>
+    <div class="badge-win-chips">${chips.join('')}</div>
+  </div>`;
+}
+
 // Fim de uma partida do desafio: placar da série e o que ela deu
 function gymResultHtml(out) {
   const g = out.gym;
   const gym = ARENAS[g.id];
   const dots = `${'🏅'.repeat(g.wins)}${'✖️'.repeat(g.losses)}`;
-  if (g.done === 'won') return `<div class="arena-up"><img class="badge-inline" src="${badgeUrl(gym)}" alt=""> Você venceu ${gym.leader} (${g.wins}–${g.losses}) e ganhou a <b>${gym.badge}</b>!</div>`;
   if (g.done === 'lost') return `<div class="trophy-delta down">${gym.leader} venceu o desafio (${g.wins}–${g.losses}) · 🏆 ${out.delta} <small>(${fmtNum(out.trophies)})</small></div>`;
   return `<div class="gym-score">${dots} <b>${g.wins}–${g.losses}</b> contra ${gym.leader} · melhor de 3</div>`;
 }
@@ -1398,6 +1416,12 @@ async function finishRanked(result) {
         $('#btn-again').textContent = gymSeriesOver ? 'Batalhar na rota' : 'Próxima partida';
       }
       return '<div class="won-ball">Resultado registrado.</div>';
+    }
+    // Venceu o desafio do Líder: a insígnia é o destaque; o resto vem resumido embaixo
+    if (out.gym && out.gym.done === 'won') {
+      gymSeriesOver = true;
+      $('#btn-again').textContent = 'Batalhar na rota';
+      return badgeWinHtml(out);
     }
     const lines = [];
     if (out.gym) {

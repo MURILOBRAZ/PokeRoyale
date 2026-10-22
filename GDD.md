@@ -603,7 +603,7 @@ Nos ginásios, os golpes causam 30% a 45% do dano. O bot sabe que o Terremoto n�
 - Os ginásios devem ter tipo (ex.: ginásio de água) para variar as partidas?
 - ~~Raridade de cartas e níveis~~ → feito na v0.4 (17.4 e 17.7).
 - ~~Ranking entre amigos~~ → feito na v0.5 (ranking global, ao tocar nos troféus).
-- **Passo futuro — tela de vitória do desafio do Líder:** hoje é o card comum de fim de partida com 4 linhas de texto (insígnia, Great Ball, Fichas, rota nova) e a insígnia só aparece escrita. A ideia é a insígnia ser o destaque: desenho grande da insígnia (com animação de "ganhou"), nome dela e do Líder, e o resto (ball, Fichas, rota liberada) resumido embaixo, menor. Falta escolher a arte das 8 insígnias e do título de Campeão.
+- ~~Tela de vitória do desafio do Líder~~ → feito: a insígnia é o destaque (desenho grande com brilho girando, nome dela e do Líder, placar da série) e ball, Fichas e rota liberada vêm em etiquetas pequenas embaixo.
 - **Passo futuro — skin de ginásio "Tecnológico" (Silph Co.):** 6 desenhos em pixel art mecânica, vermelhos e azuis (recebidos em 21/10/2026, em `assets/originais/skin-tecnologico/`). Entram como skin cosmética comprada com Fichas, não como visual padrão: o traço futurista não combina com os mapas de natureza. Líder = `lider-vermelho` / `lider-azul` (os mais detalhados); laterais = `lateral-vermelho` / `lateral-azul` (há uma segunda opção de cada). Falta: vista de costas (ou o canhão separado da base) para os ginásios de baixo apontarem para cima, e versões com fundo transparente.
 
 ## 22. Rotas e desafios de ginásio (v0.10)

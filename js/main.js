@@ -117,6 +117,8 @@ function showEnd(title) {
   if (endReward) {
     endReward.then((html) => {
       box.innerHTML = html || '';
+      // Insígnia ganha: o título da tela acompanha
+      if (box.querySelector('.badge-win')) $('#end-title').textContent = 'Nova insígnia!';
     });
   }
   showScreen('#end');

@@ -262,7 +262,9 @@ button.link { font-family: inherit; }
   border-radius: 12px;
   font-size: 20px;
 }
-.deck-edit small { font-family: system-ui, sans-serif; font-size: 11px; font-weight: 700; }
+.deck-edit img { width: 22px; height: 22px; image-rendering: pixelated; }
+.deck-edit b { font-family: var(--pixel); font-size: 12px; line-height: 1; }
+.deck-edit small { font-family: system-ui, sans-serif; font-size: 10px; font-weight: 700; opacity: 0.85; }
 
 /* Metas: próximo desafio do Líder e Poké Ball grátis, com barra de progresso */
 /* Os dois cards sempre do mesmo tamanho (colunas iguais e mesma altura) */
@@ -384,7 +386,9 @@ button.link { font-family: inherit; }
   .balls-box .ball-slot img { width: 26px; height: 26px; }
   .deck-strip { gap: 4px; }
   .deck-strip .card .lvl-tag { font-size: 9px; }
-  .deck-edit { width: 40px; font-size: 16px; }
+  .deck-edit { width: 46px; gap: 1px; padding: 3px 2px; }
+  .deck-edit img { width: 18px; height: 18px; }
+  .deck-edit b { font-size: 10px; }
 }
 
 .hub .xp-bar > span { position: absolute; inset: 0; }
@@ -774,7 +778,6 @@ button.link { font-family: inherit; }
 .badge-slot.won .badge-icon { filter: drop-shadow(0 0 6px rgba(255, 216, 74, 0.7)); }
 .badge-slot.locked { opacity: 0.6; }
 .badge-slot.locked .badge-icon { filter: grayscale(1) brightness(0.45); }
-.badge-inline { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; image-rendering: pixelated; }
 
 /* ---------- Barra de baixo: Batalhar em destaque no meio ---------- */
 .nav-btn.nav-main { color: #2a1d00; background: linear-gradient(180deg, #ffe066, #f5b800); border-color: #fff3b0; }
