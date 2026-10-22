@@ -810,31 +810,65 @@ $('#set-logout').addEventListener('click', async () => {
 
 // ---------- Caminho dos troféus ----------
 
+// Mapa da jornada: caminho vertical da Rota 1 (embaixo) até a Liga (em cima). Ginásios em círculos maiores
+// com a insígnia; o trecho já percorrido fica dourado e "Você" marca a etapa atual
 function showRoad() {
   setNav('road');
   const u = Account.user;
-  $('#road-list').innerHTML = [...ARENAS].reverse().map((a) => {
+  const won = ARENAS.filter((a) => a.kind === 'gym' && u.arena >= a.id).length;
+  const gyms = ARENAS.filter((a) => a.kind === 'gym').length;
+  $('#road-summary').innerHTML = `🏆 ${fmtNum(u.trophies)} · recorde ${fmtNum(u.bestTrophies)} · 🏅 ${won}/${gyms} insígnias`;
+  renderRoadNext();
+  $('#road-list').innerHTML = [...ARENAS].reverse().map((a, i) => {
     const reached = u.arena >= a.id;
     const current = u.arena === a.id;
+    const side = i % 2 ? 'left' : 'right'; // o texto alterna de lado, como um caminho
     const count = Object.values(CARDS).filter((c) => arenaOfCard(c) === a.id).length;
-    const types = a.types.map(typeChip).join('');
-    const what = a.kind === 'gym' ? `Desafio em melhor de 3 · ${reached ? '🏅' : '🔒'} ${a.badge}` : 'Rota';
-    return `<div class="road-step ${a.kind} ${reached ? 'reached' : ''} ${current ? 'current' : ''}" style='--arena:${a.ground[0]};--map:${cssUrl(arenaMapUrl(a, true))}'>
-      <div class="road-trophies">🏆 ${fmtNum(a.trophies)}</div>
-      <div class="road-body">
-        <b>${a.name}</b>${a.leader ? ` <small>· ${a.leader}</small>` : ''}
-        <div>${types}</div>
-        <small>${what} · ${count} Pokémon novos nas balls</small>
-      </div>
-      ${current ? '<div class="road-you">Você</div>' : ''}
+    const sub = a.kind === 'gym'
+      ? `${a.leader} · ${reached ? a.badge : `🏆 ${fmtNum(a.trophies)} + melhor de 3`}`
+      : `🏆 ${fmtNum(a.trophies)} · ${count} Pokémon`;
+    const art = a.kind === 'gym'
+      ? `<img class="map-badge" src="${badgeUrl(a)}" alt="">`
+      : `<img class="map-mascot" src="${mascotImg(a)}" alt="">`;
+    return `<div class="map-step ${a.kind} ${side} ${reached ? 'reached' : 'locked'} ${current ? 'current' : ''}" data-arena="${a.id}">
+      <div class="map-node" style='--map:${cssUrl(arenaMapUrl(a, true))}'>${art}${reached ? '' : '<span class="map-lock">🔒</span>'}
+        ${current ? `<img class="map-you" src="${$('#hub-avatar').src}" alt="Você">` : ''}</div>
+      <div class="map-label"><b>${a.name}</b><small>${sub}</small><span class="map-types">${a.types.map(typeChip).join('')}</span></div>
     </div>`;
   }).join('');
-  $('#road-summary').textContent = `Você: 🏆 ${fmtNum(u.trophies)} · recorde ${fmtNum(u.bestTrophies)}`;
   showScreen('#road');
   const cur = $('#road-list .current');
   const list = $('#road-list');
   if (cur) list.scrollTop = cur.offsetTop - list.offsetTop - list.clientHeight / 2 + cur.offsetHeight / 2;
 }
+
+// Card do próximo objetivo: o desafio (no portão), a próxima rota com barra de troféus, ou o título de Campeão
+function renderRoadNext() {
+  const u = Account.user;
+  const { gym, atGate } = gymGate();
+  const nextStage = ARENAS.find((a) => a.id > u.arena && a.kind === 'route' && (!gym || a.id < gym.id));
+  const box = $('#road-next');
+  box.classList.toggle('challenge', atGate);
+  if (!gym) {
+    box.innerHTML = `<img src="${badgeUrl(ARENAS[ARENAS.length - 1])}" alt=""><span><b>Campeão de Kanto!</b><small>Todas as insígnias conquistadas</small></span>`;
+    return;
+  }
+  if (atGate) {
+    box.innerHTML = `<img src="${mascotImg(gym)}" alt=""><span><b>Desafie ${gym.leader}</b><small>${gym.name} · melhor de 3 · vale a ${gym.badge}</small></span>`;
+    return;
+  }
+  const target = nextStage || gym;
+  const from = ARENAS[u.arena].trophies;
+  const pct = Math.max(0, Math.min(100, ((u.trophies - from) / Math.max(1, target.trophies - from)) * 100));
+  const label = target.kind === 'gym' ? `Desafio de ${target.short}` : target.name;
+  box.innerHTML = `<img src="${target.kind === 'gym' ? badgeUrl(target) : mascotImg(target)}" alt=""><span><b>Próximo: ${label}</b>
+    <small>🏆 ${fmtNum(u.trophies)}/${fmtNum(target.trophies)} · faltam ${fmtNum(Math.max(0, target.trophies - u.trophies))}</small>
+    <span class="goal-bar"><i style="width:${pct}%"></i></span></span>`;
+}
+
+$('#road-next').addEventListener('click', () => {
+  if (gymGate().atGate) startGymMatch();
+});
 
 $('#road-close').addEventListener('click', () => showHome());
 

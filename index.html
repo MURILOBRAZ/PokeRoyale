@@ -323,11 +323,13 @@
     <section id="road" class="overlay hidden">
       <div class="panel road-panel">
         <div class="deck-head">
-          <h2>Caminho dos troféus</h2>
+          <h2>Mapa de Kanto</h2>
           <button id="road-close" class="icon" title="Fechar">✕</button>
         </div>
         <p id="road-summary" class="sub small"></p>
-        <div id="road-list"></div>
+        <!-- Próximo objetivo da jornada, sempre à vista no topo do mapa -->
+        <button id="road-next" class="road-next"></button>
+        <div id="road-list" class="road-map"></div>
       </div>
     </section>
 
