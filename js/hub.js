@@ -1365,13 +1365,40 @@ function registerOnlineMatch() {
 }
 
 // Resultado para o servidor; devolve o texto mostrado na tela de fim
+// Manda o resultado e, se a conexão cair (ou o servidor estiver reiniciando), tenta de novo algumas vezes:
+// senão uma vitória do desafio do Líder simplesmente se perdia. Se a primeira tentativa chegou mas a resposta
+// não voltou, a seguinte recebe 409 (já contada): aí só atualiza o estado
+async function sendMatchResult(body) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await Account.api('match-finish', body);
+    } catch (err) {
+      if (attempt > 0 && err.status === 409) {
+        await Account.refresh();
+        return null;
+      }
+      const network = !err.status || err.status >= 500;
+      if (!network || attempt >= 4) throw err;
+      await new Promise((ok) => setTimeout(ok, 1500 * (attempt + 1)));
+    }
+  }
+}
+
 async function finishRanked(result) {
   const r = ranked;
   ranked = null;
   if (!r || !r.matchId) return null;
   try {
     const crowns = game ? [game.crowns[mySide], game.crowns[1 - mySide]] : null;
-    const out = await Account.api('match-finish', { matchId: r.matchId, result, crowns, opponent: rivalName });
+    const out = await sendMatchResult({ matchId: r.matchId, result, crowns, opponent: rivalName });
+    if (!out) {
+      if (r.mode === 'gym') {
+        // Já contada: o placar da série vem do estado atualizado (zerado = a série terminou)
+        gymSeriesOver = !Account.user.gym.wins && !Account.user.gym.losses;
+        $('#btn-again').textContent = gymSeriesOver ? 'Batalhar na rota' : 'Próxima partida';
+      }
+      return '<div class="won-ball">Resultado registrado.</div>';
+    }
     const lines = [];
     if (out.gym) {
       lines.push(gymResultHtml(out));
