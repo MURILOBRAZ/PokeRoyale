@@ -90,11 +90,13 @@ class DeckEditor {
     this._initDrag();
     this.el('#deck-info').addEventListener('click', (e) => {
       const btn = e.target.closest('button');
-      if (!btn) return;
-      if (btn.id === 'deck-info-close') {
+      if (!btn && e.target.id !== 'deck-info') return;
+      // ✕ ou toque no fundo escuro fecha a ficha
+      if (!btn || btn.id === 'deck-info-close') {
         this.focused = null;
         this.renderInfo();
         this.renderGrid();
+        return;
       }
       if (btn.id === 'deck-toggle') this.toggle(this.focused);
       if (btn.id === 'deck-upgrade') this.upgrade(this.focused);
@@ -585,41 +587,67 @@ class DeckEditor {
     return `<div class="${classes.join(' ')}" data-card="${c.id}" style="--type:${TYPE_COLORS[c.type]};--rarity:${RARITIES[rarityOf(c)].color}">${cardImgTag(c)}<div class="cost">${c.cost}</div>${extra}<div class="name">${c.name}</div></div>`;
   }
 
+  // Ficha do Pokémon: abre por cima da Pokédex com a carta grande, os atributos em blocos
+  // (com o quanto sobe no próximo nível), a descrição, o progresso de cópias e os botões
   renderInfo() {
     const box = this.el('#deck-info');
     const c = CARDS[this.focused];
     if (!c) {
+      box.classList.remove('open');
       box.innerHTML = '<p class="hint">Toque num Pokémon para ver os detalhes, ou segure e arraste para o deck.</p>';
       return;
     }
     const own = this.account ? Account.card(c.id) : null;
     const level = own ? own.level : null;
     const mult = level ? levelMultiplier(c, level) : 1;
+    // Quanto cada número sobe no próximo nível (só para quem tem a carta e ainda pode melhorar)
+    const nextMult = level && level < MAX_CARD_LEVEL ? levelMultiplier(c, level + 1) : 0;
+    const scaled = (v) => {
+      const now = Math.round(v * mult);
+      const up = nextMult ? Math.round(v * nextMult) - now : 0;
+      return `${fmt(now)}${up > 0 ? `<em>+${fmt(up)}</em>` : ''}`;
+    };
     const inDeck = this.draft.includes(c.id);
     const full = this.draft.length >= DECK_SIZE;
     const buttons = [];
     if (this.canUse(c.id)) {
       buttons.push(inDeck
-        ? '<button id="deck-toggle">Remover</button>'
-        : `<button id="deck-toggle" class="primary" ${full ? 'disabled' : ''}>${full ? 'Deck cheio' : 'Adicionar'}</button>`);
+        ? '<button id="deck-toggle">Remover do deck</button>'
+        : `<button id="deck-toggle" class="primary" ${full ? 'disabled' : ''}>${full ? 'Deck cheio' : 'Adicionar ao deck'}</button>`);
     }
 
-    let stats;
+    const tiles = [];
+    const tile = (ico, label, value) => tiles.push(`<div class="stat-tile"><span class="stat-ico">${ico}</span><small>${label}</small><b>${value}</b></div>`);
     if (c.kind === 'spell') {
-      stats = `💥 ${Math.round(c.dmg * mult)} de dano · raio ${fmt(c.radius)} · ${Math.round(c.towerMult * 100)}% nos ginásios`;
+      tile('💥', 'Dano', scaled(c.dmg));
+      tile('🎯', 'Raio', fmt(c.radius));
+      tile('🏰', 'Nos ginásios', `${Math.round(c.towerMult * 100)}%`);
+      if (c.stun) tile('💫', 'Atordoa', `${fmt(c.stun)} s`);
+      if (c.slow) tile('👟', 'Lentidão', `−${Math.round(c.slow * 100)}% · ${fmt(c.slowTime)} s`);
+      if (c.knockback) tile('🌊', 'Empurra', `${fmt(c.knockback)} casas`);
+      if (c.buildingMult) tile('🏠', 'Construções', `×${c.buildingMult}`);
     } else if (c.kind === 'building') {
-      const parts = [`❤️ ${Math.round(c.hp * mult)}`, `⏳ ${c.life} s`];
-      if (c.dmg) parts.push(`⚔️ ${Math.round(c.dmg * mult)} a cada ${fmt(c.hitSpeed)} s`, `🎯 ${fmt(c.range)}`);
-      if (c.heal) parts.push(`💚 +${Math.round(c.heal * mult)}/s · raio ${fmt(c.healRadius)}`);
-      if (c.spawn) parts.push(`🦇 1 ${CARDS[c.spawn].name} a cada ${c.spawnEvery} s`);
-      stats = parts.join(' · ');
+      tile('❤️', 'Vida', scaled(c.hp));
+      tile('⏳', 'Dura', `${c.life} s`);
+      if (c.dmg) {
+        tile('⚔️', 'Dano', scaled(c.dmg));
+        tile('⏳', 'Ataca a cada', `${fmt(c.hitSpeed)} s`);
+        tile('🎯', 'Alcance', fmt(c.range));
+      }
+      if (c.heal) tile('💚', `Cura (raio ${fmt(c.healRadius)})`, `${scaled(c.heal)}/s`);
+      if (c.spawn) tile('🦇', `Gera a cada ${c.spawnEvery} s`, CARDS[c.spawn].name);
     } else {
-      const each = c.count ? ` (×${c.count})` : '';
-      stats = `❤️ ${Math.round(c.hp * mult)}${each} · ⚔️ ${Math.round(c.dmg * mult)} a cada ${fmt(c.hitSpeed)} s · 🎯 ${c.range > 1.5 ? fmt(c.range) : 'corpo a corpo'} · 👟 ${speedLabel(c.speed)}`;
+      tile('❤️', c.count ? `Vida (cada um de ${c.count})` : 'Vida', scaled(c.hp));
+      tile('⚔️', 'Dano', scaled(c.dmg));
+      tile('⏳', 'Ataca a cada', `${fmt(c.hitSpeed)} s`);
+      tile('🎯', 'Alcance', c.range > 1.5 ? fmt(c.range) : 'Corpo a corpo');
+      tile('👟', 'Velocidade', speedLabel(c.speed).replace(/^./, (l) => l.toUpperCase()));
+      tile('🏰', 'Ataca', c.targets === 'buildings' ? 'Só ginásios' : c.targets === 'ground' ? 'Só no chão' : 'Chão e ar');
     }
     const types = (c.types || [c.type]).map(typeChip).join('');
-    const atk = c.kind === 'unit' && !c.types.includes(c.type) ? ` · ataque ${TYPE_NAMES[c.type]}` : '';
+    const atk = c.kind === 'unit' && !c.types.includes(c.type) ? `<span class="sheet-atk">golpe ${typeChip(c.type)}</span>` : '';
     const rarity = RARITIES[rarityOf(c)];
+    const tag = c.tm ? `${c.id === 'surf' ? 'HM' : 'TM'}${String(c.tm).padStart(2, '0')}` : c.dex ? `#${c.dex}` : '';
 
     let progress = '';
     if (this.account) {
@@ -628,7 +656,7 @@ class DeckEditor {
         if (cost) {
           const ready = own.copies >= cost.copies;
           const pct = Math.min(100, (own.copies / cost.copies) * 100);
-          progress = `<div class="copies"><div class="copies-bar"><i style="width:${pct}%"></i><span>${own.copies}/${cost.copies}</span></div>
+          progress = `<div class="copies"><div class="copies-bar"><i style="width:${pct}%"></i><span>${own.copies}/${cost.copies} cópias</span></div>
             <button id="deck-upgrade" class="${ready ? 'primary' : ''}" ${ready && Account.user.gold >= cost.gold ? '' : 'disabled'}>Melhorar · 💰 ${cost.gold.toLocaleString('pt-BR')}</button></div>`;
         } else {
           progress = '<div class="copies"><b>Nível máximo!</b></div>';
@@ -640,20 +668,26 @@ class DeckEditor {
         }
       } else {
         const arena = ARENAS[arenaOfCard(c)];
-        progress = `<div class="copies locked-hint">🔒 Aparece nas Premier Balls a partir de <b>${arena.name}</b>.</div>`;
+        progress = `<div class="copies locked-hint">🔒 Ainda não tem. Pode aparecer nas balls, na Loja e no Safari a partir de <b>${arena.name}</b>.</div>`;
       }
     }
 
-    box.innerHTML = `
+    box.classList.add('open');
+    box.innerHTML = `<div class="card-sheet" style="--type:${TYPE_COLORS[c.type]};--rarity:${rarity.color}">
       <button id="deck-info-close" class="icon info-close" title="Fechar detalhes" aria-label="Fechar detalhes">✕</button>
-      ${cardImgTag(c)}
-      <div class="info-body">
-        <h3>${c.tm ? `<small>${c.id === 'surf' ? 'HM' : 'TM'}${String(c.tm).padStart(2, '0')}</small> ` : ''}${c.name} ${c.dex ? `<small>#${c.dex}</small>` : ''} ${types}</h3>
-        <div class="stats"><span class="rarity" style="color:${rarity.color}">${rarity.name}</span>${level ? ` · <b>Nível ${level}</b>` : ''} · ⚡ ${c.cost} de energia${atk}</div>
-        <div class="stats">${stats}</div>
-        <div class="desc">${c.desc}</div>
-        ${progress}
+      <div class="sheet-head">
+        <div class="sheet-card${own || !this.account ? '' : ' not-owned'}">${cardImgTag(c)}<span class="sheet-cost">${c.cost}</span>${level ? `<span class="sheet-lvl">Nv ${level}</span>` : ''}</div>
+        <div class="sheet-title">
+          ${tag ? `<small class="sheet-tag">${tag}</small>` : ''}
+          <h3>${c.name}</h3>
+          <div class="sheet-chips">${types}<span class="rarity-pill">${rarity.name}</span></div>
+          ${atk}
+        </div>
       </div>
-      <div class="info-actions">${buttons.join('')}</div>`;
+      <div class="stat-grid">${tiles.join('')}</div>
+      <p class="sheet-desc">${c.desc}</p>
+      ${progress}
+      <div class="info-actions">${buttons.join('')}</div>
+    </div>`;
   }
 }

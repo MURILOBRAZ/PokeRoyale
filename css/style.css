@@ -364,12 +364,6 @@ button.icon { flex: 0 0 auto; padding: 6px 10px; }
   align-items: center;
 }
 #deck-info .hint { opacity: 0.7; margin: auto; }
-#deck-info img { width: 72px; height: 72px; image-rendering: pixelated; flex-shrink: 0; }
-#deck-info .info-body { flex: 1; min-width: 0; }
-#deck-info h3 { font-size: 16px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-#deck-info .stats { margin: 4px 0; opacity: 0.9; }
-#deck-info .desc { opacity: 0.8; }
-#deck-info button { flex: 0 0 auto; padding: 10px 12px; }
 .type-chip { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
 
 /* A página em si nunca rola (só os painéis por dentro). Sem isso, no celular o navegador escondia a barra
