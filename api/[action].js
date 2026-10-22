@@ -54,11 +54,12 @@ async function loadState(userId) {
     await q('UPDATE users SET arena = GREATEST(arena, $2) WHERE id = $1', [userId, reach]);
     u.arena = reach;
   }
-  const [collection, items, balls, cosmetics] = await Promise.all([
+  const [collection, items, balls, cosmetics, shopToday] = await Promise.all([
     q('SELECT card_id, level, copies FROM collection WHERE user_id = $1', [userId]),
     q('SELECT item, qty FROM user_items WHERE user_id = $1 AND qty > 0', [userId]),
     q('SELECT id, tier, arena, unlock_at FROM balls WHERE user_id = $1 ORDER BY id', [userId]),
     q('SELECT cosmetic FROM user_cosmetics WHERE user_id = $1', [userId]),
+    one('SELECT bought FROM shop_days WHERE user_id = $1 AND day_key = $2', [userId, R.shopDayKey()]),
   ]);
   const now = new Date(u.server_now).getTime();
   return {
@@ -74,6 +75,8 @@ async function loadState(userId) {
       gym: { wins: u.gym_wins, losses: u.gym_losses },
       // Data de cada insígnia ganha (ter a insígnia = arena >= ginásio; da v0.9 vêm sem data)
       badges: u.badges || {},
+      // Presente grátis da Loja ainda não pego hoje (aviso na barra de baixo)
+      shopGift: !!u.starter && !(shopToday && Number(shopToday.bought.gift)),
       xp: u.xp,
       level: R.trainerLevel(u.xp),
       gold: u.gold,

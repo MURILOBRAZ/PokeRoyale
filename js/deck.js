@@ -477,6 +477,7 @@ class DeckEditor {
     if (!el) return;
     // Tocar de novo na carta aberta fecha os detalhes
     this.focused = this.focused === el.dataset.card ? null : el.dataset.card;
+    if (this.focused && this.account) markCardSeen(this.focused); // abriu a carta: some o selo "NOVO"
     this.renderInfo();
     this.renderGrid();
   }
@@ -578,6 +579,7 @@ class DeckEditor {
         const cost = upgradeCost(c, own.level);
         if (cost && own.copies >= cost.copies) classes.push('can-upgrade');
         extra = `<span class="lvl">Nv ${own.level}</span>`;
+        if (isNewCard(c.id)) classes.push('is-new');
       }
     }
     return `<div class="${classes.join(' ')}" data-card="${c.id}" style="--type:${TYPE_COLORS[c.type]};--rarity:${RARITIES[rarityOf(c)].color}">${cardImgTag(c)}<div class="cost">${c.cost}</div>${extra}<div class="name">${c.name}</div></div>`;

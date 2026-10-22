@@ -149,7 +149,9 @@ const mascotImg = (arena) => cardImage(CARDS[POKEDEX[arena.mascot - 1].id]);
 // Caminho absoluto: dentro de variáveis CSS, url() relativo seria resolvido a partir da pasta css/
 const cssUrl = (path) => `url("${new URL(path, document.baseURI).href}")`;
 
+let lastNav = 'home'; // aba de baixo (a Conta abre por cima dela e devolve o destaque ao fechar)
 function setNav(name) {
+  if (name !== 'account') lastNav = name;
   document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === name));
   // Trocar de aba sempre começa com a tela no lugar (nada da página rolado)
   window.scrollTo(0, 0);
@@ -234,7 +236,7 @@ function renderDeckStrip() {
   $('#hub-deck').innerHTML = deck.map((id) => {
     const c = CARDS[id];
     const own = Account.card(id);
-    return `<div class="card small" data-card="${id}" title="${c.name}" style="--type:${TYPE_COLORS[c.type]};--rarity:${RARITIES[rarityOf(c)].color}">
+    return `<div class="card small${isNewCard(id) ? ' is-new' : ''}" data-card="${id}" title="${c.name}" style="--type:${TYPE_COLORS[c.type]};--rarity:${RARITIES[rarityOf(c)].color}">
       ${cardImgTag(c)}<div class="cost">${c.cost}</div><div class="lvl-tag">Nv. ${own ? own.level : 1}</div></div>`;
   }).join('');
   $('#hub-deck-avg').textContent = deck.length ? `⚡ ${fmt(deckAverageCost(deck))}` : '';
@@ -256,7 +258,7 @@ function openCollection() {
 }
 
 function openFriends() {
-  setNav('friends');
+  setNav('home'); // Amigos e Treino abrem a partir da tela inicial (aba Batalhar)
   showScreen('#friends');
   renderFriends();
 }
@@ -288,9 +290,63 @@ async function renderFriends() {
   }
 }
 
+// Pedidos de amizade: contador no botão Amigos da tela inicial
 function setFriendsBadge(n) {
-  const btn = document.querySelector('.hub-nav [data-nav="friends"]');
-  if (btn) btn.dataset.badge = n > 0 ? String(n) : '';
+  $('#hub-friends').dataset.badge = n > 0 ? String(n) : '';
+}
+
+// Contadores vermelhos na barra de baixo: o que está esperando por você em cada aba
+function updateNavBadges() {
+  if (!Account.loggedIn || !Account.user) return;
+  const now = Account.now();
+  const set = (nav, n) => {
+    const btn = document.querySelector(`.hub-nav [data-nav="${nav}"]`);
+    const v = n > 0 ? String(n) : '';
+    if (btn && btn.dataset.badge !== v) btn.dataset.badge = v;
+  };
+  const fb = Account.user.freeBall;
+  const freeReady = fb.available > 0 || (fb.nextAt && Date.parse(fb.nextAt) <= now);
+  const ballsReady = Account.state.balls.filter((b) => b.unlockAt && Date.parse(b.unlockAt) <= now).length;
+  set('home', ballsReady + (freeReady ? 1 : 0));
+  set('shop', Account.user.shopGift ? 1 : 0);
+  set('road', gymGate().atGate ? 1 : 0);
+  set('collection', newCards().length);
+}
+
+// ---------- Cartas novas (selo "NOVO" até abrir a carta) ----------
+// Guardado neste aparelho, por conta. Na primeira vez, tudo o que a conta já tem conta como visto.
+
+const seenKey = () => `cartas-vistas:${Account.user.email}`;
+function seenCards() {
+  try {
+    const raw = localStorage.getItem(seenKey());
+    if (raw) return new Set(JSON.parse(raw));
+    const all = Object.keys(Account.state.collection);
+    localStorage.setItem(seenKey(), JSON.stringify(all));
+    return new Set(all);
+  } catch {
+    return new Set(Object.keys(Account.state.collection)); // sem armazenamento: sem selos
+  }
+}
+function newCards() {
+  if (!Account.loggedIn || !Account.state) return [];
+  const seen = seenCards();
+  return Object.keys(Account.state.collection).filter((id) => !seen.has(id));
+}
+function isNewCard(id) {
+  return Account.loggedIn && !!Account.card(id) && !seenCards().has(id);
+}
+function markCardSeen(id) {
+  if (!Account.loggedIn || !Account.card(id)) return;
+  const seen = seenCards();
+  if (seen.has(id)) return;
+  seen.add(id);
+  try {
+    localStorage.setItem(seenKey(), JSON.stringify([...seen]));
+  } catch {
+    // sem armazenamento: o selo some ao recarregar
+  }
+  updateNavBadges();
 }
 
 $('#friend-add-form').addEventListener('submit', async (e) => {
@@ -392,7 +448,7 @@ $('#invite-accept').addEventListener('click', () => answerInvite(true));
 $('#invite-decline').addEventListener('click', () => answerInvite(false));
 
 function openTraining() {
-  setNav('training');
+  setNav('home');
   renderLanding();
   showScreen('#menu');
 }
@@ -407,8 +463,10 @@ $('.hub-nav').addEventListener('click', (e) => {
       setNav('road');
       showRoad();
     },
-    friends: openFriends,
-    training: openTraining,
+    account: () => {
+      setNav('account');
+      showSettings();
+    },
     shop: () => showShop(),
   }[btn.dataset.nav];
   if (go) go();
@@ -465,6 +523,7 @@ function renderBalls() {
 
   const fb = Account.user.freeBall;
   const ready = fb.available > 0 || (fb.nextAt && Date.parse(fb.nextAt) <= now);
+  updateNavBadges();
   const free = $('#hub-free');
   free.disabled = !ready;
   free.classList.toggle('ready', ready);
@@ -549,6 +608,7 @@ function openDropdown(id) {
 
 function closeDropdown() {
   document.querySelectorAll('.dropdown').forEach((dd) => dd.classList.add('hidden'));
+  if (document.querySelector('.nav-btn.active[data-nav="account"]')) setNav(lastNav);
 }
 
 document.querySelectorAll('.dropdown').forEach((dd) => {

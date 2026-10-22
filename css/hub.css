@@ -265,12 +265,15 @@ button.link { font-family: inherit; }
 .deck-edit small { font-family: system-ui, sans-serif; font-size: 11px; font-weight: 700; }
 
 /* Metas: próximo desafio do Líder e Poké Ball grátis, com barra de progresso */
-.goals { grid-area: goals; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Os dois cards sempre do mesmo tamanho (colunas iguais e mesma altura) */
+.goals { grid-area: goals; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px; }
 .goal-card {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
+  height: 100%;
+  min-height: 64px;
   padding: 8px 10px;
   text-align: left;
   border-radius: 14px;
@@ -279,7 +282,8 @@ button.link { font-family: inherit; }
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
 }
 .goal-card:disabled { opacity: 1; cursor: default; }
-.goal-ico { flex: 0 0 auto; width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.goal-ico { flex: 0 0 34px; width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.goal-card.free-ball .goal-ico { transform: scale(1.35); } /* o sprite da Poké Ball tem muita borda vazia */
 .goal-ico.mascot { border-radius: 50%; background: rgba(0, 0, 0, 0.25); }
 .goal-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .goal-text b { font-family: var(--pixel); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -328,7 +332,7 @@ button.link { font-family: inherit; }
 /* ---------- Telas médias: arena maior, jornada embaixo ---------- */
 @media (max-width: 1180px) {
   .hub-main { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
-  .goals { grid-template-columns: 1fr; }
+  .goals { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Celular: uma coluna e menu embaixo ---------- */
@@ -372,7 +376,7 @@ button.link { font-family: inherit; }
   .arrow { width: 32px; height: 40px; font-size: 22px; }
   .arena-preview { aspect-ratio: 2 / 1; }
   .battle-btn { font-size: 24px; padding: 8px; }
-  .goals { grid-template-columns: 1fr 1fr; }
+  .goals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .balls-box { padding: 8px; }
   .balls-box h3 { display: none; }
   .balls-box .ball-slots { grid-template-columns: repeat(4, 1fr); gap: 6px; }
@@ -725,12 +729,15 @@ button.link { font-family: inherit; }
 .friend-row.request { border: 2px solid #ffcb05; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #6b7280; margin-right: 6px; vertical-align: middle; }
 .dot.on { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-.hub-nav [data-badge]:not([data-badge=""]) { position: relative; }
-.hub-nav [data-badge]:not([data-badge=""])::after {
+.hub-nav [data-badge]:not([data-badge=""]), .side-btn[data-badge]:not([data-badge=""]) { position: relative; }
+.side-btn[data-badge]:not([data-badge=""])::after { right: 4px; top: 4px; }
+.hub-nav [data-badge]:not([data-badge=""])::after, .side-btn[data-badge]:not([data-badge=""])::after {
   content: attr(data-badge);
   position: absolute;
   top: 2px;
   right: 18%;
+  font-family: system-ui, sans-serif;
+  box-shadow: 0 0 0 2px rgba(10, 16, 36, 0.9);
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
@@ -768,3 +775,31 @@ button.link { font-family: inherit; }
 .badge-slot.locked { opacity: 0.6; }
 .badge-slot.locked .badge-icon { filter: grayscale(1) brightness(0.45); }
 .badge-inline { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; image-rendering: pixelated; }
+
+/* ---------- Barra de baixo: Batalhar em destaque no meio ---------- */
+.nav-btn.nav-main { color: #2a1d00; background: linear-gradient(180deg, #ffe066, #f5b800); border-color: #fff3b0; }
+.nav-btn.nav-main.active { background: linear-gradient(180deg, #ffe066, #f5b800); border-color: #fff; box-shadow: 0 0 0 2px rgba(255, 216, 74, 0.45); }
+@media (max-width: 760px) {
+  .nav-btn.nav-main { margin-top: -14px; border-radius: 16px; border: 2px solid #fff3b0; box-shadow: 0 4px 0 #9c6b00; }
+  .nav-btn.nav-main .nav-ico { font-size: 26px; }
+  .nav-btn.nav-main.active { background: linear-gradient(180deg, #ffe066, #f5b800); box-shadow: 0 4px 0 #9c6b00, 0 0 12px rgba(255, 216, 74, 0.6); }
+}
+
+/* ---------- Selo "NOVO" nas cartas recém-ganhas (some ao abrir a carta) ---------- */
+.card.is-new::before {
+  content: 'NOVO';
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #ef4444;
+  color: #fff;
+  font-family: var(--pixel);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 0 #7a1712;
+  pointer-events: none;
+  z-index: 2; /* por cima da imagem do Pokémon */
+}
