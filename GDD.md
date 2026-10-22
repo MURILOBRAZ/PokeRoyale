@@ -234,7 +234,7 @@ Resultado na v0.3 (1.500 partidas): todas as 153 cartas jogadas, **0 problemas**
 - **Minha conta** (clique no nome): perfil, trocar nome de treinador, trocar senha (pede a atual e desconecta os outros aparelhos) e sair. Ranking e Minha conta abrem como menus suspensos com ✕, por cima da tela em que você está (início ou qualquer aba), e ao fechar você continua nela.
 - **Nome de treinador único**, sem diferenciar maiúsculas (índice único no banco). Contas antigas com nome repetido: a mais antiga fica com o nome, as outras ganham `_<número>`.
 - **Abrir ball:** animação de ~2,5 s (a ball cai, balança 3 vezes, o botão brilha, a tampa abre num clarão da cor do tipo) antes das cartas; tocar pula.
-- Fonte *Pixelify Sans* (Google Fonts) nos títulos e botões. Ficou de fora do mockup o que o jogo ainda não tem (gemas, loja, ranking, mensagens).
+- Duas fontes só: *Pixelify Sans* (Google Fonts) nos títulos e botões, e a do sistema (`--text`) no texto e nos números (na pixel, 2, 5 e 8 se confundem). Todos os emojis viram ícones em pixel art (`tools/build-icons.py` + `js/icons.js`). Toda carta usa a mesma moldura: fundo da cor do tipo, borda da cor da raridade e bolinha de custo (Pokédex, deck, balls, mapa e Loja). Ficou de fora do mockup o que o jogo ainda não tem (gemas, loja, ranking, mensagens).
 
 **Na partida:**
 - **Sair da partida:** botão 🏳️ no canto da arena, com confirmação. Valendo troféus conta como **derrota** (o servidor aceita derrota mesmo em partida curta, então sair cedo não escapa); online, o amigo vence; no treino só encerra.

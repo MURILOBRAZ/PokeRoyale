@@ -466,6 +466,64 @@ def berry():
     return outline(img)
 
 
+def map_icon():  # mapa dobrado (aba Mapa)
+    img, d = new()
+    d.polygon([(1, 3), (5, 1), (10, 3), (14, 1), (14, 12), (10, 14), (5, 12), (1, 14)], fill=(236, 220, 170, 255))
+    d.polygon([(5, 1), (10, 3), (10, 14), (5, 12)], fill=(214, 194, 140, 255))
+    px(d, [(3, 6), (4, 7), (6, 8), (7, 9), (8, 9)], G)
+    px(d, [(9, 5), (10, 6), (11, 7)], B)
+    px(d, [(11, 9), (12, 10), (11, 10), (12, 9)], R)  # X do destino
+    return outline(img)
+
+
+def user():  # treinador de boné (aba Conta)
+    img, d = new()
+    d.rectangle([5, 4, 10, 8], fill=(250, 210, 170, 255))   # rosto
+    px(d, [(6, 6), (9, 6)], K)                                # olhos
+    d.rounded_rectangle([4, 0, 11, 4], radius=2, fill=R)     # boné
+    d.rectangle([4, 3, 13, 4], fill=RD)                       # aba
+    d.rectangle([6, 1, 8, 2], fill=W)                         # emblema
+    d.rounded_rectangle([3, 10, 12, 15], radius=3, fill=B)    # jaqueta
+    d.line([(7, 10), (7, 15)], fill=BD)
+    px(d, [(4, 11), (5, 11)], BL)
+    return outline(img)
+
+
+def news():  # jornal (Novidades)
+    img, d = new()
+    d.rectangle([1, 2, 14, 14], fill=W)
+    d.line([(14, 3), (14, 14)], fill=WS)
+    d.rectangle([3, 4, 12, 5], fill=R)
+    d.rectangle([3, 7, 7, 11], fill=S)
+    for y in (7, 9, 11):
+        d.line([(9, y), (12, y)], fill=SD)
+    d.line([(3, 13), (12, 13)], fill=SD)
+    return outline(img)
+
+
+def wave():  # ondas (mapas de mar)
+    img, d = new()
+    for y0, c, crest in ((2, BL, W), (7, B, BL), (12, BD, B)):
+        pts = [(0, y0 + 2), (2, y0), (5, y0), (7, y0 + 2), (10, y0 + 2), (12, y0), (15, y0)]
+        d.line(pts, fill=c, width=3)
+        px(d, [(2, y0), (3, y0), (12, y0), (13, y0)], crest)
+    return outline(img)
+
+
+def check():  # ✔
+    img, d = new()
+    d.line([(2, 8), (6, 12), (13, 3)], fill=G, width=3)
+    px(d, [(2, 7), (12, 3)], GL)
+    return outline(img)
+
+
+def cross():  # ✖
+    img, d = new()
+    d.line([(3, 3), (12, 12)], fill=R, width=3)
+    d.line([(12, 3), (3, 12)], fill=R, width=3)
+    return outline(img)
+
+
 ICONS = {
     'trophy': trophy, 'coin': coin, 'money': money, 'lock': lock, 'swords': swords, 'crown': crown,
     'target': target, 'globe': globe, 'friends': friends, 'hourglass': hourglass, 'bolt': bolt,
@@ -476,6 +534,7 @@ ICONS = {
     'sparkles': sparkles, 'gold': lambda: medal(Y, YD), 'silver': lambda: medal(W, S),
     'bronze': lambda: medal((214, 140, 80, 255), (150, 90, 44, 255)), 'robot': robot, 'gift': gift,
     'anger': anger, 'pokedex': pokedex, 'back': back, 'rock': rock, 'run': run, 'tag': tag, 'party': party, 'star': star, 'berry': berry,
+    'map': map_icon, 'user': user, 'news': news, 'wave': wave, 'check': check, 'cross': cross,
 }
 
 # ---------- Ícone do site (aba do navegador e atalho no celular) ----------

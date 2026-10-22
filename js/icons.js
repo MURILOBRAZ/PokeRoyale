@@ -11,7 +11,8 @@ const EMOJI_ICONS = {
   '🌿': 'leaf', '📜': 'scroll', '🎵': 'note', '🎲': 'dice', '🦇': 'bat', '👟': 'shoe', '✨': 'sparkles',
   '🥇': 'gold', '🥈': 'silver', '🥉': 'bronze', '🤖': 'robot', '🎁': 'gift', '💢': 'anger',
   '🪨': 'rock', '🏃': 'run', '🏷': 'tag', '🎉': 'party', '⭐': 'star', '🍓': 'berry',
-  '🃏': 'pokedex', '↩': 'back',
+  '🃏': 'pokedex', '↩': 'back', '🗺': 'map', '👤': 'user', '📰': 'news', '🌊': 'wave',
+  '✔': 'check', '✓': 'check', '✖': 'cross',
 };
 
 const iconUrl = (name) => `assets/icones/${name}.png`;

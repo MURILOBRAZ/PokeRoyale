@@ -11,12 +11,16 @@
   --gold: #f8c630;
   --gold-dark: #b98a06;
   --text-dim: #aab6d8;
+  /* Duas fontes no jogo todo: a pixel nos títulos e botões, e a do sistema no texto e nos números
+     (na pixel, 2, 5 e 8 se confundem) */
   --pixel: 'Pixelify Sans', 'Segoe UI', system-ui, sans-serif;
+  --text: system-ui, 'Segoe UI', Roboto, -apple-system, sans-serif;
 }
 
 /* ---------- Base ---------- */
 h1, h2, h3, .panel h2, button, .brand, .stat-chip, .lvl-badge { font-family: var(--pixel); }
 h1, h2, h3 { letter-spacing: 0.5px; }
+h1 small, h2 small, h3 small { font-family: var(--text); letter-spacing: 0; }
 
 .overlay {
   position: fixed;
@@ -112,7 +116,7 @@ button.link { font-family: inherit; }
 }
 /* Números das moedas: fonte comum (na pixel o 2 e o 5 se confundem), grossos, com sombra e uma cor por moeda */
 .stat-chip b {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--text);
   font-weight: 800;
   font-size: 1.05em;
   letter-spacing: 0.5px;
@@ -230,7 +234,7 @@ button.link { font-family: inherit; }
 }
 .battle-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #9c6b00; }
 .battle-btn .battle-label { display: flex; align-items: center; gap: 8px; }
-.battle-btn small { font-family: system-ui, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; opacity: 0.75; }
+.battle-btn small { font-family: var(--text); font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; opacity: 0.75; }
 /* Linha do Batalhar: Amigos e Treino dos lados do botão principal */
 .battle-row { display: grid; grid-template-columns: 1fr 2.4fr 1fr; gap: 8px; align-items: stretch; }
 .side-btn {
@@ -264,7 +268,7 @@ button.link { font-family: inherit; }
 }
 .deck-edit img { width: 22px; height: 22px; image-rendering: pixelated; }
 .deck-edit b { font-family: var(--pixel); font-size: 12px; line-height: 1; }
-.deck-edit small { font-family: system-ui, sans-serif; font-size: 10px; font-weight: 700; opacity: 0.85; }
+.deck-edit small { font-family: var(--text); font-size: 10px; font-weight: 700; opacity: 0.85; }
 
 /* Metas: próximo desafio do Líder e Poké Ball grátis, com barra de progresso */
 /* Os dois cards sempre do mesmo tamanho (colunas iguais e mesma altura) */
@@ -292,7 +296,7 @@ button.link { font-family: inherit; }
 .goal-ico.mascot { border-radius: 50%; background: rgba(0, 0, 0, 0.25); }
 .goal-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .goal-text b { font-family: var(--pixel); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.goal-text small { font-family: system-ui, sans-serif; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.goal-text small { font-family: var(--text); font-size: 11px; color: var(--text-dim); white-space: nowrap; }
 .goal-bar { display: block; height: 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
 .goal-bar i { display: block; height: 100%; background: linear-gradient(90deg, #5aa9ff, #2f6fdb); }
 /* No portão: o card vira o botão do desafio do Líder */
@@ -401,7 +405,7 @@ button.link { font-family: inherit; }
 /* Texto do XP na fonte comum: na pixel, em tamanho pequeno, a barra do "2/30" quase some */
 .hub .xp-bar > span {
   display: flex; align-items: center; justify-content: center;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif; font-size: 10px; font-weight: 800; letter-spacing: 0.3px;
+  font-family: var(--text); font-size: 10px; font-weight: 800; letter-spacing: 0.3px;
   text-shadow: 0 1px 1px #000;
 }
 .hub .xp-short { display: none; }
@@ -503,7 +507,7 @@ button.link { font-family: inherit; }
 #shop-wallet { font-family: var(--pixel, sans-serif); font-size: 16px; white-space: nowrap; }
 .shop-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
 .shop-title { font-size: 16px; margin: 14px 0 8px; }
-.shop-title small { font-family: system-ui, sans-serif; font-weight: 400; font-size: 12px; opacity: 0.7; }
+.shop-title small { font-family: var(--text); font-weight: 400; font-size: 12px; opacity: 0.7; }
 .offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .offer {
   position: relative;
@@ -523,6 +527,33 @@ button.link { font-family: inherit; }
 .offer-art { position: relative; width: 72px; height: 72px; display: grid; place-items: center; }
 .offer-art img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; border-radius: 10px; }
 .offer.kind-ball .offer-art img, .offer.kind-item .offer-art img { width: 52px; height: 52px; }
+/* Carta à venda com a mesma moldura das cartas da Pokédex (tipo no fundo, raridade na borda, custo) */
+.offer.kind-card .offer-art {
+  width: 72px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--type) 85%, #fff), color-mix(in srgb, var(--type) 70%, #000));
+  border: 3px solid var(--rarity, #e9edf7);
+  box-shadow: 0 3px 0 #0d1226, inset 0 -4px 0 var(--rarity, transparent);
+}
+.offer.kind-card .offer-art img { width: 62px; height: 62px; border-radius: 0; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4)); }
+.offer-cost {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e9a6ff, #a03ad6);
+  border: 2px solid #fff;
+  font-size: 11px;
+  font-weight: 800;
+  text-shadow: 0 1px 1px #000;
+}
+.offer.kind-card .offer-amount { right: 2px; bottom: 2px; }
 .offer-amount { position: absolute; right: -6px; bottom: -4px; padding: 0 5px; border-radius: 6px; background: #2fb36b; font-family: var(--pixel, sans-serif); font-weight: 700; font-size: 13px; }
 .offer-name { font-size: 14px; }
 .offer-info { font-size: 11px; opacity: 0.8; min-height: 2.4em; }
@@ -533,6 +564,8 @@ button.link { font-family: inherit; }
 @media (max-width: 760px) {
   .offer-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .offer { padding: 8px; }
+  .safari-banner { flex-wrap: wrap; }
+  .safari-banner button { width: 100%; }
   #shop-wallet { font-size: 13px; }
 }
 
@@ -565,7 +598,7 @@ button.link { font-family: inherit; }
   color: #fff;
   font: inherit;
 }
-.look-form h3 small { font-family: system-ui, sans-serif; font-weight: 400; font-size: 11px; opacity: 0.7; }
+.look-form h3 small { font-family: var(--text); font-weight: 400; font-size: 11px; opacity: 0.7; }
 .title-badge { font-size: 40px; }
 .offer.kind-cosmetic .offer-art img { width: 64px; height: 64px; }
 
@@ -608,7 +641,7 @@ button.link { font-family: inherit; }
 @keyframes wild-shake { 25% { transform: translateX(-8px) rotate(-4deg); } 75% { transform: translateX(8px) rotate(4deg); } }
 @keyframes wild-caught { 0% { transform: scale(1); } 50% { transform: scale(0.7); filter: brightness(2); } 100% { transform: scale(1); } }
 .safari-scene h3 { font-size: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
-.safari-scene h3 small { font-family: system-ui, sans-serif; font-size: 12px; }
+.safari-scene h3 small { font-family: var(--text); font-size: 12px; }
 .safari-status { font-size: 13px; opacity: 0.9; min-height: 1.2em; }
 .safari-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .safari-actions button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 8px; font-size: 15px; }
@@ -743,7 +776,7 @@ button.link { font-family: inherit; }
   position: absolute;
   top: 2px;
   right: 18%;
-  font-family: system-ui, sans-serif;
+  font-family: var(--text);
   box-shadow: 0 0 0 2px rgba(10, 16, 36, 0.9);
   min-width: 16px;
   height: 16px;

@@ -1101,9 +1101,9 @@ function offerView(o) {
     const c = CARDS[o.card];
     const r = RARITIES[rarityOf(c)];
     return {
-      img: cardImgTag(c), name: c.name,
+      img: `${cardImgTag(c)}<span class="offer-cost">${c.cost}</span>`, name: c.name,
       info: o.free ? `Presente do dia · ×${o.amount}` : `<span style="color:${r.color}">${r.name}</span> · ${Account.owns(o.card) ? `Nv ${Account.card(o.card).level}` : 'nova!'}`,
-      style: `--type:${TYPE_COLORS[c.type]}`,
+      style: `--type:${TYPE_COLORS[c.type]};--rarity:${r.color}`,
     };
   }
   if (o.kind === 'ball') return { img: ballImg(o.tier), name: BALLS[o.tier].name, info: `${BALLS[o.tier].cards}+ cartas, abre na hora` };

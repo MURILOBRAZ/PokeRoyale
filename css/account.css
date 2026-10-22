@@ -120,7 +120,8 @@ button.link:active { transform: none; }
 .item-icon { width: 24px; height: 24px; image-rendering: pixelated; vertical-align: middle; }
 
 /* Cartas na coleção */
-.card { box-shadow: 0 3px 0 #0d1226, inset 0 -4px 0 var(--rarity, transparent); }
+/* Moldura única das cartas (Pokédex, deck, balls, mapa, Loja): fundo do tipo e borda da cor da raridade */
+.card { border-color: var(--rarity, #e9edf7); box-shadow: 0 3px 0 #0d1226, inset 0 -4px 0 var(--rarity, transparent); }
 .card .lvl { position: absolute; top: 2px; right: 3px; font-size: 9px; font-weight: 900; background: rgba(0, 0, 0, 0.55); padding: 0 4px; border-radius: 5px; }
 .card.locked { filter: grayscale(1) brightness(0.55); }
 .card.can-upgrade::after {
@@ -317,7 +318,7 @@ button.link:active { transform: none; }
 .road-next img { flex: 0 0 auto; width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
 .road-next > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .road-next b { font-family: var(--pixel); font-size: 15px; }
-.road-next small { font-family: system-ui, sans-serif; font-size: 12px; opacity: 0.85; }
+.road-next small { font-family: var(--text); font-size: 12px; opacity: 0.85; }
 .road-next.challenge { color: #fff; background: linear-gradient(180deg, #e2463b, #b42318); border-color: #ffb4a8; box-shadow: 0 4px 0 #6e1209; animation: gym-pulse 1.6s ease-in-out infinite; }
 .road-next.challenge img { border-radius: 50%; background: rgba(0, 0, 0, 0.25); }
 
@@ -378,10 +379,10 @@ button.link:active { transform: none; }
 .map-step.right .map-label { grid-column: 3; grid-row: 1; text-align: left; align-items: flex-start; }
 .map-step.left .map-label { grid-column: 1; grid-row: 1; text-align: right; align-items: flex-end; }
 /* Nomes na fonte comum: na pixel, "Rota 12" parece "Rota 18" */
-.map-label b { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 14px; }
+.map-label b { font-family: var(--text); font-weight: 800; font-size: 14px; }
 .map-step.gym .map-label b { color: #ffd84a; }
 .map-step.locked .map-label { opacity: 0.6; }
-.map-label small { font-family: system-ui, sans-serif; font-size: 11px; opacity: 0.85; }
+.map-label small { font-family: var(--text); font-size: 11px; opacity: 0.85; }
 .map-types { display: flex; flex-wrap: wrap; gap: 3px; }
 .map-step.left .map-types { justify-content: flex-end; }
 .map-types .type-chip, .map-types span { font-size: 9px; }
@@ -397,8 +398,8 @@ button.link:active { transform: none; }
 .stage-head img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
 .stage-head img.round { border-radius: 50%; background: #24335f; object-fit: cover; }
 .stage-head > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.stage-head b { font-family: system-ui, sans-serif; font-size: 17px; font-weight: 800; }
-.stage-head small { font-family: system-ui, sans-serif; font-size: 12px; opacity: 0.85; }
-.stage-box > .sub { margin: 10px 0 8px; font-family: system-ui, sans-serif; }
+.stage-head b { font-family: var(--text); font-size: 17px; font-weight: 800; }
+.stage-head small { font-family: var(--text); font-size: 12px; opacity: 0.85; }
+.stage-box > .sub { margin: 10px 0 8px; font-family: var(--text); }
 .stage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
 .stage-grid .card.not-owned img { filter: grayscale(1) brightness(0.55); }
