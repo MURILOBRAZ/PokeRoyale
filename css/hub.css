@@ -362,6 +362,9 @@ button.link { font-family: inherit; }
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
     background: rgba(10, 16, 36, 0.96);
     border-top: 2px solid var(--line);
+    /* Acima das abas encaixadas (z-index 1): o Batalhar sobe por cima do conteúdo sem ser cortado */
+    position: relative;
+    z-index: 2;
   }
   .nav-btn { flex: 1; flex-direction: column; gap: 2px; padding: 6px 2px; font-size: 11px; text-align: center; border: none; background: none; }
   .nav-btn .nav-ico { font-size: 22px; width: auto; }
