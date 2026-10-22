@@ -424,7 +424,7 @@ button.link { font-family: inherit; }
 .overlay.docked.hidden { display: none; }
 .overlay.docked .panel { width: 100%; max-width: 880px; max-height: none; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
 .overlay.docked .deck-panel, .overlay.docked .road-panel { height: 100%; }
-.overlay.docked #deck-close, .overlay.docked #road-close, .overlay.docked #friends-close { display: none; }
+.overlay.docked #deck-close, .overlay.docked #road-close, .overlay.docked #friends-close, .overlay.docked #settings-close { display: none; }
 #menu.docked .panel > h1, #menu.docked .panel > h1 + .sub { display: none; }
 #menu.docked .panel > h2:first-of-type { margin-top: 0; }
 @media (max-width: 760px) {

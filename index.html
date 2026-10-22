@@ -267,11 +267,11 @@
       </div>
     </section>
 
-    <section id="settings" class="overlay dropdown dropdown-left hidden">
-      <div class="panel dropdown-panel">
+    <section id="settings" class="overlay hidden">
+      <div class="panel settings-panel">
         <div class="deck-head">
           <h2>Minha conta</h2>
-          <button class="icon dropdown-close" title="Fechar" aria-label="Fechar">✕</button>
+          <button id="settings-close" class="icon" title="Fechar" aria-label="Fechar">✕</button>
         </div>
         <div class="profile-card">
           <img id="set-avatar" alt="">
@@ -330,6 +330,8 @@
         <!-- Próximo objetivo da jornada, sempre à vista no topo do mapa -->
         <button id="road-next" class="road-next"></button>
         <div id="road-list" class="road-map"></div>
+        <!-- Toque numa etapa: quais Pokémon passam a cair nas balls a partir dela -->
+        <div id="stage-info" class="stage-info hidden"></div>
       </div>
     </section>
 

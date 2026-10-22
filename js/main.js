@@ -39,14 +39,14 @@ function showScreen(id) {
   // só a recompensa abre por cima, como um destaque
   const tab = Account.loggedIn && TAB_SCREENS.includes(id);
   dockTabs(Account.loggedIn);
-  const keepHub = tab || (Account.loggedIn && ['#reward', '#ranking', '#settings'].includes(id));
+  const keepHub = tab || (Account.loggedIn && ['#reward', '#ranking'].includes(id));
   for (const s of ['#loading', '#menu', '#lobby', '#end', '#deck', '#hub', '#auth', '#starter', '#road', '#reward', '#friends', '#ranking', '#settings', '#shop', '#safari', '#leave', '#news']) {
     $(s).classList.toggle('hidden', s !== id && !(keepHub && s === '#hub'));
   }
   $('.hub-main').classList.toggle('hidden', tab);
 }
 
-const TAB_SCREENS = ['#deck', '#road', '#friends', '#menu', '#lobby', '#shop', '#safari'];
+const TAB_SCREENS = ['#deck', '#road', '#friends', '#menu', '#lobby', '#shop', '#safari', '#settings'];
 
 // Move essas telas para dentro do início (logado) ou de volta para a página (sem conta)
 function dockTabs(on) {

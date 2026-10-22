@@ -671,7 +671,8 @@ function showSettings() {
   $('#set-pass-new').value = '';
   $('#msg-name').textContent = '';
   $('#msg-pass').textContent = '';
-  openDropdown('#settings');
+  setNav('account');
+  showScreen('#settings');
   renderBadgeCase();
   loadHistory();
 }
@@ -819,6 +820,7 @@ function showRoad() {
   const gyms = ARENAS.filter((a) => a.kind === 'gym').length;
   $('#road-summary').innerHTML = `🏆 ${fmtNum(u.trophies)} · recorde ${fmtNum(u.bestTrophies)} · 🏅 ${won}/${gyms} insígnias`;
   renderRoadNext();
+  $('#stage-info').classList.add('hidden');
   $('#road-list').innerHTML = [...ARENAS].reverse().map((a, i) => {
     const reached = u.arena >= a.id;
     const current = u.arena === a.id;
@@ -826,7 +828,7 @@ function showRoad() {
     const count = Object.values(CARDS).filter((c) => arenaOfCard(c) === a.id).length;
     const sub = a.kind === 'gym'
       ? `${a.leader} · ${reached ? a.badge : `🏆 ${fmtNum(a.trophies)} + melhor de 3`}`
-      : `🏆 ${fmtNum(a.trophies)} · libera ${count} Pokémon`;
+      : `🏆 ${fmtNum(a.trophies)} · ${count} Pokémon`;
     const art = a.kind === 'gym'
       ? `<img class="map-badge" src="${badgeUrl(a)}" alt="">`
       : `<img class="map-mascot" src="${mascotImg(a)}" alt="">`;
@@ -865,6 +867,40 @@ function renderRoadNext() {
     <small>🏆 ${fmtNum(u.trophies)}/${fmtNum(target.trophies)} · faltam ${fmtNum(Math.max(0, target.trophies - u.trophies))}</small>
     <span class="goal-bar"><i style="width:${pct}%"></i></span></span>`;
 }
+
+// Painel da etapa: os Pokémon (e TMs/construções) que entram nas balls, na Loja e no Safari a partir dela
+function showStageInfo(id) {
+  const a = ARENAS[id];
+  const u = Account.user;
+  const RANK = Object.keys(RARITIES);
+  const cards = Object.values(CARDS).filter((c) => arenaOfCard(c) === a.id)
+    .sort((x, y) => RANK.indexOf(rarityOf(x)) - RANK.indexOf(rarityOf(y)) || x.cost - y.cost);
+  const reached = u.arena >= a.id;
+  const head = a.kind === 'gym'
+    ? `<img src="${badgeUrl(a)}" alt=""><span><b>${a.name}</b><small>${a.leader} · ${a.badge} · 🏆 ${fmtNum(a.trophies)}</small></span>`
+    : `<img class="round" src="${mascotImg(a)}" alt=""><span><b>${a.name}</b><small>🏆 ${fmtNum(a.trophies)} · ${reached ? 'liberada' : 'bloqueada'}</small></span>`;
+  const grid = cards.map((c) => {
+    const own = Account.card(c.id);
+    return `<div class="card small${own ? '' : ' not-owned'}" title="${c.name}" style="--type:${TYPE_COLORS[c.type]};--rarity:${RARITIES[rarityOf(c)].color}">${cardImgTag(c)}<div class="cost">${c.cost}</div><div class="name">${c.name}</div></div>`;
+  }).join('');
+  $('#stage-info').innerHTML = `<div class="stage-box">
+    <div class="stage-head">${head}<button class="icon stage-close" title="Fechar" aria-label="Fechar">✕</button></div>
+    <p class="sub small">${cards.length
+      ? `${reached ? 'Já caem' : 'Vão cair'} nas balls, na Loja e no Safari a partir daqui.${cards.some((c) => !Account.card(c.id)) ? '<br>Em cinza: os que você ainda não tem.' : ''}`
+      : 'Nenhum Pokémon novo nesta etapa.'}</p>
+    <div class="stage-grid">${grid}</div>
+  </div>`;
+  $('#stage-info').classList.remove('hidden');
+}
+
+$('#road-list').addEventListener('click', (e) => {
+  const step = e.target.closest('.map-step');
+  if (step) showStageInfo(+step.dataset.arena);
+});
+$('#stage-info').addEventListener('click', (e) => {
+  if (e.target.id === 'stage-info' || e.target.closest('.stage-close')) $('#stage-info').classList.add('hidden');
+});
+$('#settings-close').addEventListener('click', () => showHome());
 
 $('#road-next').addEventListener('click', () => {
   if (gymGate().atGate) startGymMatch();
